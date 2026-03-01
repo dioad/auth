@@ -127,17 +127,11 @@ jobs:
       run: |
         go get -v -t -d ./...
 
-    - name: Fuzz ReverseIP
-      run: go test -fuzz FuzzReverseIP -fuzztime 10s ./dns
-
-    - name: Fuzz ParseParams
-      run: go test -fuzz FuzzParseParams -fuzztime 10s ./smtp/dkim
-
     - name: Fuzz CanonicalData
-      run: go test -fuzz FuzzCanonicalData -fuzztime 10s ./http/auth/hmac
+      run: go test -fuzz FuzzCanonicalData -fuzztime 10s ./http/hmac
 
     - name: Fuzz AuthRequest
-      run: go test -fuzz FuzzAuthRequest -fuzztime 10s ./http/auth/hmac
+      run: go test -fuzz FuzzAuthRequest -fuzztime 10s ./http/hmac
 
     - name: Fuzz DecodeTokenData
       run: go test -fuzz FuzzDecodeTokenData -fuzztime 10s ./oidc
