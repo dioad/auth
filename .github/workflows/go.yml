@@ -1,0 +1,161 @@
+name: Go
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+
+  test:
+    name: Vet and Test
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.25
+      id: go
+
+    - name: Configure github token
+      env:
+        TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+        TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+      run: |
+        git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+    - name: Get dependencies
+      run: |
+        git config -l --global
+        go get -v -t -d ./...
+
+    - name: Vet
+      run: |
+        go vet ./...
+
+    - name: Test Race Conditions
+      run: go test -race -v ./...
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        os: [darwin, linux]
+        arch: [amd64]
+        include:
+        - os: linux
+          arch: arm64
+
+    env:
+      GOOS: ${{ matrix.os }}
+      GOARCH: ${{ matrix.arch }}
+
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.25
+      id: go
+
+    - name: Configure github token
+      env:
+        TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+        TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+      run: |
+        git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+    - name: Get dependencies
+      run: |
+        git config -l --global
+        go get -v -t -d ./...
+
+    - name: Build
+      run: |
+        go build -v ./...
+
+    - name: Build Examples
+      run: |
+        for dir in examples/*/; do
+          if [ -f "$dir/main.go" ]; then
+            echo "Building $dir..."
+            go build "./$dir..." || exit 1
+          fi
+        done
+        # Also build subdirectories with main.go (e.g., githubactions-oidc/client)
+        for dir in examples/*/*/; do
+          if [ -f "$dir/main.go" ]; then
+            echo "Building $dir..."
+            go build "./$dir..." || exit 1
+          fi
+        done
+        echo "All examples built successfully"
+
+
+  fuzz:
+    name: Fuzz
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.25
+      id: go
+
+    - name: Configure github token
+      env:
+        TOKEN_USER: ${{ secrets.WORKFLOW_TOKEN_USER }}
+        TOKEN: ${{ secrets.WORKFLOW_TOKEN}}
+      run: |
+        git config --global url."https://${TOKEN_USER}:${TOKEN}@github.com".insteadOf "https://github.com"
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+
+    - name: Fuzz ReverseIP
+      run: go test -fuzz FuzzReverseIP -fuzztime 10s ./dns
+
+    - name: Fuzz ParseParams
+      run: go test -fuzz FuzzParseParams -fuzztime 10s ./smtp/dkim
+
+    - name: Fuzz CanonicalData
+      run: go test -fuzz FuzzCanonicalData -fuzztime 10s ./http/auth/hmac
+
+    - name: Fuzz AuthRequest
+      run: go test -fuzz FuzzAuthRequest -fuzztime 10s ./http/auth/hmac
+
+    - name: Fuzz DecodeTokenData
+      run: go test -fuzz FuzzDecodeTokenData -fuzztime 10s ./oidc
+
+    - name: Output Fuzzing Crashers
+      if: failure()
+      run: |
+        echo "Fuzzing failed. Checking for crashers..."
+        find . -path "*/testdata/fuzz/*" -type f | head -n 10 | while read crasher; do
+          echo "Crasher: $crasher"
+          cat "$crasher"
+          echo ""
+        done
+
+    - name: Upload Fuzzing Crashers
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: fuzz-crashers
+        path: "**/testdata/fuzz/**"
+        if-no-files-found: ignore
