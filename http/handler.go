@@ -11,10 +11,10 @@ import (
 	"github.com/dioad/auth/http/basic"
 	"github.com/dioad/auth/http/github"
 	"github.com/dioad/auth/http/hmac"
+	"github.com/dioad/auth/http/middleware/jwt"
+	"github.com/dioad/auth/http/middleware/oidc"
 	authjwt "github.com/dioad/auth/jwt"
 	authoidc "github.com/dioad/auth/oidc"
-	"github.com/dioad/net/http/middleware/jwt"
-	"github.com/dioad/net/http/middleware/oidc"
 )
 
 // Handler describes an HTTP authentication handler.
