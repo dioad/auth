@@ -194,7 +194,7 @@ func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString stri
 		case map[string]any:
 			mapClaims = jwt.MapClaims(c)
 		case *jwtvalidator.ValidatedClaims:
-			return nil, fmt.Errorf("error extracting claims map: %w", err)
+			return mapClaims, nil
 		default:
 			return nil, fmt.Errorf("unsupported claims type for predicate validation: %T", claims)
 		}
