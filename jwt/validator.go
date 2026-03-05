@@ -130,6 +130,10 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...ValidatorOpt
 	return &MultiValidator{Validators: validators}, nil
 }
 
+func NewMultiValidator(validators ...TokenValidator) TokenValidator {
+	return &MultiValidator{Validators: validators}
+}
+
 // NewValidatorsFromConfig creates multiple validators from configs.
 func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...ValidatorOpt) ([]TokenValidator, error) {
 	validators := make([]TokenValidator, 0, len(configs))
@@ -182,16 +186,22 @@ func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString stri
 		return nil, err
 	}
 
-	var mapClaims jwt.MapClaims
-	if _, ok := claims.(*jwtvalidator.ValidatedClaims); ok {
-		mapClaims, err = extractClaimsMap(tokenString)
-		if err != nil {
-			return nil, fmt.Errorf("error extracting claims map: %w", err)
+	mapClaims, err := extractClaimsMap(tokenString)
+	if err != nil {
+		switch c := claims.(type) {
+		case jwt.MapClaims:
+			mapClaims = c
+		case map[string]any:
+			mapClaims = jwt.MapClaims(c)
+		case *jwtvalidator.ValidatedClaims:
+			// Build mapClaims from the already-validated claim data as a fallback.
+			mapClaims, err = validatedClaimsToMapClaims(c)
+			if err != nil {
+				return nil, fmt.Errorf("building claims map from validated claims: %w", err)
+			}
+		default:
+			return nil, fmt.Errorf("unsupported claims type for predicate validation: %T", claims)
 		}
-	} else if mc, ok := claims.(jwt.MapClaims); ok {
-		mapClaims = mc
-	} else {
-		return nil, fmt.Errorf("unsupported claims type for predicate validation: %T", claims)
 	}
 
 	if !v.Predicate.Validate(mapClaims) {
@@ -305,6 +315,51 @@ func decodeTokenData(accessToken string) (any, error) {
 	}
 
 	return tokenData, nil
+}
+
+// validatedClaimsToMapClaims converts a *jwtvalidator.ValidatedClaims to jwt.MapClaims
+// by merging registered claims and any custom claims via JSON round-trip.
+func validatedClaimsToMapClaims(vc *jwtvalidator.ValidatedClaims) (jwt.MapClaims, error) {
+	m := jwt.MapClaims{}
+
+	rc := vc.RegisteredClaims
+	if rc.Issuer != "" {
+		m["iss"] = rc.Issuer
+	}
+	if rc.Subject != "" {
+		m["sub"] = rc.Subject
+	}
+	if len(rc.Audience) > 0 {
+		m["aud"] = rc.Audience
+	}
+	if rc.Expiry != 0 {
+		m["exp"] = rc.Expiry
+	}
+	if rc.NotBefore != 0 {
+		m["nbf"] = rc.NotBefore
+	}
+	if rc.IssuedAt != 0 {
+		m["iat"] = rc.IssuedAt
+	}
+	if rc.ID != "" {
+		m["jti"] = rc.ID
+	}
+
+	if vc.CustomClaims != nil {
+		b, err := json.Marshal(vc.CustomClaims)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling custom claims: %w", err)
+		}
+		var customMap map[string]any
+		if err := json.Unmarshal(b, &customMap); err != nil {
+			return nil, fmt.Errorf("unmarshaling custom claims: %w", err)
+		}
+		for k, v := range customMap {
+			m[k] = v
+		}
+	}
+
+	return m, nil
 }
 
 // Internal helper (simplified from net/oidc/util.go)

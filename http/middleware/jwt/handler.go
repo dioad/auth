@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/rs/zerolog"
 
 	authhttp "github.com/dioad/auth/http/context"
@@ -59,9 +60,11 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		if validatedClaims != nil {
 			// Extract subject from claims.
 			// This matches how net/http/auth/jwt/handler.go worked.
-			if claims, ok := validatedClaims.(*jwt.RegisteredClaims); ok {
-				if claims.Subject != "" {
-					ctx := authhttp.ContextWithAuthenticatedPrincipal(r.Context(), claims.Subject)
+
+			if claims, ok := validatedClaims.(*jwtvalidator.ValidatedClaims); ok {
+				if claims.RegisteredClaims.Subject != "" {
+					ctx := authhttp.ContextWithAuthenticatedPrincipal(r.Context(), claims.RegisteredClaims.Subject)
+					ctx = authhttp.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
 					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
