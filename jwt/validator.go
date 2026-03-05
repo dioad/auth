@@ -194,7 +194,11 @@ func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString stri
 		case map[string]any:
 			mapClaims = jwt.MapClaims(c)
 		case *jwtvalidator.ValidatedClaims:
-			return mapClaims, nil
+			// Build mapClaims from the already-validated claim data as a fallback.
+			mapClaims, err = validatedClaimsToMapClaims(c)
+			if err != nil {
+				return nil, fmt.Errorf("building claims map from validated claims: %w", err)
+			}
 		default:
 			return nil, fmt.Errorf("unsupported claims type for predicate validation: %T", claims)
 		}
@@ -311,6 +315,51 @@ func decodeTokenData(accessToken string) (any, error) {
 	}
 
 	return tokenData, nil
+}
+
+// validatedClaimsToMapClaims converts a *jwtvalidator.ValidatedClaims to jwt.MapClaims
+// by merging registered claims and any custom claims via JSON round-trip.
+func validatedClaimsToMapClaims(vc *jwtvalidator.ValidatedClaims) (jwt.MapClaims, error) {
+	m := jwt.MapClaims{}
+
+	rc := vc.RegisteredClaims
+	if rc.Issuer != "" {
+		m["iss"] = rc.Issuer
+	}
+	if rc.Subject != "" {
+		m["sub"] = rc.Subject
+	}
+	if len(rc.Audience) > 0 {
+		m["aud"] = rc.Audience
+	}
+	if rc.Expiry != 0 {
+		m["exp"] = rc.Expiry
+	}
+	if rc.NotBefore != 0 {
+		m["nbf"] = rc.NotBefore
+	}
+	if rc.IssuedAt != 0 {
+		m["iat"] = rc.IssuedAt
+	}
+	if rc.ID != "" {
+		m["jti"] = rc.ID
+	}
+
+	if vc.CustomClaims != nil {
+		b, err := json.Marshal(vc.CustomClaims)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling custom claims: %w", err)
+		}
+		var customMap map[string]any
+		if err := json.Unmarshal(b, &customMap); err != nil {
+			return nil, fmt.Errorf("unmarshaling custom claims: %w", err)
+		}
+		for k, v := range customMap {
+			m[k] = v
+		}
+	}
+
+	return m, nil
 }
 
 // Internal helper (simplified from net/oidc/util.go)

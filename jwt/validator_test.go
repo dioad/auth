@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -177,6 +178,35 @@ func TestPredicateValidator(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "predicate validation failed")
 }
+
+func TestPredicateValidatorWithValidatedClaimsFallback(t *testing.T) {
+	// When extractClaimsMap fails (invalid token string), the predicate validator
+	// should fall back to building mapClaims from *jwtvalidator.ValidatedClaims.
+	vc := &jwtvalidator.ValidatedClaims{
+		RegisteredClaims: jwtvalidator.RegisteredClaims{
+			Subject: "user-123",
+			Issuer:  "https://issuer.example",
+		},
+	}
+	mockParent := &mockValidator{claims: vc}
+
+	predicate := &ClaimKey{Key: "sub", Value: "user-123"}
+	validator := &PredicateValidator{ParentValidator: mockParent, Predicate: predicate}
+
+	// Use an invalid token string so that extractClaimsMap fails, forcing the fallback.
+	got, err := validator.ValidateToken(context.Background(), "not.a.valid.jwt")
+	assert.NoError(t, err)
+	assert.Equal(t, vc, got)
+
+	// Predicate that does not match should still fail.
+	predicate2 := &ClaimKey{Key: "sub", Value: "other-user"}
+	validator2 := &PredicateValidator{ParentValidator: mockParent, Predicate: predicate2}
+
+	_, err = validator2.ValidateToken(context.Background(), "not.a.valid.jwt")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "predicate validation failed")
+}
+
 
 func TestMultiValidator(t *testing.T) {
 	v1 := &mockValidator{err: fmt.Errorf("fail 1")}
