@@ -134,12 +134,13 @@ func TestDecodeTokenData(t *testing.T) {
 		"nbf": float64(now),
 	}
 
-	payload, _ := json.Marshal(claims)
+	payload, err := json.Marshal(claims)
+	require.NoError(t, err, "failed to marshal claims")
 	payloadEncoded := base64.RawURLEncoding.EncodeToString(payload)
 	tokenString := fmt.Sprintf("header.%s.signature", payloadEncoded)
 
 	data, err := decodeTokenData(tokenString)
-	assert.NoError(t, err)
+	require.NoError(t, err, "decodeTokenData failed")
 
 	dataMap, ok := data.(map[string]any)
 	require.True(t, ok)

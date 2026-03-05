@@ -3,7 +3,7 @@ package oidc
 import (
 	"github.com/dioad/util"
 
-	"github.com/dioad/auth/tls"
+	"github.com/dioad/net/tls"
 )
 
 // EndpointConfig describes the issuer endpoint and any provider-specific options.

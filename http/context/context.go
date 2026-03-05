@@ -43,7 +43,7 @@ func AuthenticatedRegisteredClaimsFromContext(ctx context.Context) (jwtvalidator
 
 // ContextWithAuthenticatedCustomClaims stores the authenticated claims on the context.
 func ContextWithAuthenticatedCustomClaims(ctx context.Context, claims map[string]any) context.Context {
-	return context.WithValue(ctx, registeredClaimsContextKey{}, claims)
+	return context.WithValue(ctx, customClaimsContextKey{}, claims)
 }
 
 // AuthenticatedCustomClaimsFromContext extracts the authenticated claims from context.
