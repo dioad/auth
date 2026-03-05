@@ -17,6 +17,10 @@ import (
 // TokenSourceFactory creates a token source from config.
 type TokenSourceFactory func(cfg ClientConfig) (oauth2.TokenSource, error)
 
+var (
+	ErrNoIdentity = fmt.Errorf("no identity information found in config")
+)
+
 var defaultTokenSourceFactories = map[string]TokenSourceFactory{
 	"aws": func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return aws.NewTokenSource(aws.WithAudience(cfg.Audience)), nil
@@ -68,7 +72,7 @@ func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[strin
 		}
 		return client.RefreshingClientCredentialsToken(context.Background())
 	}
-	return nil, nil
+	return nil, ErrNoIdentity
 }
 
 type fileTokenSource struct {
