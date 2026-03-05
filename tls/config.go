@@ -52,31 +52,3 @@ type ServerConfig struct {
 	Key         string `mapstructure:"key" json:",omitempty"`
 	ClientCA    string `mapstructure:"client-ca" json:",omitempty"`
 }
-
-// NewServerTLSConfig creates a TLS configuration for a server from the given config.
-func NewServerTLSConfig(c ServerConfig) (*tls.Config, error) {
-	if c.Certificate == "" || c.Key == "" {
-		return nil, nil // No TLS
-	}
-
-	cert, err := tls.LoadX509KeyPair(c.Certificate, c.Key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load x509 key pair: %w", err)
-	}
-
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS12,
-	}
-
-	if c.ClientCA != "" {
-		clientCAs, err := LoadCertPoolFromFile(c.ClientCA)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load client CA file: %w", err)
-		}
-		tlsConfig.ClientCAs = clientCAs
-		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-	}
-
-	return tlsConfig, nil
-}

@@ -38,9 +38,13 @@ func DefaultTokenSourceFactories() map[string]TokenSourceFactory {
 }
 
 // NewTokenSourceFromConfig creates a token source from a ClientConfig.
-func NewTokenSourceFromConfig(cfg ClientConfig) oauth2.TokenSource {
-	source, _ := NewTokenSourceFromConfigWithFactories(cfg, nil, nil, nil, nil)
-	return source
+func NewTokenSourceFromConfig(cfg ClientConfig) (oauth2.TokenSource, error) {
+	// keep error for debugging
+	source, err := NewTokenSourceFromConfigWithFactories(cfg, nil, nil, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token source from config: %w", err)
+	}
+	return source, nil
 }
 
 // NewTokenSourceFromConfigWithFactories creates a token source using a custom registry and dependencies.
@@ -168,7 +172,10 @@ func (s *waitingTokenSource) Token() (*oauth2.Token, error) {
 
 // NewHTTPClientFromConfig creates an HTTP client with a token source from a ClientConfig.
 func NewHTTPClientFromConfig(cfg *ClientConfig) (*http.Client, error) {
-	source := NewTokenSourceFromConfig(*cfg)
+	source, err := NewTokenSourceFromConfig(*cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OIDC http client from config: %w", err)
+	}
 	if source == nil {
 		return nil, fmt.Errorf("failed to create token source from config")
 	}

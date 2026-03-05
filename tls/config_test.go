@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	diotls "github.com/dioad/net/tls"
 )
 
 func writeTestCert(t *testing.T) (string, string) {
@@ -83,18 +86,23 @@ func TestNewClientTLSConfigLoadsCertificatesAndRootCA(t *testing.T) {
 }
 
 func TestNewServerTLSConfigOptional(t *testing.T) {
-	tlsConfig, err := NewServerTLSConfig(ServerConfig{})
+	ctx := context.Background()
+	tlsConfig, err := diotls.NewServerTLSConfig(ctx, diotls.ServerConfig{})
 	require.NoError(t, err)
 	assert.Nil(t, tlsConfig)
 }
 
 func TestNewServerTLSConfigLoadsClientCA(t *testing.T) {
+	ctx := context.Background()
 	certPath, keyPath := writeTestCert(t)
 
-	tlsConfig, err := NewServerTLSConfig(ServerConfig{
-		Certificate: certPath,
-		Key:         keyPath,
-		ClientCA:    certPath,
+	tlsConfig, err := diotls.NewServerTLSConfig(ctx, diotls.ServerConfig{
+		LocalConfig: diotls.LocalConfig{
+			Certificate: certPath,
+			Key:         keyPath,
+		},
+		ClientAuthType: "RequireAndVerifyClientCert",
+		ClientCAFile:   certPath,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, tlsConfig)

@@ -130,6 +130,10 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...ValidatorOpt
 	return &MultiValidator{Validators: validators}, nil
 }
 
+func NewMultiValidator(validators ...TokenValidator) TokenValidator {
+	return &MultiValidator{Validators: validators}
+}
+
 // NewValidatorsFromConfig creates multiple validators from configs.
 func NewValidatorsFromConfig(configs []ValidatorConfig, opts ...ValidatorOpt) ([]TokenValidator, error) {
 	validators := make([]TokenValidator, 0, len(configs))
@@ -182,16 +186,18 @@ func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString stri
 		return nil, err
 	}
 
-	var mapClaims jwt.MapClaims
-	if _, ok := claims.(*jwtvalidator.ValidatedClaims); ok {
-		mapClaims, err = extractClaimsMap(tokenString)
-		if err != nil {
+	mapClaims, err := extractClaimsMap(tokenString)
+	if err != nil {
+		switch c := claims.(type) {
+		case jwt.MapClaims:
+			mapClaims = c
+		case map[string]any:
+			mapClaims = jwt.MapClaims(c)
+		case *jwtvalidator.ValidatedClaims:
 			return nil, fmt.Errorf("error extracting claims map: %w", err)
+		default:
+			return nil, fmt.Errorf("unsupported claims type for predicate validation: %T", claims)
 		}
-	} else if mc, ok := claims.(jwt.MapClaims); ok {
-		mapClaims = mc
-	} else {
-		return nil, fmt.Errorf("unsupported claims type for predicate validation: %T", claims)
 	}
 
 	if !v.Predicate.Validate(mapClaims) {

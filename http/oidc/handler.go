@@ -53,6 +53,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	}
 
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(r.Context(), data.Principal)
+	ctx = authhttp.ContextWithAuthenticatedCustomClaims(ctx, data.User.RawData)
 	ctx = ContextWithOIDCUserInfo(ctx, &data.User)
 
 	return ctx, nil

@@ -16,6 +16,7 @@ import (
 	"github.com/markbates/goth"
 	"golang.org/x/oauth2"
 
+	"github.com/dioad/auth/oidc/aws"
 	"github.com/dioad/auth/oidc/flyio"
 	"github.com/dioad/auth/oidc/githubactions"
 )
@@ -28,6 +29,7 @@ var (
 
 type githubActionsCustomClaims = githubactions.CustomClaims
 type flyIOCustomClaims = flyio.CustomClaims
+type awsCustomClaims = aws.CustomClaims
 
 // IntrospectionResponse represents the fields returned by an RFC 7662 token introspection response,
 // including some common provider extensions.
@@ -69,6 +71,7 @@ type IntrospectionResponse struct {
 	Organisation      []string `json:"org"`
 	flyIOCustomClaims
 	githubActionsCustomClaims
+	awsCustomClaims
 }
 
 // Validate satisfies the validator interface for IntrospectionResponse.
