@@ -207,7 +207,6 @@ func TestPredicateValidatorWithValidatedClaimsFallback(t *testing.T) {
 	assert.Contains(t, err.Error(), "predicate validation failed")
 }
 
-
 func TestMultiValidator(t *testing.T) {
 	v1 := &mockValidator{err: fmt.Errorf("fail 1")}
 	v2 := &mockValidator{claims: "success 2"}

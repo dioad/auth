@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
 	"strings"
 	"time"
@@ -354,9 +355,7 @@ func validatedClaimsToMapClaims(vc *jwtvalidator.ValidatedClaims) (jwt.MapClaims
 		if err := json.Unmarshal(b, &customMap); err != nil {
 			return nil, fmt.Errorf("unmarshaling custom claims: %w", err)
 		}
-		for k, v := range customMap {
-			m[k] = v
-		}
+		maps.Copy(m, customMap)
 	}
 
 	return m, nil
