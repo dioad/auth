@@ -26,11 +26,11 @@ var (
 )
 
 type CookieConfig struct {
-	Name   string
-	Domain string
-	Secure bool
-	Path   string
-	MaxAge time.Duration
+	Name   string        `json:"name" mapstructure:"name"`
+	Domain string        `json:"domain,omitzero" mapstructure:"domain,omitzero"`
+	Secure bool          `json:"secure,omitzero" mapstructure:"secure,omitzero"`
+	Path   string        `json:"path,omitzero" mapstructure:"path,omitzero"`
+	MaxAge time.Duration `json:"max_age,omitzero" mapstructure:"max-age,omitzero"`
 }
 
 func (c CookieConfig) Cookie(value string) *http.Cookie {
@@ -57,18 +57,18 @@ func (c CookieConfig) Delete(w http.ResponseWriter) {
 }
 
 type OIDCConfig struct {
-	Scopes      []string
-	RedirectURI string
+	Scopes      []string `json:"scopes,omitzero" mapstructure:"scopes,omitzero"`
+	RedirectURI string   `json:"redirect_uri,omitzero" mapstructure:"redirect-uri,omitzero"`
 
-	TokenCookieConfig       CookieConfig
-	StateCookieConfig       CookieConfig
-	RefreshCookieConfig     CookieConfig
-	TokenExpiryCookieConfig CookieConfig
-	RedirectCookieConfig    CookieConfig
+	TokenCookie       CookieConfig `json:"token_cookie,omitzero" mapstructure:"token-cookie,omitzero"`
+	StateCookie       CookieConfig `json:"state_cookie,omitzero" mapstructure:"state-cookie,omitzero"`
+	RefreshCookie     CookieConfig `json:"refresh_cookie,omitzero" mapstructure:"refresh-cookie,omitzero"`
+	TokenExpiryCookie CookieConfig `json:"token_expiry,omitzero" mapstructure:"token-expiry,omitzero"`
+	RedirectCookie    CookieConfig `json:"redirect_cookie,omitzero" mapstructure:"redirect-cookie,omitzero"`
 
-	RefreshWindow time.Duration
-	Now           func() time.Time `json:"-,omitzero"`
-	LoginPath     string
+	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero"`
+	Now           func() time.Time `json:"-,omitzero" mapstructure:"-,omitzero"`
+	LoginPath     string           `json:"login_path,omitzero" mapstructure:"login-path,omitzero"`
 }
 
 type Handler struct {
@@ -127,7 +127,7 @@ func (h *Handler) AuthStart() http.HandlerFunc {
 			http.Error(w, "Failed to create authorization URL", http.StatusInternalServerError)
 			return
 		}
-		h.Config.StateCookieConfig.Set(w, state)
+		h.Config.StateCookie.Set(w, state)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	}
 }
@@ -145,7 +145,7 @@ func (h *Handler) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		state := r.URL.Query().Get("state")
-		stateFromCookie, err := extractValueFromCookie(r, h.Config.StateCookieConfig.Name)
+		stateFromCookie, err := extractValueFromCookie(r, h.Config.StateCookie.Name)
 		if stateFromCookie == "" || err != nil {
 			h.logger.Error().Err(err).Msg("Missing or invalid state cookie")
 			http.Error(w, "Invalid state cookie", http.StatusBadRequest)
@@ -156,7 +156,7 @@ func (h *Handler) Callback() http.HandlerFunc {
 			http.Error(w, "Invalid state", http.StatusBadRequest)
 			return
 		}
-		h.Config.StateCookieConfig.Delete(w)
+		h.Config.StateCookie.Delete(w)
 		token, err := h.Client.AuthorizationCodeToken(r.Context(), code, h.Config.RedirectURI)
 		if err != nil {
 			h.logger.Error().Err(err).Msg("Token exchange failed")
@@ -169,15 +169,15 @@ func (h *Handler) Callback() http.HandlerFunc {
 }
 
 func (h *Handler) extractTokenFromCookies(r *http.Request) (*oauth2.Token, error) {
-	accessToken, err := extractValueFromCookie(r, h.Config.TokenCookieConfig.Name)
+	accessToken, err := extractValueFromCookie(r, h.Config.TokenCookie.Name)
 	if err != nil {
 		return nil, err
 	}
-	refreshToken, err := extractValueFromCookie(r, h.Config.RefreshCookieConfig.Name)
+	refreshToken, err := extractValueFromCookie(r, h.Config.RefreshCookie.Name)
 	if err != nil {
 		return nil, err
 	}
-	expiryValue, err := extractValueFromCookie(r, h.Config.TokenExpiryCookieConfig.Name)
+	expiryValue, err := extractValueFromCookie(r, h.Config.TokenExpiryCookie.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -194,15 +194,15 @@ func (h *Handler) extractTokenFromCookies(r *http.Request) (*oauth2.Token, error
 }
 
 func (h *Handler) saveTokenToCookies(w http.ResponseWriter, token *oauth2.Token) {
-	h.Config.TokenCookieConfig.Set(w, token.AccessToken)
-	h.Config.RefreshCookieConfig.Set(w, token.RefreshToken)
-	h.Config.TokenExpiryCookieConfig.Set(w, token.Expiry.Format(time.RFC3339))
+	h.Config.TokenCookie.Set(w, token.AccessToken)
+	h.Config.RefreshCookie.Set(w, token.RefreshToken)
+	h.Config.TokenExpiryCookie.Set(w, token.Expiry.Format(time.RFC3339))
 }
 
 func (h *Handler) clearAllCookies(w http.ResponseWriter) {
-	h.Config.TokenCookieConfig.Delete(w)
-	h.Config.RefreshCookieConfig.Delete(w)
-	h.Config.TokenExpiryCookieConfig.Delete(w)
+	h.Config.TokenCookie.Delete(w)
+	h.Config.RefreshCookie.Delete(w)
+	h.Config.TokenExpiryCookie.Delete(w)
 }
 
 func extractValueFromCookie(r *http.Request, name string) (string, error) {

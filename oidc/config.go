@@ -10,22 +10,22 @@ import (
 type EndpointConfig struct {
 	Type          string `json:"type,omitempty" mapstructure:"type,omitempty"`
 	URL           string `json:"url" mapstructure:"url"`
-	KeycloakRealm string `json:"keycloak-realm,omitempty" mapstructure:"keycloak-realm,omitempty"`
+	KeycloakRealm string `json:"keycloak_realm,omitempty" mapstructure:"keycloak-realm,omitempty"`
 }
 
 // ClientConfig captures client credentials and token acquisition options for an OIDC provider.
 type ClientConfig struct {
 	// Provider     EndpointConfig    `json:"provider"` // e.g. "github", "keycloak"
 	EndpointConfig `mapstructure:",squash"`
-	ClientID       string            `json:"client-id" mapstructure:"client-id"`
-	ClientSecret   util.MaskedString `json:"client-secret" mapstructure:"client-secret,omitempty"`
+	ClientID       string            `json:"client_id" mapstructure:"client-id"`
+	ClientSecret   util.MaskedString `json:"client_secret" mapstructure:"client-secret,omitempty"`
 
 	Audience string `json:"audience,omitempty" mapstructure:"audience,omitempty"`
 
 	// do these belong somewhere else?
-	TokenFile string `json:"token-file,omitempty" mapstructure:"token-file,omitempty"`
+	TokenFile string `json:"token_file,omitempty" mapstructure:"token-file,omitempty"`
 
-	TLSConfig tls.ClientConfig `json:"tls-client-config" mapstructure:"tls-client-config,omitempty"`
+	TLSClient tls.ClientConfig `json:"tls_client" mapstructure:"tls-client,omitempty"`
 }
 
 // ValidatorConfig controls validation behavior for issued tokens.
@@ -47,8 +47,8 @@ type TrustConfig struct {
 
 // ProviderConfig represents a single web provider configuration for Goth callbacks.
 type ProviderConfig struct {
-	ClientID     string `json:"client-id" mapstructure:"client-id"`
-	ClientSecret string `json:"client-secret" mapstructure:"client-secret"`
+	ClientID     string `json:"client_id" mapstructure:"client-id"`
+	ClientSecret string `json:"client_secret" mapstructure:"client-secret"`
 	Callback     string `json:"callback" mapstructure:"callback"`
 }
 
