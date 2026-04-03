@@ -39,8 +39,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dioad/generics v0.0.8 h1:16B4qDVZZP+wsTeDT+9ecmIyF8GuFrwdrvm5a9l3Qa4=
 github.com/dioad/generics v0.0.8/go.mod h1:NFn4N/41m2Ln8xjKm6c9ieZQeKohyCEg0RfQg34aVRg=
-github.com/dioad/net v0.55.2 h1:/gdpYzshM5C26XxdZszg6nGIRItv72HO5es1YWhf1Gc=
-github.com/dioad/net v0.55.2/go.mod h1:crhJaTyl/Sn/jmvGc0TXOCByaC2444OA1WT/QHP9Sxs=
+github.com/dioad/net v0.56.0 h1:ZhCLt3CV9ftT1+Qw2RAfUxYprgxB48C1A0D0vZz1Xhg=
+github.com/dioad/net v0.56.0/go.mod h1:/k2VjjpQrdcwPZ2vsJYV791kajQVx0Fwl/F9II0AJcU=
 github.com/dioad/util v0.7.0 h1:DdSits6ZE/m6FSkSHLrPFehJJT7VlDGxxHkiZQ4xzaQ=
 github.com/dioad/util v0.7.0/go.mod h1:FqqqoXSEV4Mh2DEYzw4rsWReDvyykQItBgrsj6w14FY=
 github.com/go-chi/chi/v5 v5.2.5 h1:Eg4myHZBjyvJmAFjFvWgrqDTXFyOzjj7YIm3L3mu6Ug=
