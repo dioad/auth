@@ -4,7 +4,7 @@ package jwt
 import (
 	"context"
 
-	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
+	jwtmiddleware "github.com/auth0/go-jwt-middleware/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -19,17 +19,12 @@ type RegisteredClaims = jwt.RegisteredClaims
 
 // CustomClaimsFromContext extracts custom claims from the context.
 func CustomClaimsFromContext[T any](ctx context.Context) T {
-	val := ctx.Value(jwtmiddleware.ContextKey{})
-	if val == nil {
+	val, err := jwtmiddleware.GetClaims[T](ctx)
+	if err != nil {
 		var zero T
 		return zero
 	}
-	claims, ok := val.(T)
-	if !ok {
-		var zero T
-		return zero
-	}
-	return claims
+	return val
 }
 
 // RegisteredClaimsFromContext extracts registered claims from the context.

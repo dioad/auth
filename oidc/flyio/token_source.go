@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"golang.org/x/oauth2"
 )
 

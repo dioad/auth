@@ -3,10 +3,11 @@ package jwt
 import (
 	"net/http"
 
-	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	jwtmiddleware "github.com/auth0/go-jwt-middleware/v3"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/rs/zerolog"
 
+	"github.com/auth0/go-jwt-middleware/v3/core"
 	authhttp "github.com/dioad/auth/http/context"
 	"github.com/dioad/auth/jwt"
 	"github.com/dioad/net/http/json"
@@ -35,42 +36,38 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		jsr.UnauthorizedWithMessages("unauthorised", err.Error())
 	}
 
-	handlerOpts := append(
-		[]jwtmiddleware.Option{
-			jwtmiddleware.WithErrorHandler(errorHandler),
-			jwtmiddleware.WithTokenExtractor(
-				jwtmiddleware.MultiTokenExtractor(
-					jwtmiddleware.AuthHeaderTokenExtractor,
-					jwtmiddleware.CookieTokenExtractor(h.cookieName),
-				),
-			),
-		},
-		h.opts...,
+	extractor := jwtmiddleware.MultiTokenExtractor(
+		jwtmiddleware.AuthHeaderTokenExtractor,
+		jwtmiddleware.CookieTokenExtractor(h.cookieName),
 	)
 
-	middleware := jwtmiddleware.New(
-		h.validator.ValidateToken,
-		handlerOpts...,
-	)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		extracted, err := extractor(r)
+		if err != nil {
+			errorHandler(w, r, err)
+			return
+		}
 
-	return middleware.CheckJWT(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// After CheckJWT, the validated claims are in the context.
-		// The key is jwtmiddleware.ContextKey{}.
-		validatedClaims := r.Context().Value(jwtmiddleware.ContextKey{})
-		if validatedClaims != nil {
-			// Extract subject from claims.
-			// This matches how net/http/auth/jwt/handler.go worked.
+		if extracted.Token == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
 
-			if claims, ok := validatedClaims.(*jwtvalidator.ValidatedClaims); ok {
-				if claims.RegisteredClaims.Subject != "" {
-					ctx := authhttp.ContextWithAuthenticatedPrincipal(r.Context(), claims.RegisteredClaims.Subject)
-					ctx = authhttp.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
-					next.ServeHTTP(w, r.WithContext(ctx))
-					return
-				}
+		validatedClaims, err := h.validator.ValidateToken(r.Context(), extracted.Token)
+		if err != nil {
+			errorHandler(w, r, err)
+			return
+		}
+
+		ctx := core.SetClaims(r.Context(), validatedClaims)
+
+		if claims, ok := validatedClaims.(*jwtvalidator.ValidatedClaims); ok {
+			if claims.RegisteredClaims.Subject != "" {
+				ctx = authhttp.ContextWithAuthenticatedPrincipal(ctx, claims.RegisteredClaims.Subject)
+				ctx = authhttp.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
 			}
 		}
 
-		next.ServeHTTP(w, r)
-	}))
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

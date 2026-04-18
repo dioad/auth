@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/auth0/go-jwt-middleware/v2/jwks"
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/auth0/go-jwt-middleware/v3/jwks"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog"
 )
@@ -81,7 +81,14 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 			return nil, fmt.Errorf("invalid issuer URL: %w", err)
 		}
 		if options.jwksProvider == nil {
-			options.jwksProvider = jwks.NewCachingProvider(issuerURL, cacheTTL)
+			var err error
+			options.jwksProvider, err = jwks.NewCachingProvider(
+				jwks.WithIssuerURL(issuerURL),
+				jwks.WithCacheTTL(cacheTTL),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create JWKS caching provider: %w", err)
+			}
 		}
 		options.keyFunc = options.jwksProvider.KeyFunc
 	}
@@ -90,10 +97,10 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	}
 
 	v, err := jwtvalidator.New(
-		options.keyFunc,
-		algorithm,
-		cfg.Issuer,
-		cfg.Audiences,
+		jwtvalidator.WithKeyFunc(options.keyFunc),
+		jwtvalidator.WithAlgorithm(algorithm),
+		jwtvalidator.WithIssuer(cfg.Issuer),
+		jwtvalidator.WithAudiences(cfg.Audiences),
 		jwtvalidator.WithAllowedClockSkew(allowedClockSkew),
 	)
 	if err != nil {

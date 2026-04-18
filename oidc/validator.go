@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/auth0/go-jwt-middleware/v2/jwks"
-	"github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/auth0/go-jwt-middleware/v3/jwks"
+	"github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/rs/zerolog"
 
 	"github.com/dioad/auth/jwt"
@@ -79,7 +79,14 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 			cacheTTL = 5 * time.Minute
 		}
 		if options.jwksProvider == nil {
-			options.jwksProvider = jwks.NewCachingProvider(issuerURL, cacheTTL)
+			var err error
+			options.jwksProvider, err = jwks.NewCachingProvider(
+				jwks.WithIssuerURL(issuerURL),
+				jwks.WithCacheTTL(cacheTTL),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create JWKS caching provider: %w", err)
+			}
 		}
 		options.keyFunc = options.jwksProvider.KeyFunc
 	}
@@ -88,10 +95,10 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	}
 
 	v, err := validator.New(
-		options.keyFunc,
-		algorithm,
-		cfg.Issuer,
-		cfg.Audiences,
+		validator.WithKeyFunc(options.keyFunc),
+		validator.WithAlgorithm(algorithm),
+		validator.WithIssuer(cfg.Issuer),
+		validator.WithAudiences(cfg.Audiences),
 		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew)*time.Second),
 	)
 	if err != nil {
