@@ -506,7 +506,9 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
 	}
 
-	deviceCode, err := config.DeviceAuth(ctx)
+	verifier := oauth2.GenerateVerifier()
+
+	deviceCode, err := config.DeviceAuth(ctx, oauth2.S256ChallengeOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("error getting device code: %w", err)
 	}
@@ -521,7 +523,7 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 		return nil, fmt.Errorf("error displaying device code: %w", err)
 	}
 
-	token, err := config.DeviceAccessToken(ctx, deviceCode)
+	token, err := config.DeviceAccessToken(ctx, deviceCode, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("error exchanging device code for access token: %w", err)
 	}
