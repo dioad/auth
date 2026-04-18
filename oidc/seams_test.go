@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/dioad/auth/oidc"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"

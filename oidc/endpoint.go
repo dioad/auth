@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/openidConnect"

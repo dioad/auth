@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/auth0/go-jwt-middleware/v2/jwks"
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v2/validator"
+	"github.com/auth0/go-jwt-middleware/v3/jwks"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/markbates/goth"
 	"golang.org/x/oauth2"
 
@@ -212,7 +212,15 @@ func NewClient(endpoint Endpoint, opts ...ClientOpt) *Client {
 	}
 
 	if client.jwksProvider == nil && client.keyFunc == nil {
-		client.jwksProvider = jwks.NewCachingProvider(endpoint.URL(), client.keyCacheTTL)
+		var err error
+		client.jwksProvider, err = jwks.NewCachingProvider(
+			jwks.WithIssuerURL(endpoint.URL()),
+			jwks.WithCacheTTL(client.keyCacheTTL),
+		)
+		if err != nil {
+			// Fall back to keyFunc being nil; ValidateToken will return an error.
+			client.jwksProvider = nil
+		}
 	}
 	if client.keyFunc == nil && client.jwksProvider != nil {
 		client.keyFunc = client.jwksProvider.KeyFunc
@@ -265,10 +273,10 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 		return nil, fmt.Errorf("key function not configured")
 	}
 	jwtValidator, err := jwtvalidator.New(
-		c.keyFunc,
-		c.validatingSignatureAlgorithm,
-		c.endpoint.URL().String(),
-		audiences,
+		jwtvalidator.WithKeyFunc(c.keyFunc),
+		jwtvalidator.WithAlgorithm(c.validatingSignatureAlgorithm),
+		jwtvalidator.WithIssuer(c.endpoint.URL().String()),
+		jwtvalidator.WithAudiences(audiences),
 	)
 
 	if err != nil {
