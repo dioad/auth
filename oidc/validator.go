@@ -54,26 +54,41 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		cfg.Issuer = cfg.URL
 	}
 
-	if cfg.Issuer == "" {
-		return nil, fmt.Errorf("issuer or URL must be provided")
-	}
-
-	issuerURL, err := url.Parse(cfg.Issuer)
-	if err != nil {
-		return nil, fmt.Errorf("invalid issuer URL: %w", err)
-	}
-
 	algorithm := validator.SignatureAlgorithm(cfg.SignatureAlgorithm)
-	if algorithm == "" {
-		algorithm = validator.RS256
-	}
 
 	options := &validatorOptions{}
 	for _, opt := range opts {
 		opt(options)
 	}
 
+	// Static HMAC secret short-circuits JWKS discovery. Intended for local
+	// development / smoke tests only.
+	if cfg.HMACSecret != "" && options.keyFunc == nil {
+		secret := []byte(cfg.HMACSecret)
+		options.keyFunc = func(_ context.Context) (any, error) { return secret, nil }
+		if algorithm == "" {
+			algorithm = validator.HS256
+		}
+		// A synthetic issuer is required by the validator library but is not
+		// meaningful when using a static secret. Allow callers to omit it.
+		if cfg.Issuer == "" {
+			cfg.Issuer = "local-smoke"
+		}
+	}
+
+	if cfg.Issuer == "" {
+		return nil, fmt.Errorf("issuer or URL must be provided")
+	}
+
+	if algorithm == "" {
+		algorithm = validator.RS256
+	}
+
 	if options.keyFunc == nil {
+		issuerURL, err := url.Parse(cfg.Issuer)
+		if err != nil {
+			return nil, fmt.Errorf("invalid issuer URL: %w", err)
+		}
 		cacheTTL := time.Duration(cfg.CacheTTL) * time.Second
 		if cacheTTL <= 0 {
 			cacheTTL = 5 * time.Minute
