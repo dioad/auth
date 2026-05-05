@@ -38,6 +38,11 @@ type ValidatorConfig struct {
 	AllowedClockSkew   int            `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
 	Debug              bool           `json:"debug" mapstructure:"debug"`
 	ClaimPredicate     map[string]any `json:"claim_predicates" mapstructure:"claim_predicates"`
+	// HMACSecret is an optional shared secret for HS256/HS384/HS512 token
+	// validation. When non-empty, JWKS discovery is skipped and the secret is
+	// used directly as the signing key. Intended for local development and
+	// smoke testing only; never use a static shared secret in production.
+	HMACSecret string `json:"hmac_secret,omitempty" mapstructure:"hmac-secret"`
 }
 
 // TrustConfig describes a set of validators that must all succeed.
