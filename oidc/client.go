@@ -27,9 +27,9 @@ var (
 	ErrInvalidClaims   = errors.New("invalid claims format")
 )
 
-type githubActionsCustomClaims = githubactions.CustomClaims
-type flyIOCustomClaims = flyio.CustomClaims
-type awsCustomClaims = aws.CustomClaims
+type GitHubActionsCustomClaims = githubactions.CustomClaims
+type FlyIOCustomClaims = flyio.CustomClaims
+type AWSCustomClaims = aws.CustomClaims
 
 // IntrospectionResponse represents the fields returned by an RFC 7662 token introspection response,
 // including some common provider extensions.
@@ -69,9 +69,9 @@ type IntrospectionResponse struct {
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
 	Organisation      []string `json:"org"`
-	flyIOCustomClaims
-	githubActionsCustomClaims
-	awsCustomClaims
+	FlyIOCustomClaims
+	GitHubActionsCustomClaims
+	AWSCustomClaims
 }
 
 // Validate satisfies the validator interface for IntrospectionResponse.
