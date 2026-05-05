@@ -306,17 +306,38 @@ func (e *defaultPrincipalExtractor) ExtractPrincipal(ctx context.Context, r *htt
 	return nil, fmt.Errorf("%w tried sources %v", ErrNoPrincipalFound, sourceNames)
 }
 
+// DefaultExtractorConfig configures per-source ClaimRoleMappers for
+// NewDefaultPrincipalExtractorWithConfig. Sources with a nil mapper return no roles
+// from claims (equivalent to the zero-value behaviour of NewDefaultPrincipalExtractor).
+type DefaultExtractorConfig struct {
+	// FlyioMapper maps Fly.io OIDC claims to internal roles.
+	FlyioMapper ClaimRoleMapper
+	// GithubActionsMapper maps GitHub Actions OIDC claims to internal roles.
+	GithubActionsMapper ClaimRoleMapper
+	// AWSMapper maps AWS OIDC claims to internal roles.
+	AWSMapper ClaimRoleMapper
+}
+
 // NewDefaultPrincipalExtractor creates a PrincipalExtractor with the standard fallback chain:
-// 1. JWT token (highest priority)
-// 2. OIDC token
-// 3. GitHub user info (lowest priority)
+// 1. Fly.io OIDC token
+// 2. GitHub Actions OIDC token
+// 3. AWS OIDC token
+// 4. Generic OIDC token (Keycloak, etc.)
+// 5. JWT token
+// 6. GitHub user info (lowest priority)
 //
 // This matches the existing behavior of the system.
 func NewDefaultPrincipalExtractor() PrincipalExtractor {
+	return NewDefaultPrincipalExtractorWithConfig(DefaultExtractorConfig{})
+}
+
+// NewDefaultPrincipalExtractorWithConfig creates a PrincipalExtractor with the standard
+// fallback chain and per-source ClaimRoleMappers from cfg.
+func NewDefaultPrincipalExtractorWithConfig(cfg DefaultExtractorConfig) PrincipalExtractor {
 	return NewPrincipalExtractor(
-		&flyio.PrincipalSource{},
-		&githubactions.PrincipalSource{},
-		&aws.PrincipalSource{},
+		&flyio.PrincipalSource{RoleMapper: cfg.FlyioMapper},
+		&githubactions.PrincipalSource{RoleMapper: cfg.GithubActionsMapper},
+		&aws.PrincipalSource{RoleMapper: cfg.AWSMapper},
 		&oidcPrincipalSource{},
 		&jwtPrincipalSource{},
 		&githubPrincipalSource{},
