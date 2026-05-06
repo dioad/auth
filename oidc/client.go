@@ -68,7 +68,7 @@ type IntrospectionResponse struct {
 	TokenType         string   `json:"token_type"`
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
-	Organisation      []string `json:"org"`
+	Organisations     []string `json:"org"`
 	FlyIOCustomClaims
 	GitHubActionsCustomClaims
 	AWSCustomClaims

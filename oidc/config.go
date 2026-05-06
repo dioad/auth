@@ -42,7 +42,7 @@ type ValidatorConfig struct {
 	// validation. When non-empty, JWKS discovery is skipped and the secret is
 	// used directly as the signing key. Intended for local development and
 	// smoke testing only; never use a static shared secret in production.
-	HMACSecret string `json:"hmac_secret,omitempty" mapstructure:"hmac-secret"`
+	HMACSecret string `json:"hmac_secret,omitempty" mapstructure:"hmac_secret"`
 }
 
 // TrustConfig describes a set of validators that must all succeed.

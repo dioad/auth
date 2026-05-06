@@ -2,7 +2,6 @@ package githubactions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/dioad/auth/jwt"
@@ -26,11 +25,15 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 }
 
 func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
-	claims := jwt.RegisteredClaimsFromContext(ctx)
-	if claims != nil {
-		return claims.Subject, nil
+	// Guard on GitHub Actions-specific custom claims so this source does not
+	// claim tokens issued by other providers. Return ("", nil) for non-GitHub
+	// Actions tokens to avoid noisy logs in the fallback chain; only return
+	// error for actual extraction failures.
+	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
+	if claims == nil {
+		return "", nil
 	}
-	return "", fmt.Errorf("no principal found")
+	return claims.Subject, nil
 }
 
 func (s *PrincipalSource) Name() string {
@@ -43,7 +46,7 @@ func (s *PrincipalSource) Name() string {
 func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 	result := make(map[string]any)
 
-	claims := jwt.CustomClaimsFromContext[*CustomClaims](ctx)
+	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
 	if claims == nil {
 		return result
 	}
@@ -82,6 +85,6 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 // IsService returns true for any valid GitHub Actions token, as these represent
 // automated workflow identities rather than human users.
 func (s *PrincipalSource) IsService(ctx context.Context) bool {
-	return jwt.CustomClaimsFromContext[*CustomClaims](ctx) != nil
+	return jwt.CustomClaimsFromContext[*Claims](ctx) != nil
 }
 

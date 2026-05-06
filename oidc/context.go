@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"github.com/dioad/auth/jwt"
+	"github.com/dioad/auth/oidc/aws"
 	"github.com/dioad/auth/oidc/flyio"
+	"github.com/dioad/auth/oidc/githubactions"
 )
 
-// OIDCClaimsFromContext extracts OIDC claims from the request context.
+// ClaimsFromContext extracts OIDC claims from the request context.
 // This is kept for backward compatibility and error reporting.
-// For principal extraction, use service.PrincipalExtractor instead.
+// For principal extraction, use auth.NewDefaultPrincipalExtractor or auth.NewDefaultPrincipalExtractorWithConfig instead.
 func ClaimsFromContext(ctx context.Context) any {
 	if claims := jwt.CustomClaimsFromContext[*IntrospectionResponse](ctx); claims != nil {
 		return claims
@@ -17,6 +19,14 @@ func ClaimsFromContext(ctx context.Context) any {
 
 	if flyIOClaims := jwt.CustomClaimsFromContext[*flyio.Claims](ctx); flyIOClaims != nil {
 		return flyIOClaims
+	}
+
+	if awsClaims := jwt.CustomClaimsFromContext[*aws.Claims](ctx); awsClaims != nil {
+		return awsClaims
+	}
+
+	if ghaClaims := jwt.CustomClaimsFromContext[*githubactions.Claims](ctx); ghaClaims != nil {
+		return ghaClaims
 	}
 
 	return nil
