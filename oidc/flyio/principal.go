@@ -2,7 +2,6 @@ package flyio
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/dioad/auth/jwt"
@@ -26,11 +25,15 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 }
 
 func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
-	claims := jwt.RegisteredClaimsFromContext(ctx)
-	if claims != nil {
-		return claims.Subject, nil
+	// Guard on Fly.io-specific custom claims so this source does not claim
+	// tokens issued by other providers that merely have registered JWT claims.
+	// Return ("", nil) for non-Fly.io tokens to avoid noisy logs in the
+	// fallback extractor chain; only return error for actual failures.
+	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
+	if claims == nil {
+		return "", nil
 	}
-	return "", fmt.Errorf("no principal found")
+	return claims.Subject, nil
 }
 
 func (s *PrincipalSource) Name() string {
@@ -48,7 +51,7 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 		result["username"] = registered.Subject
 	}
 
-	claims := jwt.CustomClaimsFromContext[*CustomClaims](ctx)
+	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
 	if claims != nil {
 		result["app_id"] = claims.AppId
 		result["app_name"] = claims.AppName
@@ -67,6 +70,6 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 
 // IsService returns true for any valid Fly.io token, as these represent machine identities.
 func (s *PrincipalSource) IsService(ctx context.Context) bool {
-	return jwt.CustomClaimsFromContext[*CustomClaims](ctx) != nil
+	return jwt.CustomClaimsFromContext[*Claims](ctx) != nil
 }
 

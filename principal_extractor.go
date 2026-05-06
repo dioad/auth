@@ -1,4 +1,4 @@
-// Package oidc provides server-side business logic and services.
+// Package auth provides server-side identity and authorization logic.
 //
 // # Principal Extraction
 //
@@ -7,20 +7,20 @@
 //
 // Architecture:
 //   - Single interface (PrincipalExtractor) for all principal extraction
-//   - Multiple sources (JWT, OIDC, GitHub) implement PrincipalSource interface
-//   - Fallback chain: JWT → OIDC → GitHub (matches existing system behavior)
-//   - Returns principal identifier, source metadata, and any errors
+//   - Multiple sources implement PrincipalSource interface
+//   - Fallback chain: Fly.io → GitHub Actions → AWS → generic OIDC → JWT → GitHub
+//   - Returns principal context with identifier, source metadata, and any errors
 //
 // Usage Example:
 //
-//	extractor := service.NewDefaultPrincipalExtractor()
-//	principal, ctx, err := extractor.ExtractPrincipal(req.Context(), req)
+//	extractor := auth.NewDefaultPrincipalExtractor()
+//	ctx, err := extractor.ExtractPrincipal(req.Context(), req)
 //	if err != nil {
 //	    // Handle no principal found
 //	    return
 //	}
-//	// Use principal and ctx.Source for logging/auditing
-//	log.Info("principal", principal, "source", ctx.Source)
+//	// Use ctx.ID and ctx.Source for logging/auditing
+//	log.Info("principal", ctx.ID, "source", ctx.Source)
 //
 // Adding New Sources:
 //
@@ -34,8 +34,8 @@
 // Use mock extractors in tests to avoid needing real authentication:
 //
 //	type mockExtractor struct{ principal string }
-//	func (m *mockExtractor) ExtractPrincipal(ctx context.Context, r *http.Request) (string, *PrincipalContext, error) {
-//	    return m.principal, &PrincipalContext{Source: "mock"}, nil
+//	func (m *mockExtractor) ExtractPrincipal(ctx context.Context, r *http.Request) (*PrincipalContext, error) {
+//	    return &PrincipalContext{ID: m.principal, Source: "mock"}, nil
 //	}
 package auth
 
@@ -79,7 +79,7 @@ type PrincipalContext struct {
 	// Roles contains a list of roles associated with the principal
 	Roles []string
 
-	// InService indicates if the principal represents a service / system
+	// IsService indicates if the principal represents a service / system
 	IsService bool
 }
 
@@ -92,14 +92,16 @@ func (c *PrincipalContext) HasRole(role string) bool {
 
 type contextKeyPrincipalContext struct{}
 
-func ContextWithPrincipalContext(ctx context.Context, privileges *PrincipalContext) context.Context {
-	return context.WithValue(ctx, contextKeyPrincipalContext{}, privileges)
+// ContextWithPrincipalContext stores a PrincipalContext in the request context.
+func ContextWithPrincipalContext(ctx context.Context, principalCtx *PrincipalContext) context.Context {
+	return context.WithValue(ctx, contextKeyPrincipalContext{}, principalCtx)
 }
 
+// PrincipalContextFromContext retrieves a PrincipalContext from the request context.
 func PrincipalContextFromContext(ctx context.Context) *PrincipalContext {
 	val := ctx.Value(contextKeyPrincipalContext{})
-	if val != nil {
-		return val.(*PrincipalContext)
+	if pc, ok := val.(*PrincipalContext); ok {
+		return pc
 	}
 	return nil
 }
@@ -135,7 +137,7 @@ type PrincipalSource interface {
 	IsService(ctx context.Context) bool
 }
 
-// jwtPrincipalSource extracts principal from JWT token claims via dcac package
+// jwtPrincipalSource extracts principal from JWT token claims via auth/http/context package
 type jwtPrincipalSource struct{}
 
 func (s *jwtPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
@@ -179,23 +181,9 @@ func (s *oidcPrincipalSource) Roles(ctx context.Context) []string {
 func (s *oidcPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
 	// Try standard OIDC IntrospectionResponse claims first
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
-	// if claims != nil {
-	// 	// Try different claim fields in priority order
-	// 	if claims.UserPrincipalName != "" {
-	// 		return claims.UserPrincipalName, nil
-	// 	}
-	// 	if claims.PreferredUsername != "" {
-	// 		return claims.PreferredUsername, nil
-	// 	}
-	// 	if claims.AWSCustomClaims.HttpsStsAmazonawsCom.PrincipalId != "" {
-	// 		return claims.AWSCustomClaims.HttpsStsAmazonawsCom.PrincipalId, nil
-	// 	}
-	// }
-
 	if claims != nil {
 		return claims.Subject, nil
 	}
-
 	return "", nil
 }
 
@@ -210,13 +198,13 @@ func (s *oidcPrincipalSource) Claims(ctx context.Context) map[string]any {
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
 
 	if claims != nil {
-		result["user_principal_name"] = claims.UserPrincipalName
-		result["preferred_username"] = claims.PreferredUsername
-		result["primary_email"] = claims.Email
-		result["primary_email_verified"] = claims.EmailVerified
-		result["username"] = claims.Username
+		result[AttrUserPrincipalName] = claims.UserPrincipalName
+		result[AttrPreferredUsername] = claims.PreferredUsername
+		result[AttrEmail] = claims.Email
+		result[AttrEmailVerified] = claims.EmailVerified
+		result[AttrUsername] = claims.Username
 		result["active"] = claims.Active
-		result["organisation"] = claims.Organisation
+		result[AttrOrganisations] = claims.Organisations
 	}
 
 	return result
@@ -257,7 +245,7 @@ func (s *githubPrincipalSource) Claims(ctx context.Context) map[string]any {
 		result["login"] = userInfo.Login
 	}
 	if userInfo.PrimaryEmail != "" {
-		result["primary_email"] = userInfo.PrimaryEmail
+		result[AttrEmail] = userInfo.PrimaryEmail
 	}
 
 	return result
@@ -265,15 +253,23 @@ func (s *githubPrincipalSource) Claims(ctx context.Context) map[string]any {
 
 func (s *githubPrincipalSource) Roles(_ context.Context) []string { return nil }
 
-func (s *githubPrincipalSource) IsService(ctx context.Context) bool { return false }
+func (s *githubPrincipalSource) IsService(_ context.Context) bool { return false }
 
 // defaultPrincipalExtractor implements PrincipalExtractor with a fallback chain
 type defaultPrincipalExtractor struct {
 	sources []PrincipalSource
 }
 
-// ExtractPrincipal tries each source in order and returns the first successful match
+// ExtractPrincipal tries each source in order and returns the first successful match.
+// The ctx parameter must equal r.Context() to ensure claims stored on the request
+// context (by middleware) are available to the sources. Use r.Context() rather
+// than a separate context parameter when calling this method.
 func (e *defaultPrincipalExtractor) ExtractPrincipal(ctx context.Context, r *http.Request) (*PrincipalContext, error) {
+	// Use request context if available to ensure claims stored by middleware are accessible
+	if r != nil && r.Context() != ctx {
+		ctx = r.Context()
+	}
+
 	for _, source := range e.sources {
 		principal, err := source.Extract(ctx, r)
 		if err != nil {
@@ -303,7 +299,7 @@ func (e *defaultPrincipalExtractor) ExtractPrincipal(ctx context.Context, r *htt
 	for i, source := range e.sources {
 		sourceNames[i] = source.Name()
 	}
-	return nil, fmt.Errorf("%w tried sources %v", ErrNoPrincipalFound, sourceNames)
+	return nil, fmt.Errorf("%w: tried sources %v", ErrNoPrincipalFound, sourceNames)
 }
 
 // DefaultExtractorConfig configures per-source ClaimRoleMappers for
@@ -351,13 +347,15 @@ func NewPrincipalExtractor(sources ...PrincipalSource) PrincipalExtractor {
 	}
 }
 
+// NewAllowAllPrincipalExtractor creates a PrincipalExtractor that accepts all requests as unauthenticated.
+// Useful for testing and development environments where authorization is disabled.
 func NewAllowAllPrincipalExtractor() PrincipalExtractor {
 	return NewPrincipalExtractor(&allowAllPrincipalSource{})
 }
 
 type allowAllPrincipalSource struct{}
 
-func (s *allowAllPrincipalSource) Extract(ctx context.Context, r *http.Request) (string, error) {
+func (s *allowAllPrincipalSource) Extract(_ context.Context, _ *http.Request) (string, error) {
 	return "unauthenticated", nil
 }
 
@@ -365,15 +363,15 @@ func (s *allowAllPrincipalSource) Name() string {
 	return "allow-all"
 }
 
-func (s *allowAllPrincipalSource) Claims(ctx context.Context) map[string]any {
+func (s *allowAllPrincipalSource) Claims(_ context.Context) map[string]any {
 	return make(map[string]any)
 }
 
-func (s *allowAllPrincipalSource) Roles(ctx context.Context) []string {
+func (s *allowAllPrincipalSource) Roles(_ context.Context) []string {
 	return nil
 }
 
-func (s *allowAllPrincipalSource) IsService(ctx context.Context) bool {
+func (s *allowAllPrincipalSource) IsService(_ context.Context) bool {
 	return true
 }
 
@@ -383,7 +381,6 @@ type MockPrincipalSource struct {
 	MockPrincipal string
 	MockError     error
 	MockClaims    map[string]any
-	MockGroups    []string
 	MockRoles     []string
 	MockIsService bool
 }
@@ -401,10 +398,6 @@ func (m *MockPrincipalSource) Name() string {
 
 func (m *MockPrincipalSource) Claims(_ context.Context) map[string]any {
 	return m.MockClaims
-}
-
-func (m *MockPrincipalSource) Groups(_ context.Context) []string {
-	return m.MockGroups
 }
 
 func (m *MockPrincipalSource) Roles(_ context.Context) []string {

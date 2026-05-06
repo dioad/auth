@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/auth0/go-jwt-middleware/v3/jwks"
@@ -12,6 +13,11 @@ import (
 
 	"github.com/dioad/auth/jwt"
 )
+
+// isHMACAlgorithm checks if the given SignatureAlgorithm is a symmetric HMAC variant.
+func isHMACAlgorithm(alg validator.SignatureAlgorithm) bool {
+	return strings.HasPrefix(string(alg), "HS")
+}
 
 // TokenValidator is an alias for jwt.TokenValidator.
 type TokenValidator = jwt.TokenValidator
@@ -49,9 +55,11 @@ func NewValidatorFromConfig(cfg *ValidatorConfig) (jwt.TokenValidator, error) {
 
 // NewValidatorFromConfigWithOptions creates a TokenValidator from a ValidatorConfig using custom options.
 func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOpt) (jwt.TokenValidator, error) {
-	if cfg.Issuer == "" && cfg.URL != "" {
+	// Use a local issuer variable to avoid mutating the caller's config
+	issuer := cfg.Issuer
+	if issuer == "" && cfg.URL != "" {
 		// For now, use the URL as issuer if not provided
-		cfg.Issuer = cfg.URL
+		issuer = cfg.URL
 	}
 
 	algorithm := validator.SignatureAlgorithm(cfg.SignatureAlgorithm)
@@ -61,22 +69,33 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		opt(options)
 	}
 
+	// Track whether HMAC mode should use flexible issuer validation
+	hmacFlexibleIssuer := false
+
 	// Static HMAC secret short-circuits JWKS discovery. Intended for local
 	// development / smoke tests only.
-	if cfg.HMACSecret != "" && options.keyFunc == nil {
+	if cfg.HMACSecret != "" {
 		secret := []byte(cfg.HMACSecret)
-		options.keyFunc = func(_ context.Context) (any, error) { return secret, nil }
-		if algorithm == "" {
+		// Only override keyFunc if no custom keyFunc was provided via options
+		if options.keyFunc == nil {
+			options.keyFunc = func(_ context.Context) (any, error) { return secret, nil }
+		}
+		// HMAC requires a symmetric signing algorithm (HS256/HS384/HS512).
+		// Override any non-HS algorithm to prevent runtime failures.
+		if algorithm == "" || !isHMACAlgorithm(algorithm) {
 			algorithm = validator.HS256
 		}
-		// A synthetic issuer is required by the validator library but is not
-		// meaningful when using a static secret. Allow callers to omit it.
-		if cfg.Issuer == "" {
-			cfg.Issuer = "local-smoke"
+		// For HMAC smoke tests without an explicit issuer, accept any issuer claim.
+		// If an issuer was explicitly configured, enforce it.
+		if issuer == "" {
+			// No issuer preference; set a dummy issuer for the validator library
+			// (which requires at least one to be set), then use flexible validation.
+			issuer = "local-smoke"
+			hmacFlexibleIssuer = true
 		}
 	}
 
-	if cfg.Issuer == "" {
+	if issuer == "" {
 		return nil, fmt.Errorf("issuer or URL must be provided")
 	}
 
@@ -85,7 +104,7 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	}
 
 	if options.keyFunc == nil {
-		issuerURL, err := url.Parse(cfg.Issuer)
+		issuerURL, err := url.Parse(issuer)
 		if err != nil {
 			return nil, fmt.Errorf("invalid issuer URL: %w", err)
 		}
@@ -109,18 +128,39 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("key function not configured")
 	}
 
-	v, err := validator.New(
+	// Build validator options.
+	validatorOpts := []validator.Option{
 		validator.WithKeyFunc(options.keyFunc),
 		validator.WithAlgorithm(algorithm),
-		validator.WithIssuer(cfg.Issuer),
 		validator.WithAudiences(cfg.Audiences),
 		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew)*time.Second),
-	)
+	}
+
+	if cfg.HMACSecret != "" && hmacFlexibleIssuer {
+		// HMAC mode with no explicit issuer: accept any issuer claim by returning the token's issuer.
+		// This enables flexible local smoke testing where tokens can have any iss value.
+		validatorOpts = append(validatorOpts,
+			validator.WithIssuersResolver(func(ctx context.Context) ([]string, error) {
+				// Extract the issuer from the token (already in context by the validator)
+				if iss, ok := validator.IssuerFromContext(ctx); ok && iss != "" {
+					return []string{iss}, nil
+				}
+				// No issuer in token; return empty list which will cause validation to fail
+				// (validator library requires iss claim to be present)
+				return []string{}, nil
+			}),
+		)
+	} else {
+		// Normal mode or HMAC with explicit issuer: enforce the configured issuer
+		validatorOpts = append(validatorOpts, validator.WithIssuer(issuer))
+	}
+
+	v, err := validator.New(validatorOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}
 
-	var tv jwt.TokenValidator = &auth0Validator{v: v, issuer: cfg.Issuer}
+	var tv jwt.TokenValidator = &auth0Validator{v: v, issuer: issuer}
 
 	if len(cfg.ClaimPredicate) > 0 {
 		predicate := jwt.ParseClaimPredicates(cfg.ClaimPredicate)
@@ -169,8 +209,10 @@ func (v *validatorDebugger) String() string {
 	return fmt.Sprintf("ValidatorDebugger(%s)", v.TokenValidator.String())
 }
 
+// DebuggerOpt configures a TokenValidator debugger.
 type DebuggerOpt func(*validatorDebugger)
 
+// WithLogger sets the logger for validator debug output.
 func WithLogger(logger zerolog.Logger) DebuggerOpt {
 	return func(v *validatorDebugger) {
 		v.logger = logger

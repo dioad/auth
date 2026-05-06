@@ -24,6 +24,6 @@ const (
 	// AttrUserPrincipalName is the user principal name (UPN), used by Azure AD.
 	AttrUserPrincipalName = "user_principal_name"
 
-	// AttrOrganisation is the organisation or tenant name associated with the principal.
-	AttrOrganisation = "organisation"
+	// AttrOrganisations is the organisations or tenant names associated with the principal.
+	AttrOrganisations = "organisations"
 )
