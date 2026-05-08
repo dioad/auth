@@ -77,7 +77,7 @@ func privilegeSetForRoles(roles []Role, roleCapabilities map[Role][]Capability) 
 // delegate to Privileges().Has(). It handles nil principal and nil Privilege.
 func canFromPrivileges(principalCtx *auth.PrincipalContext, cap Capability, privs Privilege, err error) (*Decision, error) {
 	if principalCtx == nil {
-		return deny(ReasonDeniedNilPrincipal, cap), ErrForbidden
+		return deny(ReasonDeniedNilPrincipal, cap), ErrUnauthorized
 	}
 	if err != nil {
 		return nil, err
