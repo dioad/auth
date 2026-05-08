@@ -60,10 +60,10 @@ func NewCasbinAuthorizer(metadata PolicyMetadata) (*CasbinAuthorizer, error) {
 	}
 
 	for role, caps := range metadata.RoleCapabilities {
-		for _, cap := range caps {
-			obj, act, ok := strings.Cut(string(cap), ":")
+		for _, c := range caps {
+			obj, act, ok := strings.Cut(string(c), ":")
 			if !ok {
-				return nil, fmt.Errorf("capability %q missing ':' separator — use Permission() or FeatureCapability() constructors", cap)
+				return nil, fmt.Errorf("capability %q missing ':' separator — use Permission() or FeatureCapability() constructors", c)
 			}
 			if _, err = enforcer.AddPolicy(string(role), obj, act); err != nil {
 				return nil, fmt.Errorf("add casbin policy %s %s %s: %w", role, obj, act, err)
@@ -92,7 +92,7 @@ func (a *CasbinAuthorizer) Privileges(_ context.Context, principalCtx *auth.Prin
 // capability — enabling fine-grained audit logging.
 func (a *CasbinAuthorizer) Can(_ context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
 	if principalCtx == nil {
-		return deny(ReasonDeniedNilPrincipal, cap), ErrForbidden
+		return deny(ReasonDeniedNilPrincipal, cap), ErrUnauthorized
 	}
 
 	roles := principalRoles(principalCtx, a.metadata.RoleAliases)

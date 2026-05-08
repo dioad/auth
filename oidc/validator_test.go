@@ -188,6 +188,66 @@ func TestHMACValidatorWithCustomKeyFuncAndNoIssuer(t *testing.T) {
 	require.NoError(t, err, "HMAC validator with custom keyFunc should accept token with any issuer")
 }
 
+// TestNormalValidatorRequiresAudiences verifies that in non-HMAC mode, omitting
+// audiences causes validator creation to fail. NewValidatorFromConfigWithOptions
+// enforces this as an explicit guard before constructing the underlying validator,
+// preventing accidental deployments without audience checking.
+func TestNormalValidatorRequiresAudiences(t *testing.T) {
+	keyFunc := func(ctx context.Context) (any, error) {
+		return []byte("test-secret"), nil
+	}
+
+	cfg := &oidc.ValidatorConfig{
+		Issuer:             "https://example.com",
+		SignatureAlgorithm: "HS256",
+		// Audiences intentionally omitted: validator creation must fail
+	}
+
+	_, err := oidc.NewValidatorFromConfigWithOptions(cfg, oidc.WithValidatorKeyFunc(keyFunc))
+	require.Error(t, err, "should fail to create validator when no audiences are configured in normal mode")
+}
+
+// TestHMACValidatorWithNoAudiencesUsesLocalSmokeDefault verifies that in HMAC
+// smoke-test mode without explicit audiences, the default "local-smoke" audience
+// is enforced. Tokens carrying that audience are accepted; others are rejected.
+func TestHMACValidatorWithNoAudiencesUsesLocalSmokeDefault(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret: "test-secret",
+		// Audiences intentionally omitted to test the "local-smoke" default path
+	}
+
+	v, err := oidc.NewValidatorFromConfig(cfg)
+	require.NoError(t, err, "should create HMAC validator with no audiences")
+
+	now := time.Now()
+
+	// Token with the default "local-smoke" audience should be accepted
+	smokeToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "local-smoke",
+		"aud": "local-smoke",
+		"iat": now.Unix(),
+		"exp": now.Add(1 * time.Hour).Unix(),
+	})
+	smokeTokenStr, err := smokeToken.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+	_, err = v.ValidateToken(context.Background(), smokeTokenStr)
+	require.NoError(t, err, "HMAC validator with no audiences should accept token with 'local-smoke' aud")
+
+	// Token with a different audience should be rejected
+	otherAudToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "local-smoke",
+		"aud": "other-audience",
+		"iat": now.Unix(),
+		"exp": now.Add(1 * time.Hour).Unix(),
+	})
+	otherAudStr, err := otherAudToken.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+	_, err = v.ValidateToken(context.Background(), otherAudStr)
+	require.Error(t, err, "HMAC validator with no audiences should reject token with non-'local-smoke' aud")
+}
+
 // TestHMACValidatorEnforcesExplicitIssuer verifies that when HMACSecret is set
 // along with an explicit issuer, the issuer is still enforced (not bypassed).
 func TestHMACValidatorEnforcesExplicitIssuer(t *testing.T) {

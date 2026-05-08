@@ -150,7 +150,7 @@ func TestRoleAuthorizer_DeniesNilPrincipal(t *testing.T) {
 	a := authz.NewRoleAuthorizer(testMetadata())
 
 	d, err := a.Can(context.Background(), nil, authz.Permission("tunnel", "write"))
-	require.ErrorIs(t, err, authz.ErrForbidden)
+	require.ErrorIs(t, err, authz.ErrUnauthorized)
 	require.NotNil(t, d)
 	assert.False(t, d.Allowed)
 	assert.Equal(t, authz.ReasonDeniedNilPrincipal, d.Reason)
@@ -189,8 +189,8 @@ func TestRoleAuthorizer_UnionsMultipleRoles(t *testing.T) {
 	pc := principal("p1", "external.publisher", "external.reader")
 
 	for _, cap := range []authz.Capability{
-		authz.Permission("tunnel", "write"),  // publisher only
-		authz.Permission("tunnel", "read"),   // reader only
+		authz.Permission("tunnel", "write"),   // publisher only
+		authz.Permission("tunnel", "read"),    // reader only
 		authz.Permission("endpoint", "write"), // publisher only
 	} {
 		d, err := a.Can(context.Background(), pc, cap)
@@ -235,7 +235,7 @@ func TestCasbinAuthorizer_DeniesNilPrincipal(t *testing.T) {
 	require.NoError(t, err)
 
 	d, err := a.Can(context.Background(), nil, authz.Permission("tunnel", "write"))
-	require.ErrorIs(t, err, authz.ErrForbidden)
+	require.ErrorIs(t, err, authz.ErrUnauthorized)
 	assert.Equal(t, authz.ReasonDeniedNilPrincipal, d.Reason)
 }
 
@@ -334,7 +334,7 @@ func TestMapAuthorizer_DeniesNilPrincipal(t *testing.T) {
 	a := authz.NewMapAuthorizer(map[string]*authz.PrivilegeSet{}, authz.PolicyMetadata{})
 
 	d, err := a.Can(context.Background(), nil, authz.Permission("tunnel", "write"))
-	require.ErrorIs(t, err, authz.ErrForbidden)
+	require.ErrorIs(t, err, authz.ErrUnauthorized)
 	assert.Equal(t, authz.ReasonDeniedNilPrincipal, d.Reason)
 }
 

@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"maps"
 
 	"github.com/dioad/auth"
 )
@@ -24,9 +25,7 @@ func NewMapAuthorizer(privileges map[string]*PrivilegeSet, metadata PolicyMetada
 	// Defensive copy of the map keys; PrivilegeSets are not deep-copied as
 	// they are treated as immutable after construction.
 	cp := make(map[string]*PrivilegeSet, len(privileges))
-	for k, v := range privileges {
-		cp[k] = v
-	}
+	maps.Copy(cp, privileges)
 	return &MapAuthorizer{privileges: cp, metadata: CloneMetadata(metadata)}
 }
 

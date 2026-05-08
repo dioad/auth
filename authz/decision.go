@@ -8,9 +8,16 @@ import "errors"
 // (non-policy errors), err is non-nil but *Decision is nil.
 var ErrForbidden = errors.New("forbidden")
 
+// ErrUnauthorized is returned by [Authorizer.Can] when the request cannot be
+// evaluated because there is no authenticated principal, or the caller is
+// otherwise not eligible for authorization. Use errors.Is(err, ErrUnauthorized)
+// for flow control. This is distinct from ErrForbidden, which means a
+// principal was evaluated and denied by policy.
+var ErrUnauthorized = errors.New("unauthorized")
+
 // DecisionReason is a stable string token that describes why an authorization
 // decision was made. It is intended for structured audit logging; callers
-// should still use errors.Is(err, ErrForbidden) for flow control.
+// should still use errors.Is with ErrUnauthorized or ErrForbidden for flow control, depending on the failure mode.
 type DecisionReason string
 
 const (
