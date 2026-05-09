@@ -55,6 +55,11 @@ type ProviderConfig struct {
 	ClientID     string `json:"client_id" mapstructure:"client-id"`
 	ClientSecret string `json:"client_secret" mapstructure:"client-secret"`
 	Callback     string `json:"callback" mapstructure:"callback"`
+	// Scopes is optional and only used by browser/login-oriented integrations.
+	Scopes []string `json:"scopes,omitzero" mapstructure:"scopes,omitzero"`
+	// DiscoveryURL is optional and allows overriding provider discovery behavior
+	// in integrations that support explicit discovery endpoints.
+	DiscoveryURL string `json:"discovery_url,omitzero" mapstructure:"discovery-url,omitzero"`
 }
 
 // ProviderMap indexes provider configurations by name.

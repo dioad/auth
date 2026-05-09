@@ -62,6 +62,15 @@ http.Handle("/ui/", mw.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http
 
 `BrowserConfig.Validate` enforces secure cookie use for authenticated browser sessions.
 
+## OIDC configuration ownership (one way to do it)
+
+- Use `oidc.ClientConfig` for OIDC client/token exchange configuration.
+- Use `http/middleware/oidc.BrowserConfig` for browser login/session flows.
+- `http/oidc.Config` remains for backward compatibility and is deprecated in favor of `oidc.Config`.
+
+This keeps provider/client concerns in `oidc` and browser-session concerns in middleware,
+with adapter methods (`ToClientConfig`, `ToOIDCConfig`) making the secure path the easy path.
+
 ## Testability seams
 
 The OIDC package provides explicit seams for fast, deterministic tests:
