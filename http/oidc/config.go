@@ -1,5 +1,7 @@
 package oidc
 
+import authoidc "github.com/dioad/auth/oidc"
+
 const (
 	// SessionCookieName is the name of the cookie used to store the OIDC session.
 	SessionCookieName = "dioad_session"
@@ -8,18 +10,16 @@ const (
 )
 
 // ProviderConfig contains configuration for an OIDC provider.
-type ProviderConfig struct {
-	ClientID     string   `mapstructure:"client-id"`
-	ClientSecret string   `mapstructure:"client-secret"`
-	Callback     string   `mapstructure:"callback"`
-	Scopes       []string `mapstructure:"scopes"`        // OAuth2 Scopes - Optional
-	DiscoveryURL string   `mapstructure:"discovery-url"` // OpenID Connect Discovery URL - Optional
-}
+//
+// Deprecated: use `github.com/dioad/auth/oidc.ProviderConfig` directly.
+type ProviderConfig = authoidc.ProviderConfig
 
 // ProviderMap maps provider names to their configurations.
-type ProviderMap map[string]ProviderConfig
+//
+// Deprecated: use `github.com/dioad/auth/oidc.ProviderMap` directly.
+type ProviderMap = authoidc.ProviderMap
 
 // Config contains configuration for OIDC authentication.
-type Config struct {
-	ProviderMap ProviderMap `mapstructure:"providers"`
-}
+//
+// Deprecated: use `github.com/dioad/auth/oidc.Config` directly.
+type Config = authoidc.Config
