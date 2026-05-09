@@ -106,7 +106,8 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 			refreshedToken, err := h.Client.RefreshToken(r.Context(), token.RefreshToken)
 			if err != nil {
 				h.logger.Error().Err(err).Msg("Failed to refresh token")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				h.clearAllCookies(w)
+				http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
 				return
 			}
 			h.saveTokenToCookies(w, refreshedToken)
@@ -120,7 +121,12 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 // AuthStart initiates the OIDC authentication flow.
 func (h *Handler) AuthStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		state := generateState()
+		state, err := generateState()
+		if err != nil {
+			h.logger.Error().Err(err).Msg("Failed to generate auth state")
+			http.Error(w, "Failed to start authentication", http.StatusInternalServerError)
+			return
+		}
 		authURL, err := h.Client.AuthorizationCodeRedirectFlow(r.Context(), state, h.Config.Scopes, h.Config.RedirectURI)
 		if err != nil {
 			h.logger.Error().Err(err).Msg("Failed to create authorization URL")
@@ -145,6 +151,16 @@ func (h *Handler) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
 		state := r.URL.Query().Get("state")
+		if code == "" {
+			h.logger.Error().Msg("Missing code in callback")
+			http.Error(w, "Missing code", http.StatusBadRequest)
+			return
+		}
+		if state == "" {
+			h.logger.Error().Msg("Missing state in callback")
+			http.Error(w, "Missing state", http.StatusBadRequest)
+			return
+		}
 		stateFromCookie, err := extractValueFromCookie(r, h.Config.StateCookie.Name)
 		if stateFromCookie == "" || err != nil {
 			h.logger.Error().Err(err).Msg("Missing or invalid state cookie")
@@ -217,8 +233,10 @@ func shouldRefreshTokenBasedOnExpiry(expiry time.Time, window time.Duration, now
 	return expiry.Sub(now) <= window
 }
 
-func generateState() string {
+func generateState() (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
