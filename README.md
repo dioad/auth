@@ -33,6 +33,35 @@ handler, _ := authhttp.NewHandler(&authhttp.ServerConfig{
 http.Handle("/secure", handler.Wrap(myHandler))
 ```
 
+## Browser OIDC shared configuration
+
+For interactive browser login flows, use `http/middleware/oidc.BrowserConfig` as a reusable config contract.
+
+```go
+browser := oidcmw.BrowserConfig{
+    Issuer:       "https://issuer.example",
+    ClientID:     "console-ui",
+    ClientSecret: "redacted",
+    RedirectURI:  "https://console.example/auth/callback",
+    CookieSecure: true,
+}
+if err := browser.Validate(); err != nil {
+    panic(err)
+}
+
+oidcClient, err := oidc.NewClientFromConfig(new(browser.ToClientConfig()))
+if err != nil {
+    panic(err)
+}
+
+mw := oidcmw.NewHandler(oidcClient, browser.ToOIDCConfig(), zerolog.Nop())
+http.Handle("/ui/", mw.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(http.StatusOK)
+})))
+```
+
+`BrowserConfig.Validate` enforces secure cookie use for authenticated browser sessions.
+
 ## Testability seams
 
 The OIDC package provides explicit seams for fast, deterministic tests:
