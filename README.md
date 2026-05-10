@@ -4,7 +4,7 @@ Authentication and authorization helpers for Go services, including OIDC client 
 
 ## Packages
 
-- `oidc`: OpenID Connect client, token sources, and validation helpers (Keycloak, GitHub Actions, AWS, Fly.io).
+- `oidc`: OpenID Connect client, token sources, and validation helpers (Keycloak, GitHub Actions, AWS, Fly.io). See [Auth Debug Utility](cmd/auth-debug/README.md) for a tool to inspect tokens on these platforms.
 - `jwt`: Token validation helpers and claim predicates, plus composable multi-validator support.
 - `http`: HTTP authentication middleware for Basic, GitHub App, and HMAC signatures, plus JWT/OIDC wiring helpers.
 - `tls`: TLS configuration helpers for clients and servers (cert loading, client auth).

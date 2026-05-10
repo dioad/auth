@@ -16,6 +16,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type stsFactory func(cfg aws.Config) stsClient
+
 // Opt defines a functional option for configuring the token source. It allows for setting various parameters such as
 // audience, signing algorithm, and AWS configuration when creating a new token source.
 type Opt func(*tokenSource)
@@ -53,6 +55,7 @@ type tokenSource struct {
 	signingAlgorithm string
 	awsConfig        *aws.Config
 	stsClient        stsClient
+	stsFactory       stsFactory
 }
 
 type stsClient interface {
@@ -61,8 +64,7 @@ type stsClient interface {
 
 // Token retrieves a new OIDC token from the AWS STS GetWebIdentityToken API
 func (c *tokenSource) Token() (*oauth2.Token, error) {
-	stsClient := c.stsClient
-	if stsClient == nil {
+	if c.stsClient == nil {
 		var awsConfig aws.Config
 		var err error
 		if c.awsConfig != nil {
@@ -75,7 +77,11 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 				return nil, fmt.Errorf("failed to load AWS config: %w", err)
 			}
 		}
-		stsClient = sts.NewFromConfig(awsConfig)
+		if c.stsFactory != nil {
+			c.stsClient = c.stsFactory(awsConfig)
+		} else {
+			c.stsClient = sts.NewFromConfig(awsConfig)
+		}
 	}
 
 	params := &sts.GetWebIdentityTokenInput{
@@ -85,7 +91,7 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 
 	stsCtx, stsCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer stsCancel()
-	response, err := stsClient.GetWebIdentityToken(stsCtx, params)
+	response, err := c.stsClient.GetWebIdentityToken(stsCtx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get web identity token: %w", err)
 	}

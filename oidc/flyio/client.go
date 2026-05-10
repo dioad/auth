@@ -18,9 +18,13 @@ func NewUnixSocketClient(path string) *http.Client {
 	}
 }
 
-func NewHTTPClient(ctx context.Context, opts ...Opt) *http.Client {
+func NewHTTPClient(ctx context.Context, opts ...Opt) (*http.Client, error) {
 	ts := NewTokenSource(opts...)
+	_, err := ts.Token()
+	if err != nil {
+		return nil, err
+	}
 	rts := oauth2.ReuseTokenSource(nil, ts)
 
-	return oauth2.NewClient(ctx, rts)
+	return oauth2.NewClient(ctx, rts), nil
 }
