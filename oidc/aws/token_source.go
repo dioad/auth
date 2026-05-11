@@ -12,11 +12,16 @@ import (
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"golang.org/x/oauth2"
 )
 
 type stsFactory func(cfg aws.Config) stsClient
+
+type imdsClient interface {
+	GetRegion(ctx context.Context, params *imds.GetRegionInput, optFns ...func(*imds.Options)) (*imds.GetRegionOutput, error)
+}
 
 // Opt defines a functional option for configuring the token source. It allows for setting various parameters such as
 // audience, signing algorithm, and AWS configuration when creating a new token source.
@@ -53,9 +58,11 @@ func (c *Claims) Validate(_ context.Context) error { return nil }
 type tokenSource struct {
 	audience         string
 	signingAlgorithm string
+	region           string
 	awsConfig        *aws.Config
 	stsClient        stsClient
 	stsFactory       stsFactory
+	imdsClient       imdsClient
 }
 
 type stsClient interface {
@@ -67,12 +74,30 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 	if c.stsClient == nil {
 		var awsConfig aws.Config
 		var err error
+
 		if c.awsConfig != nil {
 			awsConfig = *c.awsConfig
 		} else {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			awsConfig, err = config.LoadDefaultConfig(ctx)
+
+			region := c.region
+			if region == "" {
+				var client imdsClient = c.imdsClient
+				if client == nil {
+					client = imds.New(imds.Options{})
+				}
+				if out, err := client.GetRegion(ctx, &imds.GetRegionInput{}); err == nil {
+					region = out.Region
+				}
+			}
+
+			var optFns []func(*config.LoadOptions) error
+			if region != "" {
+				optFns = append(optFns, config.WithRegion(region))
+			}
+
+			awsConfig, err = config.LoadDefaultConfig(ctx, optFns...)
 			if err != nil {
 				return nil, fmt.Errorf("failed to load AWS config: %w", err)
 			}
@@ -138,6 +163,14 @@ func WithAWSConfig(cfg aws.Config) Opt {
 	}
 }
 
+// WithRegion sets the AWS region for the token source. If not set, it will be automatically
+// discovered from the EC2 metadata service or the default AWS configuration.
+func WithRegion(region string) Opt {
+	return func(ts *tokenSource) {
+		ts.region = region
+	}
+}
+
 // WithSTSClient sets a custom STS client for the token source.
 func WithSTSClient(client stsClient) Opt {
 	return func(ts *tokenSource) {
@@ -147,10 +180,21 @@ func WithSTSClient(client stsClient) Opt {
 	}
 }
 
+// WithIMDSClient sets a custom IMDS client for the token source.
+func WithIMDSClient(client imdsClient) Opt {
+	return func(ts *tokenSource) {
+		if client != nil {
+			ts.imdsClient = client
+		}
+	}
+}
+
 // NewTokenSource creates a new token source configured with the provided options.
 // It returns an oauth2.TokenSource that can be used to retrieve OIDC tokens from AWS.
 func NewTokenSource(opts ...Opt) oauth2.TokenSource {
-	source := &tokenSource{}
+	source := &tokenSource{
+		signingAlgorithm: "RS256", // Default signing algorithm for AWS STS
+	}
 	for _, opt := range opts {
 		opt(source)
 	}
