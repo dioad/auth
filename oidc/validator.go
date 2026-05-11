@@ -132,7 +132,7 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	validatorOpts := []validator.Option{
 		validator.WithKeyFunc(options.keyFunc),
 		validator.WithAlgorithm(algorithm),
-		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew)*time.Second),
+		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew) * time.Second),
 	}
 	if len(cfg.Audiences) > 0 {
 		validatorOpts = append(validatorOpts, validator.WithAudiences(cfg.Audiences))

@@ -66,4 +66,3 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 func (s *PrincipalSource) IsService(ctx context.Context) bool {
 	return jwt.CustomClaimsFromContext[*Claims](ctx) != nil
 }
-
