@@ -65,7 +65,8 @@ func parseNetrc(data string) []netrcLine {
 			case "machine":
 				l = netrcLine{machine: f[i+1]}
 			case "default":
-				break
+				// “There can be only one default token, and it must be after all machine tokens.”
+				return nrc
 			case "login":
 				l.login = f[i+1]
 			case "password":

@@ -23,7 +23,7 @@ func ExampleBrowserConfig_authenticatedConsoleDefaults() {
 	clientCfg := cfg.ToClientConfig()
 	mwCfg := cfg.ToOIDCConfig()
 
-	fmt.Println(clientCfg.EndpointConfig.URL)
+	fmt.Println(clientCfg.URL)
 	fmt.Println(mwCfg.LoginPath)
 	fmt.Println(mwCfg.Scopes)
 	fmt.Println(mwCfg.TokenCookie.Secure)

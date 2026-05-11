@@ -65,7 +65,9 @@ func (i *MockIdP) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		"claims_supported":                      []string{"sub", "iss", "aud", "exp", "iat", "email"},
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (i *MockIdP) handleJWKS(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +113,9 @@ func (i *MockIdP) handleToken(w http.ResponseWriter, r *http.Request) {
 		"expires_in":   3600,
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (i *MockIdP) handleUserInfo(w http.ResponseWriter, r *http.Request) {
@@ -121,5 +125,7 @@ func (i *MockIdP) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		"name":  "Test User",
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

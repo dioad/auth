@@ -145,7 +145,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, readErr := io.ReadAll(resp.Body)

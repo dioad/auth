@@ -41,9 +41,8 @@ func (c *Claims) Validate(_ context.Context) error {
 }
 
 type tokenSource struct {
-	audience     string
-	client       *http.Client
-	currentToken *oauth2.Token
+	audience string
+	client   *http.Client
 }
 
 type Opt func(*tokenSource)
@@ -101,7 +100,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	accessTokenBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

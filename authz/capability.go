@@ -24,8 +24,6 @@
 // connect-control.
 package authz
 
-import "strings"
-
 // Capability is a named thing a principal is allowed to do or use.
 // All capabilities use ':' as the separator (Casbin convention):
 //
@@ -46,13 +44,4 @@ func FeatureCapability(name string) Capability {
 // For example, Permission("tunnel", "write") returns "tunnel:write".
 func Permission(resource, action string) Capability {
 	return Capability(resource + ":" + action)
-}
-
-// parts splits a Capability into (obj, act) for use with Casbin.
-// For a well-formed capability like "tunnel:write" it returns ("tunnel", "write").
-// For an unscoped value with no colon it returns ("", cap) so callers can detect
-// the malformed case.
-func (c Capability) parts() (obj, act string, ok bool) {
-	obj, act, ok = strings.Cut(string(c), ":")
-	return
 }

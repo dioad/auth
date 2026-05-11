@@ -31,9 +31,8 @@ password pass2`
 		t.Fatalf("Failed to create request: %v", err)
 	}
 
-	// Add credentials using different providers
-	AddCredentialsWithProvider(req1, provider1)
-	AddCredentialsWithProvider(req2, provider2)
+	_ = AddCredentialsWithProvider(req1, provider1)
+	_ = AddCredentialsWithProvider(req2, provider2)
 
 	// Verify that each request has the correct credentials
 	user1, pass1, ok1 := req1.BasicAuth()
@@ -124,8 +123,8 @@ password pass2`
 	req2, _ := http.NewRequest("GET", "http://example2.com", nil)
 
 	// Add auth from different instances
-	auth1.AddAuth(req1)
-	auth2.AddAuth(req2)
+	_ = auth1.AddAuth(req1)
+	_ = auth2.AddAuth(req2)
 
 	// Verify each got the right credentials
 	user1, pass1, _ := req1.BasicAuth()
@@ -176,7 +175,7 @@ func TestClientAuthWithConfiguredCredentials(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
-	auth.AddAuth(req)
+	_ = auth.AddAuth(req)
 
 	user, pass, ok := req.BasicAuth()
 	if !ok {
@@ -196,7 +195,7 @@ func TestNetrcProviderConcurrency(t *testing.T) {
 	for range 10 {
 		go func() {
 			req, _ := http.NewRequest("GET", "http://example.com", nil)
-			AddCredentialsWithProvider(req, provider)
+			_ = AddCredentialsWithProvider(req, provider)
 			done <- true
 		}()
 	}

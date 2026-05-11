@@ -125,7 +125,7 @@ func TestHeaderCaseNormalization(t *testing.T) {
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Verify authentication result
 			if tc.shouldAuthenticate {

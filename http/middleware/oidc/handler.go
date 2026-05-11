@@ -67,7 +67,7 @@ type OIDCConfig struct {
 	RedirectCookie    CookieConfig `json:"redirect_cookie,omitzero" mapstructure:"redirect-cookie,omitzero"`
 
 	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero"`
-	Now           func() time.Time `json:"-,omitzero" mapstructure:"-,omitzero"`
+	Now           func() time.Time `json:"-" mapstructure:"-"`
 	LoginPath     string           `json:"login_path,omitzero" mapstructure:"login-path,omitzero"`
 }
 

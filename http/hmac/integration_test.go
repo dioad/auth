@@ -30,7 +30,7 @@ func TestClientHandlerIntegration(t *testing.T) {
 				t.Errorf("expected principal %q, got %q", principalID, principal)
 			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("authenticated"))
+			_, _ = w.Write([]byte("authenticated"))
 		})),
 	)
 	defer testServer.Close()
@@ -58,7 +58,7 @@ func TestClientHandlerIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
@@ -109,7 +109,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -129,7 +129,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to make tampered request: %v", err)
 	}
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 	if resp2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for tampered header, got %d", resp2.StatusCode)
 	}
@@ -169,7 +169,7 @@ func TestTimestampExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for expired timestamp, got %d", resp.StatusCode)
 	}
@@ -206,7 +206,7 @@ func TestWrongPathOrMethod(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for wrong path, got %d", resp.StatusCode)
 	}
@@ -258,7 +258,7 @@ func TestPrincipalSpoofing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 	if resp2.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected status 401 for spoofed principal, got %d", resp2.StatusCode)
 	}
@@ -290,7 +290,7 @@ func TestHMACRoundTripper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -344,7 +344,7 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp1.Body.Close()
+	defer func() { _ = resp1.Body.Close() }()
 	if resp1.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for header with whitespace, got %d", resp1.StatusCode)
 	}
@@ -368,7 +368,7 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 	// This should succeed because the server trims whitespace
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for header with added whitespace, got %d", resp2.StatusCode)
@@ -411,7 +411,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp1.Body.Close()
+	defer func() { _ = resp1.Body.Close() }()
 	if resp1.StatusCode != http.StatusOK {
 
 		t.Errorf("expected 200 for valid query params, got %d", resp1.StatusCode)
@@ -454,7 +454,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp3.Body.Close()
+	defer func() { _ = resp3.Body.Close() }()
 	if resp3.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401 for tampered query params, got %d", resp3.StatusCode)
 	}
@@ -493,7 +493,7 @@ func TestNoQueryParameters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 for request without query params, got %d", resp.StatusCode)
 	}

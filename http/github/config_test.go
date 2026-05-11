@@ -1,7 +1,6 @@
 package github
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,8 +17,7 @@ func TestResolveAccessToken(t *testing.T) {
 	})
 
 	t.Run("EnvironmentToken", func(t *testing.T) {
-		os.Setenv("GH_TOKEN", "env-token")
-		defer os.Unsetenv("GH_TOKEN")
+		t.Setenv("GH_TOKEN", "env-token")
 
 		cfg := ClientConfig{
 			EnableAccessTokenFromEnvironment: true,
