@@ -13,7 +13,7 @@ func NewHTTPClient(ctx context.Context, opts ...Opt) (*http.Client, error) {
 	ts := NewTokenSource(opts...)
 	_, err := ts.Token()
 	if err != nil {
-		return nil, fmt.Errorf("error getting token: %w", err)
+		return nil, fmt.Errorf("error getting githubactions token: %w", err)
 	}
 
 	rts := oauth2.ReuseTokenSource(nil, ts)

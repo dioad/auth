@@ -7,6 +7,7 @@ package aws
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
@@ -63,6 +64,9 @@ type tokenSource struct {
 	stsClient        stsClient
 	stsFactory       stsFactory
 	imdsClient       imdsClient
+
+	initSTSOnce func() (stsClient, error)
+	initOnce    sync.Once
 }
 
 type stsClient interface {
@@ -71,42 +75,15 @@ type stsClient interface {
 
 // Token retrieves a new OIDC token from the AWS STS GetWebIdentityToken API
 func (c *tokenSource) Token() (*oauth2.Token, error) {
-	if c.stsClient == nil {
-		var awsConfig aws.Config
-		var err error
-
-		if c.awsConfig != nil {
-			awsConfig = *c.awsConfig
-		} else {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			region := c.region
-			if region == "" {
-				client := c.imdsClient
-				if client == nil {
-					client = imds.New(imds.Options{})
-				}
-				if out, err := client.GetRegion(ctx, &imds.GetRegionInput{}); err == nil {
-					region = out.Region
-				}
-			}
-
-			var optFns []func(*config.LoadOptions) error
-			if region != "" {
-				optFns = append(optFns, config.WithRegion(region))
-			}
-
-			awsConfig, err = config.LoadDefaultConfig(ctx, optFns...)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load AWS config: %w", err)
-			}
+	c.initOnce.Do(func() {
+		if c.initSTSOnce == nil {
+			c.initSTSOnce = c.prepareInitSTSOnce()
 		}
-		if c.stsFactory != nil {
-			c.stsClient = c.stsFactory(awsConfig)
-		} else {
-			c.stsClient = sts.NewFromConfig(awsConfig)
-		}
+	})
+
+	stsClient, err := c.initSTSOnce()
+	if err != nil {
+		return nil, err
 	}
 
 	params := &sts.GetWebIdentityTokenInput{
@@ -116,7 +93,7 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 
 	stsCtx, stsCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer stsCancel()
-	response, err := c.stsClient.GetWebIdentityToken(stsCtx, params)
+	response, err := stsClient.GetWebIdentityToken(stsCtx, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get web identity token: %w", err)
 	}
@@ -199,5 +176,54 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 		opt(source)
 	}
 
+	source.initSTSOnce = source.prepareInitSTSOnce()
+
 	return source
+}
+
+func (c *tokenSource) prepareInitSTSOnce() func() (stsClient, error) {
+	return sync.OnceValues(func() (stsClient, error) {
+		if c.stsClient != nil {
+			return c.stsClient, nil
+		}
+
+		var awsConfig aws.Config
+		var err error
+
+		if c.awsConfig != nil {
+			awsConfig = *c.awsConfig
+		} else {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			region := c.region
+			if region == "" {
+				client := c.imdsClient
+				if client == nil {
+					client = imds.New(imds.Options{})
+				}
+				if out, err := client.GetRegion(ctx, &imds.GetRegionInput{}); err == nil {
+					region = out.Region
+				}
+			}
+
+			var optFns []func(*config.LoadOptions) error
+			if region != "" {
+				optFns = append(optFns, config.WithRegion(region))
+			}
+
+			awsConfig, err = config.LoadDefaultConfig(ctx, optFns...)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load AWS config: %w", err)
+			}
+		}
+
+		var client stsClient
+		if c.stsFactory != nil {
+			client = c.stsFactory(awsConfig)
+		} else {
+			client = sts.NewFromConfig(awsConfig)
+		}
+		return client, nil
+	})
 }

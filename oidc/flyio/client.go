@@ -2,6 +2,7 @@ package flyio
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -22,8 +23,9 @@ func NewHTTPClient(ctx context.Context, opts ...Opt) (*http.Client, error) {
 	ts := NewTokenSource(opts...)
 	_, err := ts.Token()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting flyio token: %w", err)
 	}
+
 	rts := oauth2.ReuseTokenSource(nil, ts)
 
 	return oauth2.NewClient(ctx, rts), nil
