@@ -63,10 +63,10 @@ func RegisteredClaimsFromContext(ctx context.Context) *jwt.RegisteredClaims {
 		rc := vc.RegisteredClaims
 		// Map validator.RegisteredClaims to jwt.RegisteredClaims (the two types differ slightly)
 		jwtRC := &jwt.RegisteredClaims{
-			Issuer:    rc.Issuer,
-			Subject:   rc.Subject,
-			Audience:  rc.Audience,
-			ID:        rc.ID,
+			Issuer:   rc.Issuer,
+			Subject:  rc.Subject,
+			Audience: rc.Audience,
+			ID:       rc.ID,
 		}
 		// Convert int64 timestamps to NumericDate pointers
 		if rc.NotBefore > 0 {
