@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,12 +14,15 @@ import (
 )
 
 type fakeSTSClient struct {
+	mu     sync.Mutex
 	input  *sts.GetWebIdentityTokenInput
 	output *sts.GetWebIdentityTokenOutput
 	err    error
 }
 
 func (f *fakeSTSClient) GetWebIdentityToken(_ context.Context, params *sts.GetWebIdentityTokenInput, _ ...func(*sts.Options)) (*sts.GetWebIdentityTokenOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.input = params
 	return f.output, f.err
 }
@@ -138,6 +142,9 @@ func TestTokenUsesInjectedSTSClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, tokenValue, result.AccessToken)
 	assert.Equal(t, expiry, result.Expiry)
+
+	client.mu.Lock()
+	defer client.mu.Unlock()
 	require.NotNil(t, client.input)
 	assert.Equal(t, []string{"aud"}, client.input.Audience)
 	assert.Equal(t, aws.String("RS256"), client.input.SigningAlgorithm)

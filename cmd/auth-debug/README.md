@@ -7,7 +7,7 @@ This utility detects the platform it's running on (AWS, GitHub Actions, or Fly.i
 Run the utility using `go run`:
 
 ```bash
-go run examples/auth-debug/main.go
+go run cmd/auth-debug/main.go
 ```
 
 ### Options
@@ -20,7 +20,7 @@ go run examples/auth-debug/main.go
 ### Example: Get raw token with specific audience
 
 ```bash
-TOKEN=$(go run examples/auth-debug/main.go -token-only -audience "my-service")
+TOKEN=$(go run cmd/auth-debug/main.go -token-only -audience "my-service")
 curl -H "Authorization: Bearer $TOKEN" https://api.example.com
 ```
 

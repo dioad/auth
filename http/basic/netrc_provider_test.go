@@ -123,8 +123,12 @@ password pass2`
 	req2, _ := http.NewRequest("GET", "http://example2.com", nil)
 
 	// Add auth from different instances
-	_ = auth1.AddAuth(req1)
-	_ = auth2.AddAuth(req2)
+	if err := auth1.AddAuth(req1); err != nil {
+		t.Fatalf("auth1.AddAuth(req1) returned error: %v", err)
+	}
+	if err := auth2.AddAuth(req2); err != nil {
+		t.Fatalf("auth2.AddAuth(req2) returned error: %v", err)
+	}
 
 	// Verify each got the right credentials
 	user1, pass1, _ := req1.BasicAuth()
@@ -175,7 +179,9 @@ func TestClientAuthWithConfiguredCredentials(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
-	_ = auth.AddAuth(req)
+	if err := auth.AddAuth(req); err != nil {
+		t.Fatalf("AddAuth returned error: %v", err)
+	}
 
 	user, pass, ok := req.BasicAuth()
 	if !ok {

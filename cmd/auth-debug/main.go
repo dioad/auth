@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"golang.org/x/oauth2"
 
@@ -23,10 +21,6 @@ func main() {
 	platform := flag.String("platform", "auto", "Platform to use (aws, github, flyio, auto)")
 	awsSigningAlg := flag.String("aws-signing-alg", "", "AWS STS signing algorithm")
 	flag.Parse()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	_ = ctx
-	defer cancel()
 
 	var token *oauth2.Token
 	var detectedPlatform string
@@ -52,7 +46,7 @@ func main() {
 			}
 		}
 		if !found {
-			fmt.Fprintf(os.Stderr, "Unknown platform: %s\n", *platform)
+			_, _ = fmt.Fprintf(os.Stderr, "Unknown platform: %s\n", *platform)
 			os.Exit(1)
 		}
 	} else {
@@ -70,35 +64,35 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error fetching token: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error fetching token: %v\n", err)
 		os.Exit(1)
 	}
 
 	if token == nil {
-		fmt.Fprintf(os.Stderr, "Could not detect platform or fetch token. Ensure you are running in a supported environment.\n")
+		_, _ = fmt.Fprintf(os.Stderr, "Could not detect platform or fetch token. Ensure you are running in a supported environment.\n")
 		os.Exit(1)
 	}
 
 	if *tokenOnly {
-		fmt.Println(token.AccessToken)
+		_, _ = fmt.Println(token.AccessToken)
 		return
 	}
 
-	fmt.Printf("Platform: %s\n", detectedPlatform)
-	fmt.Printf("Token Expiry: %v\n", token.Expiry)
-	fmt.Println("\nClaims:")
+	_, _ = fmt.Printf("Platform: %s\n", detectedPlatform)
+	_, _ = fmt.Printf("Token Expiry: %v\n", token.Expiry)
+	_, _ = fmt.Println("\nClaims:")
 
 	claims, err := decodeClaims(token.AccessToken)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error decoding claims: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Error decoding claims: %v\n", err)
 		// Still print the token if we can't decode it?
 		// The user might want it.
-		fmt.Printf("\nRaw Token: %s\n", token.AccessToken)
+		_, _ = fmt.Printf("\nRaw Token: %s\n", token.AccessToken)
 		return
 	}
 
 	prettyClaims, _ := json.MarshalIndent(claims, "", "  ")
-	fmt.Println(string(prettyClaims))
+	_, _ = fmt.Println(string(prettyClaims))
 }
 
 func decodeClaims(token string) (map[string]any, error) {
