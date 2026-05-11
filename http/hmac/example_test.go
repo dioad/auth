@@ -29,7 +29,7 @@ func Example() {
 		user, _ := authhttp.AuthenticatedPrincipalFromContext(r.Context())
 		fmt.Printf("Authenticated user: %s\n", user)
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "success")
+		_, _ = fmt.Fprint(w, "success")
 	}))
 
 	server := httptest.NewServer(api)
@@ -60,9 +60,13 @@ func Example() {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
 	fmt.Printf("Response: %s\n", string(body))
 
 	// Output:
@@ -83,7 +87,7 @@ func ExampleClientAuth_AddAuth() {
 	})
 
 	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})))
 	defer server.Close()
 
@@ -109,7 +113,7 @@ func ExampleClientAuth_AddAuth() {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	fmt.Println(resp.StatusCode)
 
 	// Output:
@@ -130,7 +134,7 @@ func ExampleClientAuth_AddAuth_requestBinding() {
 	})
 
 	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "verified binding")
+		_, _ = fmt.Fprint(w, "verified binding")
 	})))
 	defer server.Close()
 
@@ -157,8 +161,12 @@ func ExampleClientAuth_AddAuth_requestBinding() {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
 	fmt.Println(string(body))
 
 	// Output:

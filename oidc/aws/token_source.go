@@ -83,7 +83,7 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 
 			region := c.region
 			if region == "" {
-				var client imdsClient = c.imdsClient
+				client := c.imdsClient
 				if client == nil {
 					client = imds.New(imds.Options{})
 				}

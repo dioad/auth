@@ -161,7 +161,7 @@ func validateSignedHeaders(r *http.Request, configuredSignedHeaders []string) ([
 		}
 		for i, requiredHeader := range configuredSignedHeaders {
 			clientHeader := signedHeaders[i]
-			if strings.ToLower(strings.TrimSpace(requiredHeader)) != strings.ToLower(strings.TrimSpace(clientHeader)) {
+			if !strings.EqualFold(strings.TrimSpace(requiredHeader), strings.TrimSpace(clientHeader)) {
 				return nil, errors.New("signed headers do not match server configuration")
 			}
 		}

@@ -18,7 +18,9 @@ func TestOIDCEndpoint_Discovery(t *testing.T) {
 				AuthorizationEndpoint: "http://example.com/auth",
 				TokenEndpoint:         "http://example.com/token",
 			}
-			json.NewEncoder(w).Encode(config)
+			if err := json.NewEncoder(w).Encode(config); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		}
 	}))
 	defer server.Close()

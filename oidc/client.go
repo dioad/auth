@@ -119,18 +119,6 @@ func withScopes(scopes ...string) oAuth2ConfigOpt {
 	}
 }
 
-func withClientSecret(clientSecret string) oAuth2ConfigOpt {
-	return func(c *oauth2.Config) {
-		c.ClientSecret = clientSecret
-	}
-}
-
-func withRedirectURL(redirectURL string) oAuth2ConfigOpt {
-	return func(c *oauth2.Config) {
-		c.RedirectURL = redirectURL
-	}
-}
-
 // WithDeviceCodeUI injects a custom device code UI handler for interactive flows.
 func WithDeviceCodeUI(ui DeviceCodeUI) ClientOpt {
 	return func(c *Client) {
