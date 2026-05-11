@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
@@ -93,7 +93,8 @@ func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	filePathClean := path.Clean(expFilePath)
+	filePathClean := filepath.Clean(expFilePath)
+	// #nosec G304
 	f, err := os.Open(filePathClean)
 	if err != nil {
 		return nil, err

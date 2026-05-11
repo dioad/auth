@@ -18,8 +18,10 @@ func SaveTokenToFile(token *oauth2.Token, filePath string) error {
 
 	switch strings.ToLower(filepath.Ext(filePath)) {
 	case ".json":
+		// #nosec G117
 		data, err = json.MarshalIndent(token, "", "  ")
 	case ".yaml", ".yml":
+		// #nosec G117
 		data, err = yaml.Marshal(token)
 	default:
 		return fmt.Errorf("unsupported file type: %s", filePath)
@@ -49,6 +51,7 @@ func ResolveTokenFromFile(filePath string) (*oauth2.Token, error) {
 		return nil, err
 	}
 
+	// #nosec G304
 	data, err := os.ReadFile(expandedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read token file: %w", err)

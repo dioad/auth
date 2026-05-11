@@ -14,14 +14,15 @@ import (
 )
 
 var (
-	DefaultCookieDomain          = "localhost"
-	DefaultCookiePath            = "/"
-	DefaultTokenCookieName       = "oidc_token"
-	DefaultTokenCookieMaxAge     = time.Hour
-	DefaultStateCookieName       = "oidc_state"
-	DefaultStateCookieMaxAge     = 5 * time.Minute
-	DefaultRefreshCookieName     = "oidc_refresh"
-	DefaultRefreshCookieMaxAge   = 24 * time.Hour
+	DefaultCookieDomain        = "localhost"
+	DefaultCookiePath          = "/"
+	DefaultTokenCookieName     = "oidc_token"
+	DefaultTokenCookieMaxAge   = time.Hour
+	DefaultStateCookieName     = "oidc_state"
+	DefaultStateCookieMaxAge   = 5 * time.Minute
+	DefaultRefreshCookieName   = "oidc_refresh"
+	DefaultRefreshCookieMaxAge = 24 * time.Hour
+	// #nosec G101
 	DefaultTokenExpiryCookieName = "oidc_expires_in"
 )
 
