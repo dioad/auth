@@ -2,6 +2,8 @@ package oidc
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -170,7 +172,11 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}
 
-	var tv jwt.TokenValidator = &auth0Validator{v: v, issuer: issuer}
+	var tv jwt.TokenValidator = &auth0Validator{
+		v:                  v,
+		issuer:             issuer,
+		enrichCustomClaims: cfg.HMACSecret != "",
+	}
 
 	if len(cfg.ClaimPredicate) > 0 {
 		predicate := jwt.ParseClaimPredicates(cfg.ClaimPredicate)
@@ -188,16 +194,67 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 }
 
 type auth0Validator struct {
-	v      *validator.Validator
-	issuer string
+	v                  *validator.Validator
+	issuer             string
+	enrichCustomClaims bool
 }
 
 func (v *auth0Validator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
-	return v.v.ValidateToken(ctx, tokenString)
+	claims, err := v.v.ValidateToken(ctx, tokenString)
+	if err != nil || !v.enrichCustomClaims {
+		return claims, err
+	}
+
+	vc, ok := claims.(*validator.ValidatedClaims)
+	if !ok || vc.CustomClaims != nil {
+		return claims, nil
+	}
+
+	payload, err := decodeJWTPayload(tokenString)
+	if err != nil {
+		return claims, nil
+	}
+
+	var customClaims IntrospectionResponse
+	if err := json.Unmarshal(payload, &customClaims); err != nil {
+		var rawClaims map[string]json.RawMessage
+		if err := json.Unmarshal(payload, &rawClaims); err != nil {
+			return claims, nil
+		}
+		delete(rawClaims, "aud")
+		sanitizedPayload, err := json.Marshal(rawClaims)
+		if err != nil {
+			return claims, nil
+		}
+		if err := json.Unmarshal(sanitizedPayload, &customClaims); err != nil {
+			return claims, nil
+		}
+	}
+	if customClaims.TokenType == "" {
+		customClaims.TokenType = "Bearer"
+	}
+	if customClaims.Audience == "" && len(vc.RegisteredClaims.Audience) > 0 {
+		customClaims.Audience = vc.RegisteredClaims.Audience[0]
+	}
+
+	vc.CustomClaims = &customClaims
+	return claims, nil
 }
 
 func (v *auth0Validator) String() string {
 	return fmt.Sprintf("Auth0Validator(%s)", v.issuer)
+}
+
+func decodeJWTPayload(token string) ([]byte, error) {
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("invalid JWT format")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT payload encoding: %w", err)
+	}
+	return payload, nil
 }
 
 type validatorDebugger struct {

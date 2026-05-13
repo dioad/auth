@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 
@@ -292,4 +293,42 @@ func TestHMACValidatorEnforcesExplicitIssuer(t *testing.T) {
 	// Validation should fail with wrong issuer
 	_, err = v.ValidateToken(context.Background(), wrongTokenString)
 	require.Error(t, err, "validator should reject token with wrong issuer, even in HMAC mode")
+}
+
+func TestHMACValidatorPopulatesIntrospectionCustomClaims(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret: "test-secret",
+		Audiences:  []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfig(cfg)
+	require.NoError(t, err, "should create validator with HMAC secret")
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "custom-issuer",
+		"aud": []string{"test"},
+		"iat": now.Unix(),
+		"exp": now.Add(1 * time.Hour).Unix(),
+		"realm_access": map[string]any{
+			"roles": []string{"connect-admin", "registry.publisher"},
+		},
+	})
+
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err, "should sign token")
+
+	out, err := v.ValidateToken(context.Background(), tokenString)
+	require.NoError(t, err, "HMAC validator should validate token")
+
+	vc, ok := out.(*jwtvalidator.ValidatedClaims)
+	require.True(t, ok, "validator should return *ValidatedClaims")
+
+	custom, ok := vc.CustomClaims.(*oidc.IntrospectionResponse)
+	require.True(t, ok, "custom claims should be IntrospectionResponse")
+	require.Equal(t, "test-user", custom.Subject)
+	require.Equal(t, "test", custom.Audience)
+	require.Equal(t, []string{"connect-admin", "registry.publisher"}, custom.RealmAccess.Roles)
+	require.Equal(t, "Bearer", custom.TokenType)
 }
