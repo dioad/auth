@@ -41,8 +41,10 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 
@@ -167,22 +169,39 @@ func (s *jwtPrincipalSource) Roles(_ context.Context) []string {
 
 func (s *jwtPrincipalSource) IsService(_ context.Context) bool { return false }
 
-// oidcPrincipalSource extracts principal from OIDC IntrospectionResponse claims
-type oidcPrincipalSource struct{}
+// oidcPrincipalSource extracts principal from OIDC IntrospectionResponse claims.
+type oidcPrincipalSource struct {
+	// RoleMapper maps generic OIDC claims to internal roles.
+	// When nil, provider-supplied roles from realm_access (and top-level roles
+	// in generic claim maps) are still returned.
+	RoleMapper ClaimRoleMapper
+}
 
 func (s *oidcPrincipalSource) Roles(ctx context.Context) []string {
+	var roles []string
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
 	if claims != nil {
-		return claims.RealmAccess.Roles
+		roles = append(roles, claims.RealmAccess.Roles...)
+	} else {
+		roles = append(roles, extractRolesFromClaimsMap(genericClaimsFromValidatedContext(ctx))...)
 	}
-	return nil
+	if s.RoleMapper != nil {
+		roles = append(roles, s.RoleMapper.MapRoles(s.Claims(ctx))...)
+	}
+	return dedupeStrings(roles)
 }
 
 func (s *oidcPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
 	// Try standard OIDC IntrospectionResponse claims first
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
-	if claims != nil {
+	if claims != nil && claims.Subject != "" {
 		return claims.Subject, nil
+	}
+	// Fallback only for generic validated claims that look OIDC-like.
+	if generic := genericClaimsFromValidatedContext(ctx); generic != nil {
+		if sub, ok := generic["sub"].(string); ok && sub != "" && hasOIDCLikeClaims(generic) {
+			return sub, nil
+		}
 	}
 	return "", nil
 }
@@ -205,7 +224,20 @@ func (s *oidcPrincipalSource) Claims(ctx context.Context) map[string]any {
 		result[AttrUsername] = claims.Username
 		result["active"] = claims.Active
 		result[AttrOrganisations] = claims.Organisations
+		// Also expose common raw OIDC/JWT claim names so mapping rules can use
+		// either canonical or provider-native keys.
+		result["upn"] = claims.UserPrincipalName
+		result["preferred_username"] = claims.PreferredUsername
+		result["email"] = claims.Email
+		result["email_verified"] = claims.EmailVerified
+		result["username"] = claims.Username
+		result["org"] = claims.Organisations
+		return result
 	}
+
+	// Fallback for validators that store custom claims as generic maps rather
+	// than oidc.IntrospectionResponse.
+	maps.Copy(result, genericClaimsFromValidatedContext(ctx))
 
 	return result
 }
@@ -303,8 +335,8 @@ func (e *defaultPrincipalExtractor) ExtractPrincipal(ctx context.Context, r *htt
 }
 
 // DefaultExtractorConfig configures per-source ClaimRoleMappers for
-// NewDefaultPrincipalExtractorWithConfig. Sources with a nil mapper return no roles
-// from claims (equivalent to the zero-value behaviour of NewDefaultPrincipalExtractor).
+// NewDefaultPrincipalExtractorWithConfig. A nil mapper disables only mapped-role
+// additions; provider-native source roles are still returned by each source.
 type DefaultExtractorConfig struct {
 	// FlyioMapper maps Fly.io OIDC claims to internal roles.
 	FlyioMapper ClaimRoleMapper
@@ -312,6 +344,9 @@ type DefaultExtractorConfig struct {
 	GithubActionsMapper ClaimRoleMapper
 	// AWSMapper maps AWS OIDC claims to internal roles.
 	AWSMapper ClaimRoleMapper
+	// OIDCMapper maps generic OIDC claims (e.g. Dex/Keycloak user tokens) to
+	// internal roles.
+	OIDCMapper ClaimRoleMapper
 }
 
 // NewDefaultPrincipalExtractor creates a PrincipalExtractor with the standard fallback chain:
@@ -334,10 +369,121 @@ func NewDefaultPrincipalExtractorWithConfig(cfg DefaultExtractorConfig) Principa
 		&flyio.PrincipalSource{RoleMapper: cfg.FlyioMapper},
 		&githubactions.PrincipalSource{RoleMapper: cfg.GithubActionsMapper},
 		&aws.PrincipalSource{RoleMapper: cfg.AWSMapper},
-		&oidcPrincipalSource{},
+		&oidcPrincipalSource{RoleMapper: cfg.OIDCMapper},
 		&jwtPrincipalSource{},
 		&githubPrincipalSource{},
 	)
+}
+
+func dedupeStrings(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func genericClaimsFromValidatedContext(ctx context.Context) map[string]any {
+	vc := jwt.ValidatedClaimsFromContext(ctx)
+	if vc == nil {
+		return nil
+	}
+
+	result := map[string]any{}
+	if vc.RegisteredClaims.Subject != "" {
+		result["sub"] = vc.RegisteredClaims.Subject
+	}
+	if vc.RegisteredClaims.Issuer != "" {
+		result["iss"] = vc.RegisteredClaims.Issuer
+	}
+	if len(vc.RegisteredClaims.Audience) > 0 {
+		result["aud"] = []string(vc.RegisteredClaims.Audience)
+	}
+
+	if vc.CustomClaims == nil {
+		return result
+	}
+
+	// Best-effort fallback for structured custom claims.
+	raw, err := json.Marshal(vc.CustomClaims)
+	if err != nil {
+		return result
+	}
+	var asMap map[string]any
+	if err := json.Unmarshal(raw, &asMap); err != nil {
+		return result
+	}
+	maps.Copy(result, asMap)
+	return result
+}
+
+func hasOIDCLikeClaims(claims map[string]any) bool {
+	if len(claims) == 0 {
+		return false
+	}
+
+	for _, key := range []string{
+		"auth_time",
+		"acr",
+		"amr",
+		"azp",
+		"nonce",
+		"email",
+		"preferred_username",
+		"given_name",
+		"family_name",
+		"name",
+	} {
+		if _, ok := claims[key]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func extractRolesFromClaimsMap(claims map[string]any) []string {
+	if len(claims) == 0 {
+		return nil
+	}
+	var roles []string
+
+	if realmAccess, ok := claims["realm_access"].(map[string]any); ok {
+		roles = append(roles, toStringSlice(realmAccess["roles"])...)
+	}
+	roles = append(roles, toStringSlice(claims["roles"])...)
+
+	return dedupeStrings(roles)
+}
+
+func toStringSlice(value any) []string {
+	switch raw := value.(type) {
+	case []string:
+		return dedupeStrings(raw)
+	case []any:
+		out := make([]string, 0, len(raw))
+		for _, item := range raw {
+			if s, ok := item.(string); ok && s != "" {
+				out = append(out, s)
+			}
+		}
+		return dedupeStrings(out)
+	default:
+		return nil
+	}
 }
 
 // NewPrincipalExtractor creates a PrincipalExtractor with the provided sources, in order

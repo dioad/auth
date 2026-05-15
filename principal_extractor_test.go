@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"testing"
 
 	jwtcore "github.com/auth0/go-jwt-middleware/v3/core"
+	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 
+	authcontext "github.com/dioad/auth/http/context"
 	"github.com/dioad/auth/oidc"
 )
 
@@ -296,4 +299,88 @@ func TestOIDCPrincipalSource_WithValidClaims(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOIDCPrincipalSource_RolesIncludesMappedClaims(t *testing.T) {
+	source := &oidcPrincipalSource{
+		RoleMapper: NewClaimRoleMapper([]ClaimRoleMapping{
+			{
+				Claims: map[string]string{"email": "smoke@example.com"},
+				Role:   "registry.admin.readonly",
+			},
+		}),
+	}
+
+	claims := &oidc.IntrospectionResponse{
+		Subject: "smoke-user",
+		Email:   "smoke@example.com",
+	}
+	claims.RealmAccess.Roles = []string{"connect-admin"}
+	ctx := jwtcore.SetClaims(context.Background(), claims)
+
+	roles := source.Roles(ctx)
+
+	if len(roles) != 2 {
+		t.Fatalf("Roles() len = %d, want 2 (%v)", len(roles), roles)
+	}
+	if !sliceContains(roles, "connect-admin") {
+		t.Fatalf("Roles() missing realm role connect-admin: %v", roles)
+	}
+	if !sliceContains(roles, "registry.admin.readonly") {
+		t.Fatalf("Roles() missing mapped role registry.admin.readonly: %v", roles)
+	}
+}
+
+func TestOIDCPrincipalSource_RolesDedupe(t *testing.T) {
+	source := &oidcPrincipalSource{
+		RoleMapper: NewClaimRoleMapper([]ClaimRoleMapping{
+			{
+				Claims: map[string]string{"email": "smoke@example.com"},
+				Role:   "registry.admin.readonly",
+			},
+		}),
+	}
+
+	claims := &oidc.IntrospectionResponse{
+		Subject: "smoke-user",
+		Email:   "smoke@example.com",
+	}
+	claims.RealmAccess.Roles = []string{"registry.admin.readonly"}
+	ctx := jwtcore.SetClaims(context.Background(), claims)
+
+	roles := source.Roles(ctx)
+	if len(roles) != 1 || roles[0] != "registry.admin.readonly" {
+		t.Fatalf("Roles() = %v, want [registry.admin.readonly]", roles)
+	}
+}
+
+func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t *testing.T) {
+	extractor := NewDefaultPrincipalExtractor()
+
+	vc := &jwtvalidator.ValidatedClaims{
+		RegisteredClaims: jwtvalidator.RegisteredClaims{
+			Subject: "jwt-subject",
+			Issuer:  "issuer.example",
+		},
+	}
+
+	ctx := jwtcore.SetClaims(context.Background(), vc)
+	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "jwt-subject")
+	req := (&http.Request{}).WithContext(ctx)
+
+	principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+	if err != nil {
+		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
+	}
+
+	if principalCtx.Source != "jwt" {
+		t.Fatalf("ExtractPrincipal() source = %q, want %q", principalCtx.Source, "jwt")
+	}
+	if principalCtx.ID != "jwt-subject" {
+		t.Fatalf("ExtractPrincipal() ID = %q, want %q", principalCtx.ID, "jwt-subject")
+	}
+}
+
+func sliceContains(values []string, target string) bool {
+	return slices.Contains(values, target)
 }
