@@ -447,6 +447,8 @@ func hasOIDCLikeClaims(claims map[string]any) bool {
 		"given_name",
 		"family_name",
 		"name",
+		"realm_access",
+		"roles",
 	} {
 		if _, ok := claims[key]; ok {
 			return true
