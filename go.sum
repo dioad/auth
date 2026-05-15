@@ -1,5 +1,5 @@
-github.com/auth0/go-jwt-middleware/v3 v3.1.0 h1:1aqVJA9K0+B6hP6qqMjTsJUk/L14sJSUjiTGW2/mY64=
-github.com/auth0/go-jwt-middleware/v3 v3.1.0/go.mod h1:BBZCQAXmqC/QfwzWyHOqF/kwN4C66eMeayy9QS6TgT4=
+github.com/auth0/go-jwt-middleware/v3 v3.2.0 h1:OP0/YH89A+w03zOjuRPPgKh5S+1+uAmY/vtllYUSWCM=
+github.com/auth0/go-jwt-middleware/v3 v3.2.0/go.mod h1:/f0hy3exUWxL7/4XJ1oSHBDSBf2Os2C1VT2RkQ9frs0=
 github.com/aws/aws-sdk-go-v2 v1.41.7 h1:DWpAJt66FmnnaRIOT/8ASTucrvuDPZASqhhLey6tLY8=
 github.com/aws/aws-sdk-go-v2 v1.41.7/go.mod h1:4LAfZOPHNVNQEckOACQx60Y8pSRjIkNZQz1w92xpMJc=
 github.com/aws/aws-sdk-go-v2/config v1.32.17 h1:FpL4/758/diKwqbytU0prpuiu60fgXKUWCpDJtApclU=
