@@ -140,7 +140,11 @@ type PrincipalSource interface {
 }
 
 // jwtPrincipalSource extracts principal from JWT token claims via auth/http/context package
-type jwtPrincipalSource struct{}
+type jwtPrincipalSource struct {
+	// RoleMapper maps generic JWT claims to internal roles.
+	// When nil, provider-supplied roles from claim maps are still returned.
+	RoleMapper ClaimRoleMapper
+}
 
 func (s *jwtPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
 	principal, _ := authcontext.AuthenticatedPrincipalFromContext(ctx)
@@ -152,19 +156,49 @@ func (s *jwtPrincipalSource) Name() string {
 }
 
 func (s *jwtPrincipalSource) Claims(ctx context.Context) map[string]any {
-	// JWT claims are not directly exposed through the authcontext package
-	// Return minimal information
+	result := make(map[string]any)
+
 	principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx)
 	if ok {
-		return map[string]any{
-			"principal": principal,
+		result["principal"] = principal
+	}
+
+	if registered, ok := authcontext.AuthenticatedRegisteredClaimsFromContext(ctx); ok {
+		if registered.Subject != "" {
+			result["sub"] = registered.Subject
+		}
+		if registered.Issuer != "" {
+			result["iss"] = registered.Issuer
+		}
+		if len(registered.Audience) > 0 {
+			result["aud"] = []string(registered.Audience)
 		}
 	}
-	return nil
+
+	if custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx); ok {
+		for key, value := range custom {
+			result[key] = value
+		}
+	}
+
+	// Keep compatibility with middleware paths that only store ValidatedClaims.
+	for key, value := range genericClaimsFromValidatedContext(ctx) {
+		result[key] = value
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
-func (s *jwtPrincipalSource) Roles(_ context.Context) []string {
-	return nil
+func (s *jwtPrincipalSource) Roles(ctx context.Context) []string {
+	claims := s.Claims(ctx)
+	roles := extractRolesFromClaimsMap(claims)
+	if s.RoleMapper != nil {
+		roles = append(roles, s.RoleMapper.MapRoles(claims)...)
+	}
+	return dedupeStrings(roles)
 }
 
 func (s *jwtPrincipalSource) IsService(_ context.Context) bool { return false }
@@ -347,6 +381,9 @@ type DefaultExtractorConfig struct {
 	// OIDCMapper maps generic OIDC claims (e.g. Dex/Keycloak user tokens) to
 	// internal roles.
 	OIDCMapper ClaimRoleMapper
+	// JWTMapper maps generic JWT claims stored by auth middleware to internal
+	// roles.
+	JWTMapper ClaimRoleMapper
 }
 
 // NewDefaultPrincipalExtractor creates a PrincipalExtractor with the standard fallback chain:
@@ -370,7 +407,7 @@ func NewDefaultPrincipalExtractorWithConfig(cfg DefaultExtractorConfig) Principa
 		&githubactions.PrincipalSource{RoleMapper: cfg.GithubActionsMapper},
 		&aws.PrincipalSource{RoleMapper: cfg.AWSMapper},
 		&oidcPrincipalSource{RoleMapper: cfg.OIDCMapper},
-		&jwtPrincipalSource{},
+		&jwtPrincipalSource{RoleMapper: cfg.JWTMapper},
 		&githubPrincipalSource{},
 	)
 }

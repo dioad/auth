@@ -381,6 +381,45 @@ func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t
 	}
 }
 
+func TestJWTPrincipalSource_RolesIncludeMappedCustomClaims(t *testing.T) {
+	source := &jwtPrincipalSource{
+		RoleMapper: NewClaimRoleMapper([]ClaimRoleMapping{
+			{
+				Claims: map[string]string{"email": "smoke@example.com"},
+				Role:   "registry.admin.readonly",
+			},
+		}),
+	}
+
+	ctx := context.Background()
+	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "smoke-principal")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, map[string]any{
+		"email": "smoke@example.com",
+	})
+
+	roles := source.Roles(ctx)
+	if !sliceContains(roles, "registry.admin.readonly") {
+		t.Fatalf("Roles() = %v, expected mapped role", roles)
+	}
+}
+
+func TestJWTPrincipalSource_RolesIncludeNativeClaimsRoles(t *testing.T) {
+	source := &jwtPrincipalSource{}
+
+	ctx := context.Background()
+	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "smoke-principal")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, map[string]any{
+		"realm_access": map[string]any{
+			"roles": []any{"registry.admin.readonly"},
+		},
+	})
+
+	roles := source.Roles(ctx)
+	if !sliceContains(roles, "registry.admin.readonly") {
+		t.Fatalf("Roles() = %v, expected native realm_access role", roles)
+	}
+}
+
 func sliceContains(values []string, target string) bool {
 	return slices.Contains(values, target)
 }
