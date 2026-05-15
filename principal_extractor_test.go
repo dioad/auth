@@ -240,6 +240,13 @@ func findSubstring(s, substr string) bool {
 	return false
 }
 
+type testValidatedCustomClaims struct {
+	Email       string         `json:"email,omitempty"`
+	RealmAccess map[string]any `json:"realm_access,omitempty"`
+}
+
+func (c *testValidatedCustomClaims) Validate(_ context.Context) error { return nil }
+
 // TestOIDCPrincipalSource_NilClaims tests that Extract doesn't panic when claims are nil
 // This is a regression test for a bug where claims.Subject was accessed without nil check
 func TestOIDCPrincipalSource_NilClaims(t *testing.T) {
@@ -362,6 +369,12 @@ func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t
 			Subject: "jwt-subject",
 			Issuer:  "issuer.example",
 		},
+		CustomClaims: &testValidatedCustomClaims{
+			Email: "jwt@example.com",
+			RealmAccess: map[string]any{
+				"roles": []any{"connect-admin"},
+			},
+		},
 	}
 
 	ctx := jwtcore.SetClaims(context.Background(), vc)
@@ -378,6 +391,51 @@ func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t
 	}
 	if principalCtx.ID != "jwt-subject" {
 		t.Fatalf("ExtractPrincipal() ID = %q, want %q", principalCtx.ID, "jwt-subject")
+	}
+}
+
+func TestDefaultPrincipalExtractor_UsesJWTMapperForGenericValidatedClaims(t *testing.T) {
+	extractor := NewDefaultPrincipalExtractorWithConfig(DefaultExtractorConfig{
+		OIDCMapper: NewClaimRoleMapper([]ClaimRoleMapping{
+			{
+				Claims: map[string]string{"email": "jwt@example.com"},
+				Role:   "oidc-role",
+			},
+		}),
+		JWTMapper: NewClaimRoleMapper([]ClaimRoleMapping{
+			{
+				Claims: map[string]string{"email": "jwt@example.com"},
+				Role:   "jwt-role",
+			},
+		}),
+	})
+
+	vc := &jwtvalidator.ValidatedClaims{
+		RegisteredClaims: jwtvalidator.RegisteredClaims{
+			Subject: "jwt-subject",
+		},
+		CustomClaims: &testValidatedCustomClaims{
+			Email: "jwt@example.com",
+		},
+	}
+
+	ctx := jwtcore.SetClaims(context.Background(), vc)
+	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "jwt-subject")
+	req := (&http.Request{}).WithContext(ctx)
+
+	principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+	if err != nil {
+		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
+	}
+
+	if principalCtx.Source != "jwt" {
+		t.Fatalf("ExtractPrincipal() source = %q, want %q", principalCtx.Source, "jwt")
+	}
+	if !sliceContains(principalCtx.Roles, "jwt-role") {
+		t.Fatalf("ExtractPrincipal() roles = %v, expected jwt-role", principalCtx.Roles)
+	}
+	if sliceContains(principalCtx.Roles, "oidc-role") {
+		t.Fatalf("ExtractPrincipal() roles = %v, did not expect oidc-role", principalCtx.Roles)
 	}
 }
 
@@ -400,6 +458,33 @@ func TestJWTPrincipalSource_RolesIncludeMappedCustomClaims(t *testing.T) {
 	roles := source.Roles(ctx)
 	if !sliceContains(roles, "registry.admin.readonly") {
 		t.Fatalf("Roles() = %v, expected mapped role", roles)
+	}
+}
+
+func TestJWTPrincipalSource_ClaimsPreserveAuthenticatedPrincipal(t *testing.T) {
+	source := &jwtPrincipalSource{
+		RoleMapper: NewClaimRoleMapper([]ClaimRoleMapping{
+			{
+				Claims: map[string]string{"principal": "smoke-principal"},
+				Role:   "registry.admin.readonly",
+			},
+		}),
+	}
+
+	ctx := context.Background()
+	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "smoke-principal")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, map[string]any{
+		"principal": "token-controlled",
+	})
+
+	claims := source.Claims(ctx)
+	if claims["principal"] != "smoke-principal" {
+		t.Fatalf("Claims()[principal] = %v, want %q", claims["principal"], "smoke-principal")
+	}
+
+	roles := source.Roles(ctx)
+	if !sliceContains(roles, "registry.admin.readonly") {
+		t.Fatalf("Roles() = %v, expected mapped role from authenticated principal", roles)
 	}
 }
 

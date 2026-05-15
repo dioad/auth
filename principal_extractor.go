@@ -177,12 +177,18 @@ func (s *jwtPrincipalSource) Claims(ctx context.Context) map[string]any {
 
 	if custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx); ok {
 		for key, value := range custom {
+			if key == "principal" {
+				continue
+			}
 			result[key] = value
 		}
 	}
 
 	// Keep compatibility with middleware paths that only store ValidatedClaims.
 	for key, value := range genericClaimsFromValidatedContext(ctx) {
+		if key == "principal" {
+			continue
+		}
 		result[key] = value
 	}
 
@@ -479,13 +485,13 @@ func hasOIDCLikeClaims(claims map[string]any) bool {
 		"amr",
 		"azp",
 		"nonce",
-		"email",
 		"preferred_username",
+		"email_verified",
 		"given_name",
 		"family_name",
+		"middle_name",
+		"nickname",
 		"name",
-		"realm_access",
-		"roles",
 	} {
 		if _, ok := claims[key]; ok {
 			return true
