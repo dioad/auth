@@ -2,9 +2,9 @@ package oidc
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
 	"strings"
 	"time"
@@ -210,25 +210,14 @@ func (v *auth0Validator) ValidateToken(ctx context.Context, tokenString string) 
 		return claims, nil
 	}
 
-	payload, err := decodeJWTPayload(tokenString)
+	customClaimsMap, err := jwt.ClaimsMapFromToken(tokenString)
 	if err != nil {
 		return claims, nil
 	}
 
-	var customClaims IntrospectionResponse
-	if err := json.Unmarshal(payload, &customClaims); err != nil {
-		var rawClaims map[string]json.RawMessage
-		if err := json.Unmarshal(payload, &rawClaims); err != nil {
-			return claims, nil
-		}
-		delete(rawClaims, "aud")
-		sanitizedPayload, err := json.Marshal(rawClaims)
-		if err != nil {
-			return claims, nil
-		}
-		if err := json.Unmarshal(sanitizedPayload, &customClaims); err != nil {
-			return claims, nil
-		}
+	customClaims, err := introspectionFromClaimsMap(customClaimsMap)
+	if err != nil {
+		return claims, nil
 	}
 	if customClaims.TokenType == "" {
 		customClaims.TokenType = "Bearer"
@@ -245,16 +234,29 @@ func (v *auth0Validator) String() string {
 	return fmt.Sprintf("Auth0Validator(%s)", v.issuer)
 }
 
-func decodeJWTPayload(token string) ([]byte, error) {
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid JWT format")
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+func introspectionFromClaimsMap(rawClaims map[string]any) (IntrospectionResponse, error) {
+	var customClaims IntrospectionResponse
+
+	payload, err := json.Marshal(rawClaims)
 	if err != nil {
-		return nil, fmt.Errorf("invalid JWT payload encoding: %w", err)
+		return customClaims, err
 	}
-	return payload, nil
+	if err := json.Unmarshal(payload, &customClaims); err == nil {
+		return customClaims, nil
+	}
+
+	// Some tokens emit "aud" as an array while IntrospectionResponse expects a
+	// string; tolerate that mismatch for compatibility when populating typed claims.
+	sanitized := maps.Clone(rawClaims)
+	delete(sanitized, "aud")
+	payload, err = json.Marshal(sanitized)
+	if err != nil {
+		return customClaims, err
+	}
+	if err := json.Unmarshal(payload, &customClaims); err != nil {
+		return customClaims, err
+	}
+	return customClaims, nil
 }
 
 type validatorDebugger struct {
