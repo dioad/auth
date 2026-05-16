@@ -66,6 +66,12 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 				ctx = authhttp.ContextWithAuthenticatedPrincipal(ctx, claims.RegisteredClaims.Subject)
 				ctx = authhttp.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
 			}
+			customClaims, err := jwt.ResolveCustomClaimsMap(claims, extracted.Token)
+			if err != nil {
+				h.logger.Debug().Err(err).Msg("unable to resolve authenticated custom claims")
+			} else if len(customClaims) > 0 {
+				ctx = authhttp.ContextWithAuthenticatedCustomClaims(ctx, customClaims)
+			}
 		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
