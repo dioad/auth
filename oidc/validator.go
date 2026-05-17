@@ -14,6 +14,9 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/dioad/auth/jwt"
+	"github.com/dioad/auth/oidc/aws"
+	"github.com/dioad/auth/oidc/flyio"
+	"github.com/dioad/auth/oidc/githubactions"
 )
 
 // isHMACAlgorithm checks if the given SignatureAlgorithm is a symmetric HMAC variant.
@@ -28,8 +31,9 @@ type TokenValidator = jwt.TokenValidator
 type ValidatorOpt func(*validatorOptions)
 
 type validatorOptions struct {
-	keyFunc      func(context.Context) (any, error)
-	jwksProvider *jwks.CachingProvider
+	keyFunc             func(context.Context) (any, error)
+	jwksProvider        *jwks.CachingProvider
+	customClaimsFactory func() validator.CustomClaims
 }
 
 // WithValidatorKeyFunc sets a custom key function for validation.
@@ -37,6 +41,18 @@ func WithValidatorKeyFunc(keyFunc func(context.Context) (any, error)) ValidatorO
 	return func(o *validatorOptions) {
 		if keyFunc != nil {
 			o.keyFunc = keyFunc
+		}
+	}
+}
+
+// WithValidatorCustomClaimsFactory sets a custom claims factory for the validator.
+// When set, the validator will deserialize JWT payloads into the type returned by
+// the factory, enabling provider-specific PrincipalSource implementations to
+// extract typed claims from the context.
+func WithValidatorCustomClaimsFactory(factory func() validator.CustomClaims) ValidatorOpt {
+	return func(o *validatorOptions) {
+		if factory != nil {
+			o.customClaimsFactory = factory
 		}
 	}
 }
@@ -130,11 +146,20 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("key function not configured")
 	}
 
+	// Resolve the custom claims factory: explicit option takes precedence,
+	// then auto-detect from the config Type field.
+	if options.customClaimsFactory == nil {
+		options.customClaimsFactory = customClaimsFactoryForType(cfg.Type)
+	}
+
 	// Build validator options.
 	validatorOpts := []validator.Option{
 		validator.WithKeyFunc(options.keyFunc),
 		validator.WithAlgorithm(algorithm),
 		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew) * time.Second),
+	}
+	if options.customClaimsFactory != nil {
+		validatorOpts = append(validatorOpts, validator.WithCustomClaims(options.customClaimsFactory))
 	}
 	if len(cfg.Audiences) > 0 {
 		validatorOpts = append(validatorOpts, validator.WithAudiences(cfg.Audiences))
@@ -191,6 +216,22 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	}
 
 	return tv, nil
+}
+
+// customClaimsFactoryForType returns a custom claims factory for the given
+// provider type. Returns nil for unknown types, which causes the validator
+// to use the default generic claims map.
+func customClaimsFactoryForType(providerType string) func() validator.CustomClaims {
+	switch providerType {
+	case "flyio":
+		return func() validator.CustomClaims { return &flyio.Claims{} }
+	case "aws":
+		return func() validator.CustomClaims { return &aws.Claims{} }
+	case "githubactions":
+		return func() validator.CustomClaims { return &githubactions.Claims{} }
+	default:
+		return nil
+	}
 }
 
 type auth0Validator struct {

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 
+	"github.com/dioad/auth/oidc/aws"
 	"github.com/dioad/auth/oidc/flyio"
 )
 
@@ -216,6 +217,8 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 		// TODO: make this work
 	case "flyio":
 		return NewEndpoint(config.URL, WithCustomClaims(&flyio.Claims{}))
+	case "aws":
+		return NewEndpoint(config.URL, WithCustomClaims(&aws.Claims{}))
 	default:
 		if config.URL != "" {
 			return NewEndpoint(config.URL, WithCustomClaims(&IntrospectionResponse{}))
