@@ -41,9 +41,6 @@ func makeCustomClaims(principalId, orgId, awsAccount, region string) CustomClaim
 // TestExtract_WithAWSClaims verifies that Extract returns the subject from AWS claims.
 func TestExtract_WithAWSClaims(t *testing.T) {
 	claims := &Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "arn:aws:iam::123456789012:role/connect-server",
-		},
 		CustomClaims: makeCustomClaims("principal-789", "org-456", "123456789012", "us-east-1"),
 	}
 

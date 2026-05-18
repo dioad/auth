@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"golang.org/x/oauth2"
 )
 
@@ -43,7 +42,6 @@ type CustomClaims struct {
 }
 
 type Claims struct {
-	jwtvalidator.RegisteredClaims
 	CustomClaims
 }
 

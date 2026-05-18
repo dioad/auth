@@ -13,9 +13,6 @@ import (
 // TestExtract_WithGitHubActionsClaims verifies that Extract returns the subject from GitHub Actions claims.
 func TestExtract_WithGitHubActionsClaims(t *testing.T) {
 	claims := &Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "repo:octocat/Hello-World:ref:refs/heads/main",
-		},
 		CustomClaims: CustomClaims{
 			Actor:      "octocat",
 			Repository: "octocat/Hello-World",

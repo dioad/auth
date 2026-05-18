@@ -37,7 +37,7 @@ func flyioToken(t *testing.T) string {
 	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, gojwt.MapClaims{
 		"sub":             "dioad-dev:dioad-dev-edgerouter:cold-shape-2007",
 		"iss":             "https://oidc.fly.io/dioad-dev",
-		"aud":             []string{"test"},
+		"aud":             "test",
 		"iat":             now.Unix(),
 		"exp":             now.Add(1 * time.Hour).Unix(),
 		"app_id":          "5148555",
@@ -62,7 +62,7 @@ func awsToken(t *testing.T) string {
 	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, gojwt.MapClaims{
 		"sub": "arn:aws:iam::481665101164:role/dev-dioad-public-dns",
 		"iss": "https://sts.amazonaws.com",
-		"aud": []string{"test"},
+		"aud": "test",
 		"iat": now.Unix(),
 		"exp": now.Add(1 * time.Hour).Unix(),
 		"https://sts.amazonaws.com/": map[string]any{
@@ -87,7 +87,7 @@ func githubActionsToken(t *testing.T) string {
 	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, gojwt.MapClaims{
 		"sub":                 "repo:dioad/connect-control:ref:refs/heads/main",
 		"iss":                 "https://token.actions.githubusercontent.com",
-		"aud":                 []string{"test"},
+		"aud":                 "test",
 		"iat":                 now.Unix(),
 		"exp":                 now.Add(1 * time.Hour).Unix(),
 		"actor":               "patrickdowney",
