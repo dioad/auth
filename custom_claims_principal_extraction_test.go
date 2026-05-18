@@ -66,9 +66,6 @@ func TestFlyioPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 	})
 
 	flyioClaims := &flyio.Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "dioad-dev:dioad-dev-edgerouter:cold-shape-2007",
-		},
 		CustomClaims: flyio.CustomClaims{
 			AppId:   "5148555",
 			AppName: "dioad-dev-edgerouter",
@@ -113,9 +110,6 @@ func TestAWSPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 	})
 
 	awsClaims := &aws.Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "arn:aws:iam::481665101164:role/dev-dioad-public-dns",
-		},
 	}
 	awsClaims.HttpsStsAmazonawsCom.PrincipalId = "arn:aws:iam::481665101164:role/dev-dioad-public-dns"
 	awsClaims.HttpsStsAmazonawsCom.AwsAccount = "481665101164"
@@ -155,9 +149,6 @@ func TestGitHubActionsPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T)
 	})
 
 	ghClaims := &githubactions.Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "repo:dioad/connect-control:ref:refs/heads/main",
-		},
 		CustomClaims: githubactions.CustomClaims{
 			Actor:           "patrickdowney",
 			Repository:      "dioad/connect-control",

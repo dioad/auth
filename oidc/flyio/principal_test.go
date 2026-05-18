@@ -13,9 +13,6 @@ import (
 // TestExtract_WithFlyioClaims verifies that Extract returns the subject from Fly.io claims.
 func TestExtract_WithFlyioClaims(t *testing.T) {
 	claims := &Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "my-machine-id",
-		},
 		CustomClaims: CustomClaims{
 			AppName:   "my-app",
 			OrgName:   "my-org",
@@ -110,9 +107,6 @@ func TestIsService(t *testing.T) {
 // TestClaims verifies that Claims returns a map with both canonical and provider-specific keys.
 func TestClaims(t *testing.T) {
 	claims := &Claims{
-		RegisteredClaims: jwtvalidator.RegisteredClaims{
-			Subject: "my-machine-id",
-		},
 		CustomClaims: CustomClaims{
 			AppId:          "app-123",
 			AppName:        "my-app",

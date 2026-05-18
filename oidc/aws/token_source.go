@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
@@ -48,7 +47,6 @@ type CustomClaims struct {
 // Claims represents the JWT claims returned by the AWS OIDC provider, including both standard registered claims and
 // custom AWS-specific claims.
 type Claims struct {
-	jwtvalidator.RegisteredClaims
 	CustomClaims
 }
 

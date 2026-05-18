@@ -33,7 +33,11 @@ func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string,
 	if claims == nil {
 		return "", nil
 	}
-	return claims.Subject, nil
+	registered := jwt.RegisteredClaimsFromContext(ctx)
+	if registered == nil {
+		return "", nil
+	}
+	return registered.Subject, nil
 }
 
 func (s *PrincipalSource) Name() string {
