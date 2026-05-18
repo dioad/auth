@@ -30,14 +30,15 @@ type ClientConfig struct {
 
 // ValidatorConfig controls validation behavior for issued tokens.
 type ValidatorConfig struct {
-	EndpointConfig     `mapstructure:",squash"`
-	Audiences          []string       `json:"audiences" mapstructure:"audiences"`
-	Issuer             string         `json:"issuer" mapstructure:"issuer"`
-	CacheTTL           int            `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
-	SignatureAlgorithm string         `json:"signature_algorithm" mapstructure:"signature_algorithm"`
-	AllowedClockSkew   int            `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
-	Debug              bool           `json:"debug" mapstructure:"debug"`
-	ClaimPredicate     map[string]any `json:"claim_predicates" mapstructure:"claim_predicates"`
+	EndpointConfig      `mapstructure:",squash"`
+	Audiences           []string       `json:"audiences" mapstructure:"audiences"`
+	Issuer              string         `json:"issuer" mapstructure:"issuer"`
+	CacheTTL            int            `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
+	SignatureAlgorithm  string         `json:"signature_algorithm" mapstructure:"signature_algorithm"`
+	SignatureAlgorithms []string       `json:"signature_algorithms" mapstructure:"signature_algorithms"`
+	AllowedClockSkew    int            `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
+	Debug               bool           `json:"debug" mapstructure:"debug"`
+	ClaimPredicate      map[string]any `json:"claim_predicates" mapstructure:"claim_predicates"`
 	// HMACSecret is an optional shared secret for HS256/HS384/HS512 token
 	// validation. When non-empty, JWKS discovery is skipped and the secret is
 	// used directly as the signing key. Intended for local development and

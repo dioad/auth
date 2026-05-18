@@ -80,7 +80,14 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		issuer = cfg.URL
 	}
 
-	algorithm := validator.SignatureAlgorithm(cfg.SignatureAlgorithm)
+	algorithms, err := jwt.ResolveSignatureAlgorithms(
+		cfg.SignatureAlgorithm,
+		cfg.SignatureAlgorithms,
+		jwt.DefaultSignatureAlgorithms(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("resolving signature algorithms: %w", err)
+	}
 
 	options := &validatorOptions{}
 	for _, opt := range opts {
@@ -100,9 +107,16 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		}
 		// HMAC requires a symmetric signing algorithm (HS256/HS384/HS512).
 		// Override any non-HS algorithm to prevent runtime failures.
-		if algorithm == "" || !isHMACAlgorithm(algorithm) {
-			algorithm = validator.HS256
+		hmacAlgorithms := make([]validator.SignatureAlgorithm, 0, len(algorithms))
+		for _, algorithm := range algorithms {
+			if isHMACAlgorithm(algorithm) {
+				hmacAlgorithms = append(hmacAlgorithms, algorithm)
+			}
 		}
+		if len(hmacAlgorithms) == 0 {
+			hmacAlgorithms = []validator.SignatureAlgorithm{validator.HS256}
+		}
+		algorithms = hmacAlgorithms
 		// For HMAC smoke tests without an explicit issuer, accept any issuer claim.
 		// If an issuer was explicitly configured, enforce it.
 		if issuer == "" {
@@ -115,10 +129,6 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 
 	if issuer == "" {
 		return nil, fmt.Errorf("issuer or URL must be provided")
-	}
-
-	if algorithm == "" {
-		algorithm = validator.RS256
 	}
 
 	if options.keyFunc == nil {
@@ -155,8 +165,12 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	// Build validator options.
 	validatorOpts := []validator.Option{
 		validator.WithKeyFunc(options.keyFunc),
-		validator.WithAlgorithm(algorithm),
 		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew) * time.Second),
+	}
+	if len(algorithms) == 1 {
+		validatorOpts = append(validatorOpts, validator.WithAlgorithm(algorithms[0]))
+	} else {
+		validatorOpts = append(validatorOpts, validator.WithAlgorithms(algorithms))
 	}
 	if options.customClaimsFactory != nil {
 		validatorOpts = append(validatorOpts, validator.WithCustomClaims(options.customClaimsFactory))

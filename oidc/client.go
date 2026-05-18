@@ -16,6 +16,7 @@ import (
 	"github.com/markbates/goth"
 	"golang.org/x/oauth2"
 
+	authjwt "github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/oidc/aws"
 	"github.com/dioad/auth/oidc/flyio"
 	"github.com/dioad/auth/oidc/githubactions"
@@ -103,6 +104,15 @@ func WithValidatingSignatureAlgorithm(algorithm jwtvalidator.SignatureAlgorithm)
 	}
 }
 
+// WithValidatingSignatureAlgorithms sets the signature algorithms used when
+// validating ID tokens. This option takes precedence over
+// WithValidatingSignatureAlgorithm when both are set.
+func WithValidatingSignatureAlgorithms(algorithms []jwtvalidator.SignatureAlgorithm) ClientOpt {
+	return func(c *Client) {
+		c.validatingSignatureAlgorithms = append([]jwtvalidator.SignatureAlgorithm(nil), algorithms...)
+	}
+}
+
 // WithClientIDAndSecret sets both the client ID and secret for the client.
 func WithClientIDAndSecret(clientID, clientSecret string) ClientOpt {
 	return func(c *Client) {
@@ -164,16 +174,17 @@ func WithJWKSProvider(provider *jwks.CachingProvider) ClientOpt {
 
 // Client represents an OIDC client.
 type Client struct {
-	endpoint                     Endpoint
-	jwksProvider                 *jwks.CachingProvider
-	keyCacheTTL                  time.Duration
-	clientID                     string
-	clientSecret                 string
-	validatingSignatureAlgorithm jwtvalidator.SignatureAlgorithm
-	deviceUI                     DeviceCodeUI
-	httpDoer                     HTTPDoer
-	clock                        Clock
-	keyFunc                      func(context.Context) (any, error)
+	endpoint                      Endpoint
+	jwksProvider                  *jwks.CachingProvider
+	keyCacheTTL                   time.Duration
+	clientID                      string
+	clientSecret                  string
+	validatingSignatureAlgorithm  jwtvalidator.SignatureAlgorithm
+	validatingSignatureAlgorithms []jwtvalidator.SignatureAlgorithm
+	deviceUI                      DeviceCodeUI
+	httpDoer                      HTTPDoer
+	clock                         Clock
+	keyFunc                       func(context.Context) (any, error)
 }
 
 // NewClientFromConfig creates a new OIDC client from the provided configuration.
@@ -188,11 +199,10 @@ func NewClientFromConfig(config *ClientConfig) (*Client, error) {
 // NewClient creates a new OIDC client with the provided endpoint and options.
 func NewClient(endpoint Endpoint, opts ...ClientOpt) *Client {
 	client := &Client{
-		endpoint:                     endpoint,
-		keyCacheTTL:                  5 * time.Minute,
-		httpDoer:                     defaultHTTPClient(),
-		clock:                        realClock{},
-		validatingSignatureAlgorithm: jwtvalidator.RS256,
+		endpoint:    endpoint,
+		keyCacheTTL: 5 * time.Minute,
+		httpDoer:    defaultHTTPClient(),
+		clock:       realClock{},
 	}
 
 	for _, opt := range opts {
@@ -260,12 +270,23 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 	if c.keyFunc == nil {
 		return nil, fmt.Errorf("key function not configured")
 	}
-	jwtValidator, err := jwtvalidator.New(
+	algorithms, err := c.effectiveValidatingSignatureAlgorithms()
+	if err != nil {
+		return nil, fmt.Errorf("invalid validating signature algorithms: %w", err)
+	}
+
+	validatorOpts := []jwtvalidator.Option{
 		jwtvalidator.WithKeyFunc(c.keyFunc),
-		jwtvalidator.WithAlgorithm(c.validatingSignatureAlgorithm),
 		jwtvalidator.WithIssuer(c.endpoint.URL().String()),
 		jwtvalidator.WithAudiences(audiences),
-	)
+	}
+	if len(algorithms) == 1 {
+		validatorOpts = append(validatorOpts, jwtvalidator.WithAlgorithm(algorithms[0]))
+	} else {
+		validatorOpts = append(validatorOpts, jwtvalidator.WithAlgorithms(algorithms))
+	}
+
+	jwtValidator, err := jwtvalidator.New(validatorOpts...)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure validator for %v: %w", c.endpoint.URL(), err)
@@ -277,6 +298,30 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 	}
 
 	return validatedClaims.(*jwtvalidator.ValidatedClaims), nil
+}
+
+func (c *Client) effectiveValidatingSignatureAlgorithms() ([]jwtvalidator.SignatureAlgorithm, error) {
+	if len(c.validatingSignatureAlgorithms) > 0 {
+		algorithms := make([]jwtvalidator.SignatureAlgorithm, 0, len(c.validatingSignatureAlgorithms))
+		seen := make(map[jwtvalidator.SignatureAlgorithm]struct{}, len(c.validatingSignatureAlgorithms))
+		for i, algorithm := range c.validatingSignatureAlgorithms {
+			if algorithm == "" {
+				return nil, fmt.Errorf("validating signature algorithms[%d] must not be empty", i)
+			}
+			if _, ok := seen[algorithm]; ok {
+				continue
+			}
+			seen[algorithm] = struct{}{}
+			algorithms = append(algorithms, algorithm)
+		}
+		return algorithms, nil
+	}
+
+	if c.validatingSignatureAlgorithm != "" {
+		return []jwtvalidator.SignatureAlgorithm{c.validatingSignatureAlgorithm}, nil
+	}
+
+	return authjwt.DefaultSignatureAlgorithms(), nil
 }
 
 type RequestOpt func(url.Values)

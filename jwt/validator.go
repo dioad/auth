@@ -56,9 +56,13 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("issuer must be provided")
 	}
 
-	algorithm := jwtvalidator.SignatureAlgorithm(cfg.SignatureAlgorithm)
-	if algorithm == "" {
-		algorithm = jwtvalidator.RS256
+	algorithms, err := ResolveSignatureAlgorithms(
+		cfg.SignatureAlgorithm,
+		cfg.SignatureAlgorithms,
+		DefaultSignatureAlgorithms(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("resolving signature algorithms: %w", err)
 	}
 
 	allowedClockSkew := time.Duration(cfg.AllowedClockSkew) * time.Second
@@ -96,13 +100,19 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("key function not configured")
 	}
 
-	v, err := jwtvalidator.New(
+	validatorOpts := []jwtvalidator.Option{
 		jwtvalidator.WithKeyFunc(options.keyFunc),
-		jwtvalidator.WithAlgorithm(algorithm),
 		jwtvalidator.WithIssuer(cfg.Issuer),
 		jwtvalidator.WithAudiences(cfg.Audiences),
 		jwtvalidator.WithAllowedClockSkew(allowedClockSkew),
-	)
+	}
+	if len(algorithms) == 1 {
+		validatorOpts = append(validatorOpts, jwtvalidator.WithAlgorithm(algorithms[0]))
+	} else {
+		validatorOpts = append(validatorOpts, jwtvalidator.WithAlgorithms(algorithms))
+	}
+
+	v, err := jwtvalidator.New(validatorOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}
@@ -121,12 +131,20 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		tv = NewValidatorDebugger(tv,
 			WithLabel("issuer", cfg.Issuer),
 			WithLabel("audiences", strings.Join(cfg.Audiences, ",")),
-			WithLabel("signatureAlgorithm", string(algorithm)),
+			WithLabel("signatureAlgorithms", signatureAlgorithmsLogLabel(algorithms)),
 			WithLabel("allowedClockSkew", allowedClockSkew.String()),
 		)
 	}
 
 	return tv, nil
+}
+
+func signatureAlgorithmsLogLabel(algorithms []jwtvalidator.SignatureAlgorithm) string {
+	values := make([]string, 0, len(algorithms))
+	for _, algorithm := range algorithms {
+		values = append(values, string(algorithm))
+	}
+	return strings.Join(values, ",")
 }
 
 // NewMultiValidatorFromConfig creates a MultiValidator from multiple configs.
