@@ -13,6 +13,7 @@ import (
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,6 +30,7 @@ func signTestToken(t *testing.T, key *rsa.PrivateKey, issuer string, audiences [
 	maps.Copy(allClaims, claims)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, allClaims)
+	token.Header["kid"] = "test-key"
 	tokenString, err := token.SignedString(key)
 	require.NoError(t, err)
 	return tokenString
@@ -41,8 +43,9 @@ func TestNewValidatorFromConfigWithKeyFunc(t *testing.T) {
 	tokenString := signTestToken(t, key, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
 
 	cfg := ValidatorConfig{
-		Issuer:    "https://issuer.example",
-		Audiences: []string{"aud"},
+		Issuer:             "https://issuer.example",
+		Audiences:          []string{"aud"},
+		SignatureAlgorithm: "RS256",
 	}
 
 	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(ctx context.Context) (any, error) {
@@ -62,9 +65,10 @@ func TestValidatorClaimPredicate(t *testing.T) {
 	tokenString := signTestToken(t, key, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
 
 	cfg := ValidatorConfig{
-		Issuer:         "https://issuer.example",
-		Audiences:      []string{"aud"},
-		ClaimPredicate: map[string]any{"role": "admin"},
+		Issuer:             "https://issuer.example",
+		Audiences:          []string{"aud"},
+		SignatureAlgorithm: "RS256",
+		ClaimPredicate:     map[string]any{"role": "admin"},
 	}
 
 	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(ctx context.Context) (any, error) {
@@ -85,6 +89,48 @@ func TestValidatorClaimPredicate(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestNewValidatorFromConfigWithMultipleSignatureAlgorithms(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	tokenString := signTestToken(t, key, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
+
+	jwkKey, err := jwk.Import(&key.PublicKey)
+	require.NoError(t, err)
+	require.NoError(t, jwkKey.Set(jwk.KeyIDKey, "test-key"))
+	require.NoError(t, jwkKey.Set(jwk.AlgorithmKey, "RS256"))
+	keySet := jwk.NewSet()
+	require.NoError(t, keySet.AddKey(jwkKey))
+
+	cfg := ValidatorConfig{
+		Issuer:              "https://issuer.example",
+		Audiences:           []string{"aud"},
+		SignatureAlgorithms: []string{"RS256", "ES384"},
+	}
+
+	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(context.Context) (any, error) {
+		return keySet, nil
+	}))
+	require.NoError(t, err)
+
+	claims, err := v.ValidateToken(context.Background(), tokenString)
+	require.NoError(t, err)
+	require.NotNil(t, claims)
+}
+
+func TestNewValidatorFromConfigRejectsInvalidSignatureAlgorithms(t *testing.T) {
+	cfg := ValidatorConfig{
+		Issuer:              "https://issuer.example",
+		Audiences:           []string{"aud"},
+		SignatureAlgorithms: []string{"RS256", "INVALID"},
+	}
+
+	_, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(context.Context) (any, error) {
+		return "unused", nil
+	}))
+	require.Error(t, err)
+}
+
 func TestMultiValidatorFallsBack(t *testing.T) {
 	key1, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
@@ -94,13 +140,13 @@ func TestMultiValidatorFallsBack(t *testing.T) {
 	tokenString := signTestToken(t, key2, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
 
 	badValidator, err := NewValidatorFromConfigWithOptions(
-		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}},
+		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}, SignatureAlgorithm: "RS256"},
 		WithValidatorKeyFunc(func(ctx context.Context) (any, error) { return &key1.PublicKey, nil }),
 	)
 	require.NoError(t, err)
 
 	goodValidator, err := NewValidatorFromConfigWithOptions(
-		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}},
+		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}, SignatureAlgorithm: "RS256"},
 		WithValidatorKeyFunc(func(ctx context.Context) (any, error) { return &key2.PublicKey, nil }),
 	)
 	require.NoError(t, err)

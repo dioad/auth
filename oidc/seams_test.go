@@ -13,6 +13,7 @@ import (
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/dioad/auth/oidc"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
@@ -84,6 +85,7 @@ func TestClientValidateTokenWithKeyFunc(t *testing.T) {
 		"exp": time.Now().Add(time.Hour).Unix(),
 	}
 	token := jwtv5.NewWithClaims(jwtv5.SigningMethodRS256, claims)
+	token.Header["kid"] = "test-rsa-key"
 	tokenString, err := token.SignedString(key)
 	require.NoError(t, err)
 
@@ -95,6 +97,82 @@ func TestClientValidateTokenWithKeyFunc(t *testing.T) {
 			return &key.PublicKey, nil
 		}),
 		oidc.WithValidatingSignatureAlgorithm(jwtvalidator.RS256),
+	)
+
+	validatedClaims, err := client.ValidateToken(t.Context(), tokenString, []string{"test-audience"})
+	require.NoError(t, err)
+	assert.Equal(t, "test-user", validatedClaims.RegisteredClaims.Subject)
+}
+
+func TestClientValidateTokenWithDefaultAlgorithms(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	issuer := "https://issuer.example"
+	claims := jwtv5.MapClaims{
+		"iss": issuer,
+		"sub": "test-user",
+		"aud": "test-audience",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+	token := jwtv5.NewWithClaims(jwtv5.SigningMethodRS256, claims)
+	tokenString, err := token.SignedString(key)
+	require.NoError(t, err)
+
+	jwkKey, err := jwk.Import(&key.PublicKey)
+	require.NoError(t, err)
+	require.NoError(t, jwkKey.Set(jwk.KeyIDKey, "test-rsa-key"))
+	require.NoError(t, jwkKey.Set(jwk.AlgorithmKey, "RS256"))
+	keySet := jwk.NewSet()
+	require.NoError(t, keySet.AddKey(jwkKey))
+
+	endpoint, err := oidc.NewEndpoint(issuer)
+	require.NoError(t, err)
+	client := oidc.NewClient(
+		endpoint,
+		oidc.WithKeyFunc(func(context.Context) (any, error) {
+			return keySet, nil
+		}),
+	)
+
+	validatedClaims, err := client.ValidateToken(t.Context(), tokenString, []string{"test-audience"})
+	require.NoError(t, err)
+	assert.Equal(t, "test-user", validatedClaims.RegisteredClaims.Subject)
+}
+
+func TestClientValidateTokenMultiAlgorithmsTakePrecedence(t *testing.T) {
+	issuer := "https://issuer.example"
+	secret := []byte("test-secret")
+	claims := jwtv5.MapClaims{
+		"iss": issuer,
+		"sub": "test-user",
+		"aud": "test-audience",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+	token := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims)
+	token.Header["kid"] = "test-hs-key"
+	tokenString, err := token.SignedString(secret)
+	require.NoError(t, err)
+
+	jwkKey, err := jwk.Import(secret)
+	require.NoError(t, err)
+	require.NoError(t, jwkKey.Set(jwk.KeyIDKey, "test-hs-key"))
+	require.NoError(t, jwkKey.Set(jwk.AlgorithmKey, "HS256"))
+	keySet := jwk.NewSet()
+	require.NoError(t, keySet.AddKey(jwkKey))
+
+	endpoint, err := oidc.NewEndpoint(issuer)
+	require.NoError(t, err)
+	client := oidc.NewClient(
+		endpoint,
+		oidc.WithKeyFunc(func(context.Context) (any, error) {
+			return keySet, nil
+		}),
+		oidc.WithValidatingSignatureAlgorithm(jwtvalidator.RS256),
+		oidc.WithValidatingSignatureAlgorithms([]jwtvalidator.SignatureAlgorithm{
+			jwtvalidator.HS256,
+			jwtvalidator.HS384,
+		}),
 	)
 
 	validatedClaims, err := client.ValidateToken(t.Context(), tokenString, []string{"test-audience"})

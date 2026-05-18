@@ -152,6 +152,45 @@ func TestHMACValidatorEnforcesHS256Algorithm(t *testing.T) {
 	require.NoError(t, err, "HMAC validator should succeed with corrected HS256 algorithm")
 }
 
+func TestHMACValidatorFiltersNonHMACAlgorithmsFromList(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret:          "test-secret",
+		SignatureAlgorithms: []string{"RS256", "HS256"},
+		Audiences:           []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfig(cfg)
+	require.NoError(t, err, "should create validator with mixed algorithms by filtering to HMAC")
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "test-issuer",
+		"aud": "test",
+		"iat": now.Unix(),
+		"exp": now.Add(1 * time.Hour).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err, "should sign token with HS256")
+
+	_, err = v.ValidateToken(context.Background(), tokenString)
+	require.NoError(t, err, "validator should accept HS256 token after filtering non-HMAC algorithms")
+}
+
+func TestValidatorRejectsInvalidSignatureAlgorithms(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		Issuer:              "https://example.com",
+		SignatureAlgorithms: []string{"RS256", "NOT_REAL"},
+		Audiences:           []string{"test"},
+	}
+
+	_, err := oidc.NewValidatorFromConfigWithOptions(cfg, oidc.WithValidatorKeyFunc(func(context.Context) (any, error) {
+		return []byte("test-secret"), nil
+	}))
+	require.Error(t, err)
+}
+
 // TestHMACValidatorWithCustomKeyFuncAndNoIssuer verifies that when HMACSecret is set
 // along with a custom keyFunc, the synthetic issuer is still established for HMAC mode.
 func TestHMACValidatorWithCustomKeyFuncAndNoIssuer(t *testing.T) {
