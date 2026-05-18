@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"gopkg.in/go-jose/go-jose.v2"
@@ -137,6 +138,7 @@ func runValidate(args []string) {
 	_ = fs.Parse(args)
 
 	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // support JWTs up to 1 MiB
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
@@ -177,7 +179,7 @@ func runValidate(args []string) {
 	if issuer == "" {
 		iss, ok := claims["iss"].(string)
 		if !ok || iss == "" {
-			_, _ = fmt.Fprintf(os.Stderr, "✗ Token has no 'iss' claim; use --issuer to specify the issuer URL\n")
+			_, _ = fmt.Fprintf(os.Stderr, "✗ Token has no 'iss' claim; use -issuer to specify the issuer URL\n")
 			os.Exit(1)
 		}
 		issuer = iss
@@ -300,9 +302,21 @@ func printHeaderDetails(header map[string]any) {
 
 // fetchJWKSKeys retrieves the JWKS key set from the issuer's discovery endpoint.
 func fetchJWKSKeys(issuerURL string) (*jose.JSONWebKeySet, error) {
+	return fetchJWKSKeysContext(context.Background(), issuerURL)
+}
+
+// fetchJWKSKeysContext retrieves the JWKS key set using a context-aware HTTP
+// client with a 10-second timeout, preventing indefinite hangs on slow or
+// unreachable endpoints.
+func fetchJWKSKeysContext(ctx context.Context, issuerURL string) (*jose.JSONWebKeySet, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
 	discoveryURL := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
 
-	resp, err := http.Get(discoveryURL) //nolint:gosec
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating discovery request for %s: %w", discoveryURL, err)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetching discovery document from %s: %w", discoveryURL, err)
 	}
@@ -322,7 +336,11 @@ func fetchJWKSKeys(issuerURL string) (*jose.JSONWebKeySet, error) {
 		return nil, fmt.Errorf("no jwks_uri in discovery document")
 	}
 
-	jwksResp, err := http.Get(config.JWKSURI) //nolint:gosec
+	jwksReq, err := http.NewRequestWithContext(ctx, http.MethodGet, config.JWKSURI, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating JWKS request for %s: %w", config.JWKSURI, err)
+	}
+	jwksResp, err := client.Do(jwksReq)
 	if err != nil {
 		return nil, fmt.Errorf("fetching JWKS from %s: %w", config.JWKSURI, err)
 	}
