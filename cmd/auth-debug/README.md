@@ -72,7 +72,7 @@ The utility attempts to fetch an OIDC token from the following sources in order:
 
 If a token is successfully retrieved, it displays the platform name, token expiry, JWT header details (algorithm, key ID, type), and a pretty-printed JSON representation of the JWT claims.
 
-When `--verify` is used or the `validate` subcommand is invoked, the tool extracts
+When `-verify` is used or the `validate` subcommand is invoked, the tool extracts
 the issuer (`iss`) from the token claims, fetches the provider's JWKS keys via
 OpenID Connect discovery, displays the available JWKS keys (key ID, algorithm,
 use, key type), and performs full signature verification.

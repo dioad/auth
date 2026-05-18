@@ -21,7 +21,7 @@ import (
 //
 // Kent Beck's testing desiderata guides:
 //   - Isolated: each test is self-contained with its own HMAC key, no shared state
-//   - Deterministic: fixed HMAC signing, no network, no time-dependent races
+//   - Deterministic: fixed HMAC signing, no network calls; uses time.Now() for iat/exp
 //   - Fast: in-process validation only, no JWKS fetches
 //   - Readable: each test states the scenario clearly in its name and assertions
 //   - Behavioral: tests assert on observable output (claim types), not internal wiring

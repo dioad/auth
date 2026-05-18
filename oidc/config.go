@@ -33,7 +33,7 @@ type ValidatorConfig struct {
 	EndpointConfig      `mapstructure:",squash"`
 	Audiences           []string       `json:"audiences" mapstructure:"audiences"`
 	Issuer              string         `json:"issuer" mapstructure:"issuer"`
-	CacheTTL            int            `json:"cache_ttl_seconds" mapsstructure:"cache_ttl_seconds"`
+	CacheTTL            int            `json:"cache_ttl_seconds" mapstructure:"cache_ttl_seconds"`
 	SignatureAlgorithm  string         `json:"signature_algorithm" mapstructure:"signature_algorithm"`
 	SignatureAlgorithms []string       `json:"signature_algorithms" mapstructure:"signature_algorithms"`
 	AllowedClockSkew    int            `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
