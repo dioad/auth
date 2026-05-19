@@ -8,6 +8,8 @@ import (
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	authcontext "github.com/dioad/auth/http/context"
 )
 
 // TestExtract_WithFlyioClaims verifies that Extract returns the subject from Fly.io claims.
@@ -155,4 +157,155 @@ func TestClaims_EmptyContext(t *testing.T) {
 
 	assert.NotNil(t, claimsMap)
 	assert.Empty(t, claimsMap)
+}
+
+// TestHasValidClaims verifies the Fly.io fingerprint predicate.
+func TestHasValidClaims(t *testing.T) {
+	tests := []struct {
+		name   string
+		claims map[string]any
+		want   bool
+	}{
+		{
+			name: "full machine claims",
+			claims: map[string]any{
+				"app_id":     "app-123",
+				"machine_id": "machine-456",
+			},
+			want: true,
+		},
+		{
+			name: "app_id with machine_name",
+			claims: map[string]any{
+				"app_id":       "app-123",
+				"machine_name": "cold-shape-2007",
+			},
+			want: true,
+		},
+		{
+			name: "app_id with image",
+			claims: map[string]any{
+				"app_id": "app-123",
+				"image":  "registry.fly.io/my-app:latest",
+			},
+			want: true,
+		},
+		{
+			name: "missing app_id",
+			claims: map[string]any{
+				"machine_id": "machine-456",
+				"app_name":   "my-app",
+			},
+			want: false,
+		},
+		{
+			name: "app_id but no machine indicators",
+			claims: map[string]any{
+				"app_id":   "app-123",
+				"app_name": "my-app",
+				"org_name": "my-org",
+			},
+			want: false,
+		},
+		{
+			name:   "empty claims",
+			claims: map[string]any{},
+			want:   false,
+		},
+		{
+			name:   "nil claims",
+			claims: nil,
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, HasValidClaims(tt.claims))
+		})
+	}
+}
+
+// TestExtract_WithGenericClaims verifies that Extract returns the principal from
+// authcontext generic claims when they fingerprint as a Fly.io token.
+func TestExtract_WithGenericClaims(t *testing.T) {
+	claims := map[string]any{
+		"app_id":     "app-123",
+		"machine_id": "machine-456",
+		"app_name":   "my-app",
+	}
+	ctx := authcontext.ContextWithAuthenticatedPrincipal(context.Background(), "my-org:my-app:cold-shape")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
+
+	s := &PrincipalSource{}
+	principal, err := s.Extract(ctx, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "my-org:my-app:cold-shape", principal)
+}
+
+// TestExtract_WithGenericClaims_NoMatch verifies that Extract returns empty
+// string when generic claims do not match the Fly.io fingerprint.
+func TestExtract_WithGenericClaims_NoMatch(t *testing.T) {
+	claims := map[string]any{
+		"app_name": "my-app",
+		"org_name": "my-org",
+		// no app_id or machine_* keys
+	}
+	ctx := authcontext.ContextWithAuthenticatedPrincipal(context.Background(), "some-principal")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
+
+	s := &PrincipalSource{}
+	principal, err := s.Extract(ctx, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "", principal)
+}
+
+// TestIsService_WithGenericClaims verifies IsService returns true for Fly.io
+// generic claims and false for non-matching generic claims.
+func TestIsService_WithGenericClaims(t *testing.T) {
+	t.Run("matching generic claims", func(t *testing.T) {
+		ctx := authcontext.ContextWithAuthenticatedCustomClaims(context.Background(), map[string]any{
+			"app_id":     "app-123",
+			"machine_id": "machine-456",
+		})
+		s := &PrincipalSource{}
+		assert.True(t, s.IsService(ctx))
+	})
+
+	t.Run("non-matching generic claims", func(t *testing.T) {
+		ctx := authcontext.ContextWithAuthenticatedCustomClaims(context.Background(), map[string]any{
+			"app_name": "my-app",
+		})
+		s := &PrincipalSource{}
+		assert.False(t, s.IsService(ctx))
+	})
+}
+
+// TestClaims_WithGenericClaims verifies that Claims returns provider keys from
+// generic context claims when they fingerprint as a Fly.io token.
+func TestClaims_WithGenericClaims(t *testing.T) {
+	claims := map[string]any{
+		"app_id":          "app-123",
+		"app_name":        "my-app",
+		"machine_id":      "machine-456",
+		"machine_name":    "cold-shape-2007",
+		"org_name":        "my-org",
+		"org_id":          "org-789",
+		"machine_version": "v1",
+		"region":          "lhr",
+	}
+	ctx := authcontext.ContextWithAuthenticatedPrincipal(context.Background(), "my-org:my-app:cold-shape")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
+
+	s := &PrincipalSource{}
+	result := s.Claims(ctx)
+
+	assert.Equal(t, "my-org:my-app:cold-shape", result["username"])
+	assert.Equal(t, "app-123", result["app_id"])
+	assert.Equal(t, "my-app", result["app_name"])
+	assert.Equal(t, "machine-456", result["machine_id"])
+	assert.Equal(t, "cold-shape-2007", result["machine_name"])
+	assert.Equal(t, "my-org", result["org_name"])
 }

@@ -2,11 +2,25 @@ package flyio
 
 import (
 	"context"
+	"maps"
 	"net/http"
 
+	authcontext "github.com/dioad/auth/http/context"
 	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/mapper"
+	"github.com/dioad/auth/oidc/oidcutil"
 )
+
+// HasValidClaims reports whether claims contains enough Fly.io-specific fields
+// to be treated as a Fly.io OIDC token validated by a generic JWT middleware.
+// It requires the machine-unique app_id plus at least one additional machine
+// identifier to reduce false positives.
+func HasValidClaims(claims map[string]any) bool {
+	if !oidcutil.HasNonEmptyString(claims, "app_id") {
+		return false
+	}
+	return oidcutil.HasAnyNonEmptyString(claims, "machine_id", "machine_name", "machine_version", "image", "image_digest")
+}
 
 // PrincipalSource extracts principal identity from Fly.io OIDC tokens.
 type PrincipalSource struct {
@@ -24,20 +38,32 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 	return s.RoleMapper.MapRoles(s.Claims(ctx))
 }
 
+// Extract returns the principal subject from a Fly.io token. It first attempts
+// the typed-claims path (JWT middleware configured with a Fly.io validator), then
+// falls back to fingerprinting generic validated claims stored by a non-typed
+// JWT middleware.
 func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
-	// Guard on Fly.io-specific custom claims so this source does not claim
-	// tokens issued by other providers that merely have registered JWT claims.
-	// Return ("", nil) for non-Fly.io tokens to avoid noisy logs in the
-	// fallback extractor chain; only return error for actual failures.
-	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
-	if claims == nil {
+	// Typed path: JWT middleware configured with a Fly.io-specific validator.
+	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
+		registered := jwt.RegisteredClaimsFromContext(ctx)
+		if registered == nil {
+			return "", nil
+		}
+		return registered.Subject, nil
+	}
+	// Generic path: JWT middleware using a generic validator. Fingerprint the
+	// custom claims map to confirm this is a Fly.io token before extracting.
+	custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	if !ok || !HasValidClaims(custom) {
 		return "", nil
 	}
-	registered := jwt.RegisteredClaimsFromContext(ctx)
-	if registered == nil {
-		return "", nil
+	if principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
+		return principal, nil
 	}
-	return registered.Subject, nil
+	if sub, ok := custom["sub"].(string); ok && sub != "" {
+		return sub, nil
+	}
+	return "", nil
 }
 
 func (s *PrincipalSource) Name() string {
@@ -50,13 +76,12 @@ func (s *PrincipalSource) Name() string {
 func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 	result := make(map[string]any)
 
+	// Typed path.
 	registered := jwt.RegisteredClaimsFromContext(ctx)
 	if registered != nil && registered.Subject != "" {
 		result["username"] = registered.Subject
 	}
-
-	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
-	if claims != nil {
+	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
 		result["app_id"] = claims.AppId
 		result["app_name"] = claims.AppName
 		result["image"] = claims.Image
@@ -67,6 +92,19 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 		result["org_id"] = claims.OrgId
 		result["org_name"] = claims.OrgName
 		result["region"] = claims.Region
+		return result
+	}
+
+	// Generic path: include all claims from the context custom claims map.
+	custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	if !ok || !HasValidClaims(custom) {
+		return result
+	}
+	maps.Copy(result, custom)
+	if _, exists := result["username"]; !exists {
+		if principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
+			result["username"] = principal
+		}
 	}
 
 	return result
@@ -74,5 +112,9 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 
 // IsService returns true for any valid Fly.io token, as these represent machine identities.
 func (s *PrincipalSource) IsService(ctx context.Context) bool {
-	return jwt.CustomClaimsFromContext[*Claims](ctx) != nil
+	if jwt.CustomClaimsFromContext[*Claims](ctx) != nil {
+		return true
+	}
+	custom, _ := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	return HasValidClaims(custom)
 }

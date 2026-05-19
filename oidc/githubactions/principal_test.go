@@ -8,6 +8,8 @@ import (
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	authcontext "github.com/dioad/auth/http/context"
 )
 
 // TestExtract_WithGitHubActionsClaims verifies that Extract returns the subject from GitHub Actions claims.
@@ -165,4 +167,144 @@ func TestClaims_EmptyContext(t *testing.T) {
 
 	assert.NotNil(t, claimsMap)
 	assert.Empty(t, claimsMap)
+}
+
+// TestHHasValidClaims verifies the GitHub Actions fingerprint predicate.
+func TestHHasValidClaims(t *testing.T) {
+	tests := []struct {
+		name   string
+		claims map[string]any
+		want   bool
+	}{
+		{
+			name: "repository with job_workflow_ref",
+			claims: map[string]any{
+				"repository":       "myorg/infra",
+				"job_workflow_ref": "myorg/infra/.github/workflows/deploy.yaml@refs/heads/main",
+			},
+			want: true,
+		},
+		{
+			name: "repository with run_id",
+			claims: map[string]any{
+				"repository": "myorg/infra",
+				"run_id":     "12345",
+			},
+			want: true,
+		},
+		{
+			name: "repository with runner_environment",
+			claims: map[string]any{
+				"repository":         "myorg/infra",
+				"runner_environment": "github-hosted",
+			},
+			want: true,
+		},
+		{
+			name: "missing repository",
+			claims: map[string]any{
+				"job_workflow_ref": "myorg/infra/.github/workflows/deploy.yaml@refs/heads/main",
+				"run_id":           "12345",
+			},
+			want: false,
+		},
+		{
+			name: "repository but no workflow/run indicators",
+			claims: map[string]any{
+				"repository": "myorg/infra",
+				"ref":        "refs/heads/main",
+			},
+			want: false,
+		},
+		{
+			name:   "empty claims",
+			claims: map[string]any{},
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, HasValidClaims(tt.claims))
+		})
+	}
+}
+
+// TestExtract_WithGenericClaims verifies that Extract returns the principal from
+// authcontext generic claims when they fingerprint as a GitHub Actions token.
+func TestExtract_WithGenericClaims(t *testing.T) {
+	claims := map[string]any{
+		"repository":       "myorg/infra",
+		"job_workflow_ref": "myorg/infra/.github/workflows/deploy.yaml@refs/heads/main",
+		"run_id":           "12345",
+	}
+	ctx := authcontext.ContextWithAuthenticatedPrincipal(context.Background(), "repo:myorg/infra:run:12345")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
+
+	s := &PrincipalSource{}
+	principal, err := s.Extract(ctx, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "repo:myorg/infra:run:12345", principal)
+}
+
+// TestExtract_WithGenericClaims_NoMatch verifies that Extract returns empty
+// string when generic claims do not fingerprint as GitHub Actions.
+func TestExtract_WithGenericClaims_NoMatch(t *testing.T) {
+	claims := map[string]any{
+		"repository": "myorg/infra",
+		"ref":        "refs/heads/main",
+		// no workflow/run indicators
+	}
+	ctx := authcontext.ContextWithAuthenticatedPrincipal(context.Background(), "some-principal")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
+
+	s := &PrincipalSource{}
+	principal, err := s.Extract(ctx, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "", principal)
+}
+
+// TestIsService_WithGenericClaims verifies IsService returns true for GitHub
+// Actions generic claims and false for non-matching generic claims.
+func TestIsService_WithGenericClaims(t *testing.T) {
+	t.Run("matching generic claims", func(t *testing.T) {
+		ctx := authcontext.ContextWithAuthenticatedCustomClaims(context.Background(), map[string]any{
+			"repository":       "myorg/infra",
+			"job_workflow_ref": "myorg/infra/.github/workflows/deploy.yaml@refs/heads/main",
+		})
+		s := &PrincipalSource{}
+		assert.True(t, s.IsService(ctx))
+	})
+
+	t.Run("non-matching generic claims", func(t *testing.T) {
+		ctx := authcontext.ContextWithAuthenticatedCustomClaims(context.Background(), map[string]any{
+			"repository": "myorg/infra",
+			"ref":        "refs/heads/main",
+		})
+		s := &PrincipalSource{}
+		assert.False(t, s.IsService(ctx))
+	})
+}
+
+// TestClaims_WithGenericClaims verifies that Claims returns provider keys from
+// generic context claims when they fingerprint as a GitHub Actions token.
+func TestClaims_WithGenericClaims(t *testing.T) {
+	claims := map[string]any{
+		"repository":       "myorg/infra",
+		"job_workflow_ref": "myorg/infra/.github/workflows/deploy.yaml@refs/heads/main",
+		"run_id":           "12345",
+		"actor":            "octocat",
+	}
+	ctx := authcontext.ContextWithAuthenticatedPrincipal(context.Background(), "repo:myorg/infra:run:12345")
+	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
+
+	s := &PrincipalSource{}
+	result := s.Claims(ctx)
+
+	assert.Equal(t, "octocat", result["username"])
+	assert.Equal(t, "myorg/infra", result["repository"])
+	assert.Equal(t, "myorg/infra/.github/workflows/deploy.yaml@refs/heads/main", result["job_workflow_ref"])
+	assert.Equal(t, "12345", result["run_id"])
 }

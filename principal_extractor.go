@@ -239,7 +239,10 @@ func (s *oidcPrincipalSource) Extract(ctx context.Context, _ *http.Request) (str
 	}
 	// Fallback only for generic validated claims that look OIDC-like.
 	if generic := genericClaimsFromValidatedContext(ctx); generic != nil {
-		if sub, ok := generic["sub"].(string); ok && sub != "" && hasOIDCLikeClaims(generic) {
+		if !hasOIDCLikeClaims(generic) {
+			return "", nil
+		}
+		if sub, ok := generic["sub"].(string); ok && sub != "" {
 			return sub, nil
 		}
 	}
@@ -277,9 +280,31 @@ func (s *oidcPrincipalSource) Claims(ctx context.Context) map[string]any {
 
 	// Fallback for validators that store custom claims as generic maps rather
 	// than oidc.IntrospectionResponse.
-	maps.Copy(result, genericClaimsFromValidatedContext(ctx))
+	generic := genericClaimsFromValidatedContext(ctx)
+	if generic == nil {
+		return result
+	}
+
+	maps.Copy(result, generic)
+
+	// Inject canonical attribute keys for generic claims too if they exist
+	// and are not already set.
+	copyGenericToCanonical(result, generic, "preferred_username", AttrPreferredUsername)
+	copyGenericToCanonical(result, generic, "email", AttrEmail)
+	copyGenericToCanonical(result, generic, "email_verified", AttrEmailVerified)
+	copyGenericToCanonical(result, generic, "username", AttrUsername)
+	copyGenericToCanonical(result, generic, "upn", AttrUserPrincipalName)
 
 	return result
+}
+
+func copyGenericToCanonical(dst, src map[string]any, srcKey, dstKey string) {
+	if _, ok := dst[dstKey]; ok {
+		return
+	}
+	if v, ok := src[srcKey]; ok {
+		dst[dstKey] = v
+	}
 }
 
 func (s *oidcPrincipalSource) IsService(ctx context.Context) bool {
