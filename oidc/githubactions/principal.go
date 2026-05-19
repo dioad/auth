@@ -2,11 +2,32 @@ package githubactions
 
 import (
 	"context"
+	"maps"
 	"net/http"
 
+	authcontext "github.com/dioad/auth/http/context"
 	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/mapper"
+	"github.com/dioad/auth/oidc/oidcutil"
 )
+
+// HasValidClaims reports whether claims contains enough GitHub Actions-specific
+// fields to be treated as a GitHub Actions OIDC token. It requires the
+// repository claim plus at least one workflow/run indicator to reduce false
+// positives for repositories that happen to include ref-only claims.
+func HasValidClaims(claims map[string]any) bool {
+	if !oidcutil.HasNonEmptyString(claims, "repository") {
+		return false
+	}
+	return oidcutil.HasAnyNonEmptyString(claims,
+		"job_workflow_ref",
+		"workflow_ref",
+		"run_id",
+		"run_number",
+		"runner_environment",
+		"workflow_sha",
+	)
+}
 
 // PrincipalSource extracts principal identity from GitHub Actions OIDC tokens.
 type PrincipalSource struct {
@@ -24,20 +45,32 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 	return s.RoleMapper.MapRoles(s.Claims(ctx))
 }
 
+// Extract returns the principal subject from a GitHub Actions token. It first
+// attempts the typed-claims path (JWT middleware configured with a GitHub
+// Actions validator), then falls back to fingerprinting generic validated claims
+// stored by a non-typed JWT middleware.
 func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
-	// Guard on GitHub Actions-specific custom claims so this source does not
-	// claim tokens issued by other providers. Return ("", nil) for non-GitHub
-	// Actions tokens to avoid noisy logs in the fallback chain; only return
-	// error for actual extraction failures.
-	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
-	if claims == nil {
+	// Typed path: JWT middleware configured with a GitHub Actions-specific validator.
+	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
+		registered := jwt.RegisteredClaimsFromContext(ctx)
+		if registered == nil {
+			return "", nil
+		}
+		return registered.Subject, nil
+	}
+	// Generic path: JWT middleware using a generic validator. Fingerprint the
+	// custom claims map to confirm this is a GitHub Actions token before extracting.
+	custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	if !ok || !HasValidClaims(custom) {
 		return "", nil
 	}
-	registered := jwt.RegisteredClaimsFromContext(ctx)
-	if registered == nil {
-		return "", nil
+	if principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
+		return principal, nil
 	}
-	return registered.Subject, nil
+	if sub, ok := custom["sub"].(string); ok && sub != "" {
+		return sub, nil
+	}
+	return "", nil
 }
 
 func (s *PrincipalSource) Name() string {
@@ -50,38 +83,48 @@ func (s *PrincipalSource) Name() string {
 func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 	result := make(map[string]any)
 
-	claims := jwt.CustomClaimsFromContext[*Claims](ctx)
-	if claims == nil {
+	// Typed path.
+	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
+		if claims.Actor != "" {
+			result["username"] = claims.Actor
+		}
+		result["actor"] = claims.Actor
+		result["actor_id"] = claims.ActorID
+		result["base_ref"] = claims.BaseRef
+		result["environment"] = claims.Environment
+		result["event_name"] = claims.EventName
+		result["head_ref"] = claims.HeadRef
+		result["job_workflow_ref"] = claims.JobWorkflowRef
+		result["ref"] = claims.Ref
+		result["ref_type"] = claims.RefType
+		result["repository"] = claims.Repository
+		result["repository_id"] = claims.RepositoryID
+		result["repository_owner"] = claims.RepositoryOwner
+		result["repository_owner_id"] = claims.RepositoryOwnerID
+		result["run_attempt"] = claims.RunAttempt
+		result["run_id"] = claims.RunID
+		result["run_number"] = claims.RunNumber
+		result["runner_environment"] = claims.RunnerEnvironment
+		result["sha"] = claims.SHA
+		result["workflow"] = claims.Workflow
+		result["workflow_ref"] = claims.WorkflowRef
+		result["workflow_sha"] = claims.WorkflowSHA
 		return result
 	}
 
-	// Canonical attributes
-	if claims.Actor != "" {
-		result["username"] = claims.Actor
+	// Generic path: include all claims from the context custom claims map.
+	custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	if !ok || !HasValidClaims(custom) {
+		return result
 	}
-
-	// Raw JWT claim names — use these in ClaimRoleMapper rules for precise matching.
-	result["actor"] = claims.Actor
-	result["actor_id"] = claims.ActorID
-	result["base_ref"] = claims.BaseRef
-	result["environment"] = claims.Environment
-	result["event_name"] = claims.EventName
-	result["head_ref"] = claims.HeadRef
-	result["job_workflow_ref"] = claims.JobWorkflowRef
-	result["ref"] = claims.Ref
-	result["ref_type"] = claims.RefType
-	result["repository"] = claims.Repository
-	result["repository_id"] = claims.RepositoryID
-	result["repository_owner"] = claims.RepositoryOwner
-	result["repository_owner_id"] = claims.RepositoryOwnerID
-	result["run_attempt"] = claims.RunAttempt
-	result["run_id"] = claims.RunID
-	result["run_number"] = claims.RunNumber
-	result["runner_environment"] = claims.RunnerEnvironment
-	result["sha"] = claims.SHA
-	result["workflow"] = claims.Workflow
-	result["workflow_ref"] = claims.WorkflowRef
-	result["workflow_sha"] = claims.WorkflowSHA
+	maps.Copy(result, custom)
+	if _, exists := result["username"]; !exists {
+		if actor, ok := custom["actor"].(string); ok && actor != "" {
+			result["username"] = actor
+		} else if principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
+			result["username"] = principal
+		}
+	}
 
 	return result
 }
@@ -89,5 +132,9 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 // IsService returns true for any valid GitHub Actions token, as these represent
 // automated workflow identities rather than human users.
 func (s *PrincipalSource) IsService(ctx context.Context) bool {
-	return jwt.CustomClaimsFromContext[*Claims](ctx) != nil
+	if jwt.CustomClaimsFromContext[*Claims](ctx) != nil {
+		return true
+	}
+	custom, _ := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	return HasValidClaims(custom)
 }

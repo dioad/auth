@@ -109,8 +109,7 @@ func TestAWSPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 		}),
 	})
 
-	awsClaims := &aws.Claims{
-	}
+	awsClaims := &aws.Claims{}
 	awsClaims.HttpsStsAmazonawsCom.PrincipalId = "arn:aws:iam::481665101164:role/dev-dioad-public-dns"
 	awsClaims.HttpsStsAmazonawsCom.AwsAccount = "481665101164"
 	awsClaims.HttpsStsAmazonawsCom.SourceRegion = "eu-west-2"
