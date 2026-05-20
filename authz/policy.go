@@ -19,7 +19,7 @@ type PolicyMetadata struct {
 	// RoleAliases maps external role/group names (from IdP tokens) to internal
 	// Roles. Canonical internal role names are accepted when they appear in
 	// RoleCapabilities; otherwise only aliases listed here are accepted, and
-	// unrecognised role strings are rejected.
+	// unrecognised role strings are ignored.
 	RoleAliases map[string]Role
 }
 

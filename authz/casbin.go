@@ -14,7 +14,7 @@ import (
 
 // casbinModel is the Casbin RBAC model used by CasbinAuthorizer.
 // Policy format: p = role, resource, action
-// Role assignments are loaded from PolicyMetadata.RoleAliases.
+// Role resolution accepts canonical role names and RoleAliases mappings.
 // The "any" action wildcard grants all actions on the given resource.
 const casbinModel = `
 [request_definition]
@@ -74,8 +74,9 @@ func NewCasbinAuthorizer(metadata PolicyMetadata) (*CasbinAuthorizer, error) {
 	return &CasbinAuthorizer{enforcer: enforcer, metadata: CloneMetadata(metadata)}, nil
 }
 
-// Privileges resolves the principal's roles via RoleAliases and returns the
-// union of all matching role capabilities as a [PrivilegeSet].
+// Privileges resolves the principal's roles from canonical role names or
+// RoleAliases and returns the union of all matching role capabilities as a
+// [PrivilegeSet].
 func (a *CasbinAuthorizer) Privileges(_ context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
 		return nil, nil
