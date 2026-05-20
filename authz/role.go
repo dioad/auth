@@ -26,7 +26,7 @@ func (a *RoleAuthorizer) Privileges(_ context.Context, principalCtx *auth.Princi
 	if principalCtx == nil {
 		return nil, nil
 	}
-	roles := principalRoles(principalCtx, a.metadata.RoleAliases)
+	roles := principalRoles(principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
 		return nil, nil
 	}
