@@ -19,9 +19,9 @@ func NewRoleAuthorizer(metadata PolicyMetadata) *RoleAuthorizer {
 	return &RoleAuthorizer{metadata: CloneMetadata(metadata)}
 }
 
-// Privileges resolves the principal's roles via RoleAliases and returns the
-// union of all matching role capabilities. Returns nil when the principal has
-// no recognised roles.
+// Privileges resolves the principal's roles from canonical role names or
+// RoleAliases and returns the union of all matching role capabilities. Returns
+// nil when the principal has no recognised roles.
 func (a *RoleAuthorizer) Privileges(_ context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
 		return nil, nil
