@@ -168,18 +168,27 @@ func TestRoleAuthorizer_DeniesInsufficientRole(t *testing.T) {
 	assert.Equal(t, authz.ReasonDeniedNoPermission, d.Reason)
 }
 
-// TestRoleAuthorizer_UnmappedExternalRoleIsRejected verifies that a token
-// carrying an internal role name directly (e.g. "admin") is NOT granted access
-// unless it appears in RoleAliases. This guards against role injection.
-func TestRoleAuthorizer_UnmappedExternalRoleIsRejected(t *testing.T) {
+// TestRoleAuthorizer_CanonicalRoleAcceptedDirectly verifies that a principal
+// carrying a canonical role name is granted access without needing an alias.
+func TestRoleAuthorizer_CanonicalRoleAcceptedDirectly(t *testing.T) {
 	a := authz.NewRoleAuthorizer(testMetadata())
 
-	// "admin" is an internal role constant but NOT in RoleAliases. A token
-	// carrying the raw string "admin" must not gain admin privileges.
-	d, err := a.Can(context.Background(), principal("attacker", "admin"),
+	// "admin" is a canonical role in RoleCapabilities — accepted directly.
+	d, err := a.Can(context.Background(), principal("p1", "admin"),
+		authz.Permission("tunnel", "write"))
+	require.NoError(t, err)
+	assert.True(t, d.Allowed, "canonical role must be accepted directly")
+}
+
+// TestRoleAuthorizer_UnknownRoleIsRejected verifies that a token carrying a
+// role name that is neither canonical nor aliased is denied access.
+func TestRoleAuthorizer_UnknownRoleIsRejected(t *testing.T) {
+	a := authz.NewRoleAuthorizer(testMetadata())
+
+	d, err := a.Can(context.Background(), principal("attacker", "unknown-role"),
 		authz.Permission("tunnel", "write"))
 	require.ErrorIs(t, err, authz.ErrForbidden)
-	assert.False(t, d.Allowed, "raw internal role name must not grant access without alias")
+	assert.False(t, d.Allowed, "unknown role must not grant access")
 }
 
 func TestRoleAuthorizer_UnionsMultipleRoles(t *testing.T) {
@@ -239,14 +248,26 @@ func TestCasbinAuthorizer_DeniesNilPrincipal(t *testing.T) {
 	assert.Equal(t, authz.ReasonDeniedNilPrincipal, d.Reason)
 }
 
-func TestCasbinAuthorizer_DeniesUnmappedRole(t *testing.T) {
+// TestCasbinAuthorizer_CanonicalRoleAcceptedDirectly verifies that a canonical
+// role name is granted access without needing an alias entry.
+func TestCasbinAuthorizer_CanonicalRoleAcceptedDirectly(t *testing.T) {
 	a, err := authz.NewCasbinAuthorizer(testMetadata())
 	require.NoError(t, err)
 
 	d, err := a.Can(context.Background(), principal("p1", "admin"),
 		authz.Permission("tunnel", "write"))
+	require.NoError(t, err)
+	assert.True(t, d.Allowed, "canonical role must be accepted directly")
+}
+
+func TestCasbinAuthorizer_DeniesUnknownRole(t *testing.T) {
+	a, err := authz.NewCasbinAuthorizer(testMetadata())
+	require.NoError(t, err)
+
+	d, err := a.Can(context.Background(), principal("p1", "unknown-role"),
+		authz.Permission("tunnel", "write"))
 	require.ErrorIs(t, err, authz.ErrForbidden)
-	assert.False(t, d.Allowed, "raw 'admin' must not grant access without alias")
+	assert.False(t, d.Allowed, "unknown role must not grant access")
 	assert.Equal(t, authz.ReasonDeniedNoRoles, d.Reason)
 }
 

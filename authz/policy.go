@@ -46,17 +46,22 @@ func MergeRoleAliases(meta PolicyMetadata, aliases map[string]Role) PolicyMetada
 	return merged
 }
 
-// principalRoles resolves the principal's token roles to internal Roles via the
-// provided alias map. Unmapped external roles are silently dropped, preventing
-// a principal from using an arbitrary string to claim an internal role.
-func principalRoles(principalCtx *auth.PrincipalContext, aliases map[string]Role) []Role {
+// principalRoles resolves the principal's token roles to internal Roles.
+// A role string is accepted if it is a canonical role name (present as a key in
+// capabilities) or if it maps to one via the alias table. Canonical names take
+// priority, so self-referential alias entries are unnecessary. Unrecognised
+// role strings are silently dropped.
+func principalRoles(principalCtx *auth.PrincipalContext, aliases map[string]Role, capabilities map[Role][]Capability) []Role {
 	roles := make([]Role, 0, len(principalCtx.Roles))
 	for _, r := range principalCtx.Roles {
-		internalRole, ok := aliases[r]
-		if !ok {
+		role := Role(r)
+		if _, isCanonical := capabilities[role]; isCanonical {
+			roles = append(roles, role)
 			continue
 		}
-		roles = append(roles, internalRole)
+		if mapped, ok := aliases[r]; ok {
+			roles = append(roles, mapped)
+		}
 	}
 	return roles
 }

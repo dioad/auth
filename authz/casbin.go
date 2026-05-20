@@ -80,7 +80,7 @@ func (a *CasbinAuthorizer) Privileges(_ context.Context, principalCtx *auth.Prin
 	if principalCtx == nil {
 		return nil, nil
 	}
-	roles := principalRoles(principalCtx, a.metadata.RoleAliases)
+	roles := principalRoles(principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
 		return nil, nil
 	}
@@ -95,7 +95,7 @@ func (a *CasbinAuthorizer) Can(_ context.Context, principalCtx *auth.PrincipalCo
 		return deny(ReasonDeniedNilPrincipal, cap), ErrUnauthorized
 	}
 
-	roles := principalRoles(principalCtx, a.metadata.RoleAliases)
+	roles := principalRoles(principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
 		return deny(ReasonDeniedNoRoles, cap), ErrForbidden
 	}
