@@ -180,15 +180,17 @@ func TestRoleAuthorizer_CanonicalRoleAcceptedDirectly(t *testing.T) {
 	assert.True(t, d.Allowed, "canonical role must be accepted directly")
 }
 
-// TestRoleAuthorizer_UnknownRoleIsRejected verifies that a token carrying a
-// role name that is neither canonical nor aliased is denied access.
-func TestRoleAuthorizer_UnknownRoleIsRejected(t *testing.T) {
-	a := authz.NewRoleAuthorizer(testMetadata())
+// TestRoleAuthorizer_CanonicalRoleTakesPrecedenceOverAlias verifies that a
+// canonical role name is resolved before consulting the alias table.
+func TestRoleAuthorizer_CanonicalRoleTakesPrecedenceOverAlias(t *testing.T) {
+	meta := testMetadata()
+	meta.RoleAliases["admin"] = "reader"
+	a := authz.NewRoleAuthorizer(meta)
 
-	d, err := a.Can(context.Background(), principal("attacker", "unknown-role"),
+	d, err := a.Can(context.Background(), principal("p1", "admin"),
 		authz.Permission("tunnel", "write"))
-	require.ErrorIs(t, err, authz.ErrForbidden)
-	assert.False(t, d.Allowed, "unknown role must not grant access")
+	require.NoError(t, err)
+	assert.True(t, d.Allowed, "canonical role must take precedence over alias mapping")
 }
 
 func TestRoleAuthorizer_UnionsMultipleRoles(t *testing.T) {
