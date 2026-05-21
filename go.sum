@@ -50,8 +50,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3h
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
 github.com/dioad/generics v0.0.8 h1:16B4qDVZZP+wsTeDT+9ecmIyF8GuFrwdrvm5a9l3Qa4=
 github.com/dioad/generics v0.0.8/go.mod h1:NFn4N/41m2Ln8xjKm6c9ieZQeKohyCEg0RfQg34aVRg=
-github.com/dioad/net v0.57.1 h1:weL8coHNvHDMeJr7TIUmPzXcCWQ2L9a0Tz/OUe1Hh34=
-github.com/dioad/net v0.57.1/go.mod h1:h20keT8ia2sOUTyZDzOcHRke1uIhSeAzRwBEO3RAtZg=
+github.com/dioad/net v0.57.2 h1:zbFYVA3FGJs/5cnZN9QnjPKOP/vs+kUpDYkfwIO2Big=
+github.com/dioad/net v0.57.2/go.mod h1:OvwjYmqavGV9RnpGAPeSLSDIJ2XM74HH6UxuV694LbM=
 github.com/dioad/util v0.7.0 h1:DdSits6ZE/m6FSkSHLrPFehJJT7VlDGxxHkiZQ4xzaQ=
 github.com/dioad/util v0.7.0/go.mod h1:FqqqoXSEV4Mh2DEYzw4rsWReDvyykQItBgrsj6w14FY=
 github.com/go-chi/chi/v5 v5.2.5 h1:Eg4myHZBjyvJmAFjFvWgrqDTXFyOzjj7YIm3L3mu6Ug=
