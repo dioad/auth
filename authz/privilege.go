@@ -75,10 +75,12 @@ type allowAllPrivilege struct{}
 
 func (allowAllPrivilege) Has(Capability) bool { return true }
 
-// wildcardAwarePrivilege wraps a PrivilegeSet and extends Has to honour the
-// "resource:any" wildcard convention used by the Casbin model. A capability
-// of the form "resource:action" is granted if the set contains the exact
-// capability OR contains "resource:any".
+// wildcardAwarePrivilege wraps a PrivilegeSet and extends Has to honor the
+// Casbin-style wildcard conventions. A capability of the form
+// "resource:action" is granted if the set contains an exact match, contains
+// "resource:any", or contains a resource pattern (for example, "resource/*")
+// whose action matches and whose resource pattern key-matches the requested
+// resource.
 //
 // Use [NewWildcardPrivilege] to create one. This is the value returned by
 // [CasbinAuthorizer.Privileges] and [RoleAuthorizer.Privileges] so that
@@ -89,13 +91,15 @@ type wildcardAwarePrivilege struct {
 }
 
 // NewWildcardPrivilege returns a Privilege backed by ps that additionally
-// grants any "resource:action" capability when "resource:any" is present.
+// supports action wildcards ("resource:any") and keyMatch-style resource
+// patterns (for example, "resource/*:read").
 func NewWildcardPrivilege(ps *PrivilegeSet) Privilege {
 	return wildcardAwarePrivilege{set: ps}
 }
 
-// Has reports whether the capability is granted, either exactly or via a
-// "resource:any" wildcard for the same resource prefix.
+// Has reports whether the capability is granted by exact match, by matching
+// "resource:any", or by a keyMatch-compatible resource pattern with the same
+// action (or action "any").
 func (w wildcardAwarePrivilege) Has(cap Capability) bool {
 	if w.set == nil {
 		return false
