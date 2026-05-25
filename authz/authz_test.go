@@ -471,6 +471,14 @@ func TestWildcardPrivilege_Has_FeatureWildcard(t *testing.T) {
 	assert.True(t, p.Has(authz.FeatureCapability("custom-domain")), "feature:any must grant feature:custom-domain")
 }
 
+func TestWildcardPrivilege_Has_KeyMatchResourcePattern(t *testing.T) {
+	ps := authz.NewPrivilegeSet(authz.Permission("tunnel/*", "write"))
+	p := authz.NewWildcardPrivilege(ps)
+	assert.True(t, p.Has(authz.Permission("tunnel/abc123", "write")), "tunnel/*:write must grant tunnel/abc123:write")
+	assert.False(t, p.Has(authz.Permission("tunnel/abc123", "read")), "action mismatch must still deny")
+	assert.False(t, p.Has(authz.Permission("endpoint/abc123", "write")), "resource pattern mismatch must deny")
+}
+
 func TestWildcardPrivilege_Has_NilSet(t *testing.T) {
 	p := authz.NewWildcardPrivilege(nil)
 	assert.False(t, p.Has(authz.Permission("tunnel", "write")), "nil set must deny all")
@@ -495,6 +503,33 @@ func TestCasbinAuthorizer_Privileges_ConsistentWithCan(t *testing.T) {
 	require.NotNil(t, privs)
 	assert.True(t, privs.Has(authz.Permission("tunnel", "write")),
 		"Privileges().Has() must agree with Can() for wildcard capabilities")
+}
+
+func TestCasbinAuthorizer_Privileges_ConsistentWithCan_KeyMatch(t *testing.T) {
+	meta := authz.PolicyMetadata{
+		RoleCapabilities: map[authz.Role][]authz.Capability{
+			"templated-writer": {authz.Permission("tunnel/*", "write")},
+		},
+		RoleAliases: map[string]authz.Role{
+			"external.templated-writer": "templated-writer",
+		},
+	}
+	a, err := authz.NewCasbinAuthorizer(meta)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	p := principal("templated-writer-1", "external.templated-writer")
+	requested := authz.Permission("tunnel/abc123", "write")
+
+	d, canErr := a.Can(ctx, p, requested)
+	require.NoError(t, canErr)
+	require.NotNil(t, d)
+	assert.True(t, d.Allowed)
+
+	privs, privsErr := a.Privileges(ctx, p)
+	require.NoError(t, privsErr)
+	require.NotNil(t, privs)
+	assert.True(t, privs.Has(requested), "Privileges().Has() must agree with Can() for keyMatch capabilities")
 }
 
 func TestRoleAuthorizer_Privileges_ConsistentWithCan(t *testing.T) {
