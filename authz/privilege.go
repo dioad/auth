@@ -1,5 +1,11 @@
 package authz
 
+import (
+	"strings"
+
+	"github.com/casbin/casbin/v2/util"
+)
+
 // Privilege represents the set of capabilities granted to a principal.
 // Callers use [Has] to check whether a specific capability is present.
 // The concrete implementation is [PrivilegeSet].
@@ -97,12 +103,21 @@ func (w wildcardAwarePrivilege) Has(cap Capability) bool {
 	if w.set.Has(cap) {
 		return true
 	}
-	// Check for wildcard: if the capability is "resource:action", also accept "resource:any".
-	s := string(cap)
-	for i := len(s) - 1; i >= 0; i-- {
-		if s[i] == ':' {
-			wildcard := Capability(s[:i+1] + "any")
-			return w.set.Has(wildcard)
+	requestedResource, requestedAction, ok := strings.Cut(string(cap), ":")
+	if !ok {
+		return false
+	}
+
+	for granted := range w.set.caps {
+		grantedResource, grantedAction, ok := strings.Cut(string(granted), ":")
+		if !ok {
+			continue
+		}
+		if grantedAction != "any" && grantedAction != requestedAction {
+			continue
+		}
+		if grantedResource == requestedResource || util.KeyMatch(requestedResource, grantedResource) {
+			return true
 		}
 	}
 	return false
