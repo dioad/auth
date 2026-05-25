@@ -36,7 +36,9 @@ import (
 //
 // [Privileges] fetches the full capability set for a principal once; the caller
 // then checks individual capabilities inline using [Privilege.Has]. This is
-// efficient for handlers that perform multiple capability checks:
+// efficient for handlers that perform multiple capability checks. [Privilege.Has]
+// follows the same wildcard semantics as [Can], including "resource:any" action
+// wildcards and keyMatch-style resource patterns:
 //
 //	privs, _ := authorizer.Privileges(ctx, principalCtx)
 //	if privs.Has(authz.FeatureCapability("custom-domain")) { ... }

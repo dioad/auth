@@ -15,7 +15,8 @@ import (
 // casbinModel is the Casbin RBAC model used by CasbinAuthorizer.
 // Policy format: p = role, resource, action
 // Role resolution accepts canonical role names and RoleAliases mappings.
-// The "any" action wildcard grants all actions on the given resource.
+// The matcher supports Casbin keyMatch for resource patterns and the "any"
+// action wildcard for all actions on a matched resource.
 const casbinModel = `
 [request_definition]
 r = sub, obj, act
