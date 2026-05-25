@@ -111,16 +111,22 @@ func (w wildcardAwarePrivilege) Has(cap Capability) bool {
 	if !ok {
 		return false
 	}
+	if w.set.Has(Capability(requestedResource + ":any")) {
+		return true
+	}
 
 	for granted := range w.set.caps {
 		grantedResource, grantedAction, ok := strings.Cut(string(granted), ":")
 		if !ok {
 			continue
 		}
+		if !strings.Contains(grantedResource, "*") {
+			continue
+		}
 		if grantedAction != "any" && grantedAction != requestedAction {
 			continue
 		}
-		if grantedResource == requestedResource || util.KeyMatch(requestedResource, grantedResource) {
+		if util.KeyMatch(requestedResource, grantedResource) {
 			return true
 		}
 	}

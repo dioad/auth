@@ -361,6 +361,56 @@ func TestMapAuthorizer_DeniesNilPrincipal(t *testing.T) {
 	assert.Equal(t, authz.ReasonDeniedNilPrincipal, d.Reason)
 }
 
+func TestMapAuthorizer_Privileges_ConsistentWithCan_KeyMatch(t *testing.T) {
+	ps := authz.NewPrivilegeSet(authz.Permission("tunnel/*", "write"))
+	a := authz.NewMapAuthorizer(map[string]*authz.PrivilegeSet{"p1": ps}, authz.PolicyMetadata{})
+
+	ctx := context.Background()
+	p := principal("p1")
+
+	tests := []struct {
+		name    string
+		cap     authz.Capability
+		allowed bool
+	}{
+		{
+			name:    "resource pattern and action match",
+			cap:     authz.Permission("tunnel/abc123", "write"),
+			allowed: true,
+		},
+		{
+			name:    "resource pattern matches but action differs",
+			cap:     authz.Permission("tunnel/abc123", "read"),
+			allowed: false,
+		},
+		{
+			name:    "action matches but resource pattern differs",
+			cap:     authz.Permission("endpoint/abc123", "write"),
+			allowed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, canErr := a.Can(ctx, p, tt.cap)
+			if tt.allowed {
+				require.NoError(t, canErr)
+				require.NotNil(t, d)
+				assert.True(t, d.Allowed)
+			} else {
+				require.ErrorIs(t, canErr, authz.ErrForbidden)
+				require.NotNil(t, d)
+				assert.False(t, d.Allowed)
+			}
+
+			privs, privsErr := a.Privileges(ctx, p)
+			require.NoError(t, privsErr)
+			require.NotNil(t, privs)
+			assert.Equal(t, tt.allowed, privs.Has(tt.cap), "Privileges().Has() must agree with Can() for keyMatch capabilities")
+		})
+	}
+}
+
 // ─── MultiAuthorizer ──────────────────────────────────────────────────────────
 
 func TestMultiAuthorizer_FirstNonNilWins(t *testing.T) {
