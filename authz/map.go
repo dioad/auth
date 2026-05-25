@@ -29,7 +29,9 @@ func NewMapAuthorizer(privileges map[string]*PrivilegeSet, metadata PolicyMetada
 	return &MapAuthorizer{privileges: cp, metadata: CloneMetadata(metadata)}
 }
 
-// Privileges looks up the principal's ID in the map. Returns nil when not found.
+// Privileges looks up the principal's ID in the map and returns a wildcard-aware
+// view so [Privilege.Has] semantics stay consistent with other authorizers.
+// Returns nil when not found.
 func (a *MapAuthorizer) Privileges(_ context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
 		return nil, nil
@@ -38,7 +40,7 @@ func (a *MapAuthorizer) Privileges(_ context.Context, principalCtx *auth.Princip
 	if !ok {
 		return nil, nil
 	}
-	return ps, nil
+	return NewWildcardPrivilege(ps), nil
 }
 
 // Can checks whether the principal's mapped PrivilegeSet contains cap.
