@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/cli/oauth v1.2.2
-	github.com/dioad/generics v0.0.8
+	github.com/dioad/generics v0.0.9
 	github.com/dioad/net v0.57.2
 	github.com/dioad/util v0.7.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
