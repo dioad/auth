@@ -15,6 +15,7 @@ import (
 	oidcprovider "github.com/markbates/goth/providers/openidConnect"
 
 	authhttp "github.com/dioad/auth/http/context"
+	authoidc "github.com/dioad/auth/oidc"
 )
 
 // Handler implements OIDC-based authentication using the gothic library.
@@ -210,11 +211,11 @@ func (h *Handler) LogoutHandler() http.HandlerFunc {
 }
 
 // NewHandler configures OIDC providers and returns a handler.
-func NewHandler(config Config, store sessions.Store) *Handler {
+func NewHandler(config authoidc.Config, store sessions.Store) *Handler {
 	gothic.Store = store
 
 	if config.ProviderMap == nil {
-		config.ProviderMap = make(map[string]ProviderConfig)
+		config.ProviderMap = make(map[string]authoidc.ProviderConfig)
 	}
 
 	provider, ok := config.ProviderMap["github"]

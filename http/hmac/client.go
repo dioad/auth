@@ -20,7 +20,7 @@ type ClientAuth struct {
 // and specified headers, which allows servers to detect tampering and replay attacks.
 func (a ClientAuth) AddAuth(req *http.Request) error {
 	// Read the request body
-	bodyBytes := []byte{}
+	var bodyBytes []byte
 	if req.Body != nil {
 		var err error
 		bodyBytes, err = io.ReadAll(req.Body)

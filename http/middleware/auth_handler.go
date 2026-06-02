@@ -21,18 +21,26 @@ func (h *principalExtractionHandler) Middleware(next http.Handler) http.Handler 
 		principalContext, err := h.principalExtractor.ExtractPrincipal(req.Context(), req)
 		if err != nil {
 			if errors.Is(err, auth.ErrNoPrincipalFound) {
-				h.logger.Debug().Err(err).Msg("no principal found")
-				response.UnauthorizedWithMessages("unauthorized", "no principal found")
+				response.Unauthorized(
+					json.PublicMessage("unauthorized"),
+					json.LogMessage("no principal found"),
+					json.LogErr(err),
+				)
 				return
 			}
 
-			response.InternalServerErrorWithMessage(err, "error extracting principal")
+			response.InternalServerError(
+				json.PublicMessage("error extracting principal"),
+				json.LogErr(err),
+			)
 			return
 		}
 
 		if principalContext == nil {
-			h.logger.Debug().Msg("no principal found")
-			response.UnauthorizedWithMessages("unauthorized", "no principal found")
+			response.Unauthorized(
+				json.PublicMessage("unauthorized"),
+				json.LogMessage("no principal found"),
+			)
 			return
 		}
 
