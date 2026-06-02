@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v4"
 	"golang.org/x/oauth2"
-	"gopkg.in/go-jose/go-jose.v2"
 
 	"github.com/dioad/auth/oidc"
 	"github.com/dioad/auth/oidc/aws"

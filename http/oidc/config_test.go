@@ -9,8 +9,8 @@ import (
 func TestConfigAliases_CompatibleWithCanonicalOIDCConfig(t *testing.T) {
 	t.Parallel()
 
-	httpCfg := Config{
-		ProviderMap: ProviderMap{
+	httpCfg := authoidc.Config{
+		ProviderMap: authoidc.ProviderMap{
 			"oidc": {
 				ClientID:     "client-id",
 				ClientSecret: "client-secret",

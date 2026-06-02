@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dioad/auth/oidc"
-	"github.com/dioad/auth/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dioad/auth/oidc"
+	"github.com/dioad/auth/testutil"
 )
 
 func TestOIDCLoginFlow(t *testing.T) {

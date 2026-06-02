@@ -11,12 +11,13 @@ import (
 	"time"
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
-	"github.com/dioad/auth/oidc"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
+
+	"github.com/dioad/auth/oidc"
 )
 
 type recordingDoer struct {

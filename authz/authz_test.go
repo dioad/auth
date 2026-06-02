@@ -46,13 +46,13 @@ func principal(id string, roles ...string) *auth.PrincipalContext {
 // ─── Capability constructors ─────────────────────────────────────────────────
 
 func TestCapability_Permission(t *testing.T) {
-	cap := authz.Permission("tunnel", "write")
-	assert.Equal(t, authz.Capability("tunnel:write"), cap)
+	capability := authz.Permission("tunnel", "write")
+	assert.Equal(t, authz.Capability("tunnel:write"), capability)
 }
 
 func TestCapability_FeatureCapability(t *testing.T) {
-	cap := authz.FeatureCapability("custom-domain")
-	assert.Equal(t, authz.Capability("feature:custom-domain"), cap)
+	capability := authz.FeatureCapability("custom-domain")
+	assert.Equal(t, authz.Capability("feature:custom-domain"), capability)
 }
 
 // ─── PrivilegeSet ─────────────────────────────────────────────────────────────
@@ -199,14 +199,14 @@ func TestRoleAuthorizer_UnionsMultipleRoles(t *testing.T) {
 	// Principal has both publisher and reader roles.
 	pc := principal("p1", "external.publisher", "external.reader")
 
-	for _, cap := range []authz.Capability{
+	for _, capability := range []authz.Capability{
 		authz.Permission("tunnel", "write"),   // publisher only
 		authz.Permission("tunnel", "read"),    // reader only
 		authz.Permission("endpoint", "write"), // publisher only
 	} {
-		d, err := a.Can(context.Background(), pc, cap)
-		require.NoError(t, err, "expected allow for %s", cap)
-		assert.True(t, d.Allowed, "expected allow for %s", cap)
+		d, err := a.Can(context.Background(), pc, capability)
+		require.NoError(t, err, "expected allow for %s", capability)
+		assert.True(t, d.Allowed, "expected allow for %s", capability)
 	}
 }
 

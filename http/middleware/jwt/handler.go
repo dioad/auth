@@ -8,9 +8,10 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/auth0/go-jwt-middleware/v3/core"
+	"github.com/dioad/net/http/json"
+
 	authhttp "github.com/dioad/auth/http/context"
 	"github.com/dioad/auth/jwt"
-	"github.com/dioad/net/http/json"
 )
 
 // Handler handles JWT authentication and sets the authenticated principal in the context.
@@ -33,7 +34,7 @@ func NewHandler(validator jwt.TokenValidator, cookieName string, logger zerolog.
 func (h *Handler) Wrap(next http.Handler) http.Handler {
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
 		jsr := json.NewResponseWithLogger(w, r, h.logger)
-		jsr.UnauthorizedWithMessages("unauthorised", err.Error())
+		jsr.Unauthorized(json.LogErr(err))
 	}
 
 	extractor := jwtmiddleware.MultiTokenExtractor(

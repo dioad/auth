@@ -71,8 +71,8 @@ func principalRoles(principalCtx *auth.PrincipalContext, aliases map[string]Role
 func privilegeSetForRoles(roles []Role, roleCapabilities map[Role][]Capability) *PrivilegeSet {
 	ps := NewPrivilegeSet()
 	for _, role := range roles {
-		for _, cap := range roleCapabilities[role] {
-			ps.Grant(cap)
+		for _, capability := range roleCapabilities[role] {
+			ps.Grant(capability)
 		}
 	}
 	return ps

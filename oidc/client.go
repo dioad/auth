@@ -391,7 +391,7 @@ func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string
 	return authURLWithParams, nil
 }
 
-func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirect_uri string, opts ...RequestOpt) (*oauth2.Token, error) {
+func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirectUri string, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
 	if err != nil {
 		return nil, err
@@ -409,7 +409,7 @@ func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redire
 
 	// data.Set("grant_type", "authorization_code")
 	// data.Set("code", code)
-	data.Set("redirect_uri", redirect_uri)
+	data.Set("redirect_uri", redirectUri)
 	// data.Set("client_id", h.Config.ClientID)
 	// data.Set("client_secret", h.Config.ClientSecret)
 

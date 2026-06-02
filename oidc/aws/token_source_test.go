@@ -59,12 +59,10 @@ func TestWithRegion(t *testing.T) {
 }
 
 func TestTokenAutomaticRegionDiscovery(t *testing.T) {
-	expiry := time.Now().Add(time.Hour)
-	tokenValue := "token-value"
 	sClient := &fakeSTSClient{
 		output: &sts.GetWebIdentityTokenOutput{
-			WebIdentityToken: &tokenValue,
-			Expiration:       &expiry,
+			WebIdentityToken: new("token-value"),
+			Expiration:       new(time.Now().Add(time.Hour)),
 		},
 	}
 
@@ -90,12 +88,10 @@ func TestTokenAutomaticRegionDiscovery(t *testing.T) {
 }
 
 func TestTokenExplicitRegion(t *testing.T) {
-	expiry := time.Now().Add(time.Hour)
-	tokenValue := "token-value"
 	sClient := &fakeSTSClient{
 		output: &sts.GetWebIdentityTokenOutput{
-			WebIdentityToken: &tokenValue,
-			Expiration:       &expiry,
+			WebIdentityToken: new("token-value"),
+			Expiration:       new(time.Now().Add(time.Hour)),
 		},
 	}
 
