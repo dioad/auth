@@ -50,3 +50,12 @@ go.work.sum
 # ...even if they are in subdirectories
 !*/
 
+# Agent configuration (APM and Claude Code)
+!CLAUDE.md
+!AGENTS.md
+!apm.yml
+!apm.lock.yaml
+!.apm/instructions/*.md
+!.github/instructions/*.md
+!.github/workflows/claude.yml
+
