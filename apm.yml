@@ -1,0 +1,12 @@
+name: auth
+version: 1.0.0
+description: APM project for auth
+author: Pat Downey
+targets:
+- claude
+- copilot
+dependencies:
+  apm: []
+  mcp: []
+includes: auto
+scripts: {}
