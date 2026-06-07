@@ -47,7 +47,7 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 		if err != nil {
 			return nil, err
 		}
-		return jwt.NewHandler(validator, "auth_token", log.Logger), nil
+		return jwt.NewHandler(validator, "auth_token"), nil
 	} else if !generics.IsZeroValue(cfg.OIDCAuthConfig) {
 		client, err := authoidc.NewClientFromConfig(&cfg.OIDCAuthConfig)
 		if err != nil {

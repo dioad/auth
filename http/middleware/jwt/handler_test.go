@@ -9,7 +9,6 @@ import (
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	gojwt "github.com/golang-jwt/jwt/v5"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
 	authcontext "github.com/dioad/auth/http/context"
@@ -56,7 +55,7 @@ func TestHandler_PopulatesAuthenticatedCustomClaimsFromTokenPayload(t *testing.T
 		claims: &jwtvalidator.ValidatedClaims{
 			RegisteredClaims: jwtvalidator.RegisteredClaims{Subject: "alice"},
 		},
-	}, "auth_token", zerolog.Nop())
+	}, "auth_token")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -84,7 +83,7 @@ func TestHandler_PrefersValidatedCustomClaimsOverTokenPayloadFallback(t *testing
 			RegisteredClaims: jwtvalidator.RegisteredClaims{Subject: "alice"},
 			CustomClaims:     &sourceCustomClaims{Source: "validated"},
 		},
-	}, "auth_token", zerolog.Nop())
+	}, "auth_token")
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
