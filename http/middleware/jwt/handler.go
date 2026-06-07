@@ -18,22 +18,23 @@ import (
 type Handler struct {
 	validator  jwt.TokenValidator
 	opts       []jwtmiddleware.Option
-	logger     zerolog.Logger
 	cookieName string
 }
 
-func NewHandler(validator jwt.TokenValidator, cookieName string, logger zerolog.Logger, opts ...jwtmiddleware.Option) *Handler {
+// NewHandler creates a JWT authentication handler. All log output uses the
+// request-scoped zerolog context logger so entries automatically carry
+// request_id, principal, and other fields injected by upstream middleware.
+func NewHandler(validator jwt.TokenValidator, cookieName string, opts ...jwtmiddleware.Option) *Handler {
 	return &Handler{
 		validator:  validator,
 		cookieName: cookieName,
-		logger:     logger,
 		opts:       opts,
 	}
 }
 
 func (h *Handler) Wrap(next http.Handler) http.Handler {
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
-		jsr := json.NewResponseWithLogger(w, r, h.logger)
+		jsr := json.NewResponseFromRequest(w, r)
 		jsr.Unauthorized(json.LogErr(err))
 	}
 
@@ -69,7 +70,7 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 			}
 			customClaims, err := jwt.ResolveCustomClaimsMap(claims, extracted.Token)
 			if err != nil {
-				h.logger.Debug().Err(err).Msg("unable to resolve authenticated custom claims")
+				zerolog.Ctx(r.Context()).Debug().Err(err).Msg("unable to resolve authenticated custom claims")
 			} else if len(customClaims) > 0 {
 				ctx = authhttp.ContextWithAuthenticatedCustomClaims(ctx, customClaims)
 			}

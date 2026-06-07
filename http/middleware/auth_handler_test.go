@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,7 +23,7 @@ func (e testPrincipalExtractor) ExtractPrincipal(_ context.Context, _ *http.Requ
 }
 
 func TestPrincipalExtractionHandler_NoPrincipalFound_ReturnsUnauthorized(t *testing.T) {
-	mw := PrincipalExtractionHandler(testPrincipalExtractor{err: auth.ErrNoPrincipalFound}, zerolog.Nop())
+	mw := PrincipalExtractionHandler(testPrincipalExtractor{err: auth.ErrNoPrincipalFound})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -39,7 +38,7 @@ func TestPrincipalExtractionHandler_NoPrincipalFound_ReturnsUnauthorized(t *test
 }
 
 func TestPrincipalExtractionHandler_NilPrincipal_ReturnsUnauthorized(t *testing.T) {
-	mw := PrincipalExtractionHandler(testPrincipalExtractor{}, zerolog.Nop())
+	mw := PrincipalExtractionHandler(testPrincipalExtractor{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -54,7 +53,7 @@ func TestPrincipalExtractionHandler_NilPrincipal_ReturnsUnauthorized(t *testing.
 }
 
 func TestPrincipalExtractionHandler_ExtractorError_ReturnsInternalServerError(t *testing.T) {
-	mw := PrincipalExtractionHandler(testPrincipalExtractor{err: errors.New("boom")}, zerolog.Nop())
+	mw := PrincipalExtractionHandler(testPrincipalExtractor{err: errors.New("boom")})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
@@ -70,7 +69,7 @@ func TestPrincipalExtractionHandler_ExtractorError_ReturnsInternalServerError(t 
 
 func TestPrincipalExtractionHandler_Success_PropagatesPrincipalContext(t *testing.T) {
 	expectedPrincipal := &auth.PrincipalContext{ID: "alice", Source: "oidc", Roles: []string{"user-admin"}}
-	mw := PrincipalExtractionHandler(testPrincipalExtractor{principal: expectedPrincipal}, zerolog.Nop())
+	mw := PrincipalExtractionHandler(testPrincipalExtractor{principal: expectedPrincipal})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()

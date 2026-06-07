@@ -12,12 +12,13 @@ import (
 
 type principalExtractionHandler struct {
 	principalExtractor auth.PrincipalExtractor
-	logger             zerolog.Logger
 }
 
 func (h *principalExtractionHandler) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		response := json.NewResponseWithLogger(w, req, h.logger)
+		// Use the request-scoped context logger so that error responses carry
+		// request_id and any other fields already injected by upstream middleware.
+		response := json.NewResponseFromRequest(w, req)
 		principalContext, err := h.principalExtractor.ExtractPrincipal(req.Context(), req)
 		if err != nil {
 			if errors.Is(err, auth.ErrNoPrincipalFound) {
@@ -59,14 +60,18 @@ func (h *principalExtractionHandler) Middleware(next http.Handler) http.Handler 
 }
 
 // PrincipalExtractionHandler returns middleware that extracts principal context,
-// enriches request logs with principal fields, and stores the principal in request context.
-func PrincipalExtractionHandler(principalExtractor auth.PrincipalExtractor, logger zerolog.Logger) func(next http.Handler) http.Handler {
-	return newPrincipalExtractionHandler(principalExtractor, logger).Middleware
+// enriches request logs with principal fields (principal, auth_source), and stores
+// the principal in the request context.
+//
+// The middleware uses the request-scoped zerolog context logger for all log output,
+// so log entries from this middleware automatically carry request_id and other fields
+// injected by upstream middleware (e.g. requestIDMiddleware).
+func PrincipalExtractionHandler(principalExtractor auth.PrincipalExtractor) func(next http.Handler) http.Handler {
+	return newPrincipalExtractionHandler(principalExtractor).Middleware
 }
 
-func newPrincipalExtractionHandler(principalExtractor auth.PrincipalExtractor, logger zerolog.Logger) *principalExtractionHandler {
+func newPrincipalExtractionHandler(principalExtractor auth.PrincipalExtractor) *principalExtractionHandler {
 	return &principalExtractionHandler{
 		principalExtractor: principalExtractor,
-		logger:             logger,
 	}
 }
