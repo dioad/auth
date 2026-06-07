@@ -4,8 +4,6 @@ import (
 	stdctx "context"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/dioad/generics"
 
 	"github.com/dioad/auth/http/basic"
@@ -56,7 +54,7 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 		// Note: OIDC handler configuration needs more details (paths, etc.)
 		return oidc.NewHandler(client, oidc.OIDCConfig{
 			LoginPath: "/login",
-		}, log.Logger), nil
+		}), nil
 	}
 
 	return nil, nil

@@ -75,17 +75,15 @@ type OIDCConfig struct {
 type Handler struct {
 	Client *oidc.Client
 	Config OIDCConfig
-	logger zerolog.Logger
 }
 
-func NewHandler(client *oidc.Client, cfg OIDCConfig, logger zerolog.Logger) *Handler {
+func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
 	return &Handler{
 		Client: client,
 		Config: cfg,
-		logger: logger,
 	}
 }
 
@@ -106,14 +104,23 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		if shouldRefreshTokenBasedOnExpiry(token.Expiry, h.Config.RefreshWindow, h.Config.Now()) {
 			refreshedToken, err := h.Client.RefreshToken(r.Context(), token.RefreshToken)
 			if err != nil {
-				h.logger.Error().Err(err).Msg("Failed to refresh token")
+				zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to refresh token")
 				h.clearAllCookies(w)
 				http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
 				return
 			}
 			h.saveTokenToCookies(w, refreshedToken)
 			token = refreshedToken
+			zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+				return c.Bool("token_refreshed", true)
+			})
 		}
+
+		// Enrich the request-scoped logger so auth_source propagates to child
+		// handlers and the deferred access log entry.
+		zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("auth_source", "oidc_session")
+		})
 		ctx := ContextWithAccessToken(r.Context(), token.AccessToken)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -124,13 +131,13 @@ func (h *Handler) AuthStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		state, err := generateState()
 		if err != nil {
-			h.logger.Error().Err(err).Msg("Failed to generate auth state")
+			zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to generate auth state")
 			http.Error(w, "Failed to start authentication", http.StatusInternalServerError)
 			return
 		}
 		authURL, err := h.Client.AuthorizationCodeRedirectFlow(r.Context(), state, h.Config.Scopes, h.Config.RedirectURI)
 		if err != nil {
-			h.logger.Error().Err(err).Msg("Failed to create authorization URL")
+			zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to create authorization URL")
 			http.Error(w, "Failed to create authorization URL", http.StatusInternalServerError)
 			return
 		}
@@ -150,33 +157,34 @@ func (h *Handler) Logout() http.HandlerFunc {
 // Callback handles the OIDC provider callback and sets cookies.
 func (h *Handler) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.Ctx(r.Context())
 		code := r.URL.Query().Get("code")
 		state := r.URL.Query().Get("state")
 		if code == "" {
-			h.logger.Error().Msg("Missing code in callback")
+			log.Error().Msg("Missing code in callback")
 			http.Error(w, "Missing code", http.StatusBadRequest)
 			return
 		}
 		if state == "" {
-			h.logger.Error().Msg("Missing state in callback")
+			log.Error().Msg("Missing state in callback")
 			http.Error(w, "Missing state", http.StatusBadRequest)
 			return
 		}
 		stateFromCookie, err := extractValueFromCookie(r, h.Config.StateCookie.Name)
 		if stateFromCookie == "" || err != nil {
-			h.logger.Error().Err(err).Msg("Missing or invalid state cookie")
+			log.Error().Err(err).Msg("Missing or invalid state cookie")
 			http.Error(w, "Invalid state cookie", http.StatusBadRequest)
 			return
 		}
 		if stateFromCookie != state {
-			h.logger.Error().Msg("Invalid state in callback")
+			log.Error().Msg("Invalid state in callback")
 			http.Error(w, "Invalid state", http.StatusBadRequest)
 			return
 		}
 		h.Config.StateCookie.Delete(w)
 		token, err := h.Client.AuthorizationCodeToken(r.Context(), code, h.Config.RedirectURI)
 		if err != nil {
-			h.logger.Error().Err(err).Msg("Token exchange failed")
+			log.Error().Err(err).Msg("Token exchange failed")
 			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
 			return
 		}
