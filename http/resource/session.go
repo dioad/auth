@@ -3,15 +3,12 @@ package resource
 import (
 	"net/http"
 
-	"github.com/rs/zerolog"
-
 	"github.com/dioad/auth/http/middleware/oidc"
 )
 
 // SessionResource is an HTTP resource that manages authentication sessions.
 type SessionResource struct {
 	AuthHandler *oidc.Handler
-	Logger      zerolog.Logger
 }
 
 // SessionResourceStatus represents the status of the session resource.
@@ -42,10 +39,9 @@ func (dr *SessionResource) Status() (any, error) {
 	}, nil
 }
 
-// NewSessionResource creates a new session resource with the provided OIDC handler and logger.
-func NewSessionResource(handler *oidc.Handler, logger zerolog.Logger) *SessionResource {
+// NewSessionResource creates a new session resource with the provided OIDC handler.
+func NewSessionResource(handler *oidc.Handler) *SessionResource {
 	return &SessionResource{
 		AuthHandler: handler,
-		Logger:      logger,
 	}
 }

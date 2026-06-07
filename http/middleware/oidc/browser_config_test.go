@@ -5,8 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"github.com/rs/zerolog"
 )
 
 func TestBrowserConfigValidate(t *testing.T) {
@@ -63,7 +61,6 @@ func TestCallbackRejectsMissingCodeAndState(t *testing.T) {
 
 	h := &Handler{
 		Config: OIDCConfig{StateCookie: CookieConfig{Name: "oidc_state"}},
-		logger: zerolog.Nop(),
 	}
 
 	t.Run("missing code", func(t *testing.T) {
