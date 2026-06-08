@@ -4,9 +4,9 @@ go 1.26.0
 
 require (
 	github.com/auth0/go-jwt-middleware/v3 v3.2.0
-	github.com/aws/aws-sdk-go-v2 v1.41.12
+	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.23
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.28
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.29
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.2
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/cli/oauth v1.2.2
