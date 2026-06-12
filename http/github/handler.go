@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	authhttp "github.com/dioad/auth/http/context"
 )
@@ -62,7 +62,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 
 	ctx = NewContextWithGitHubUserInfo(ctx, user)
 
-	log.Debug().
+	zerolog.Ctx(r.Context()).Debug().
 		Str("principal", user.Login).
 		Str("email", user.PrimaryEmail).
 		Str("company", user.Company).

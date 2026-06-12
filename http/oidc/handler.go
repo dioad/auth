@@ -13,6 +13,7 @@ import (
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/github"
 	oidcprovider "github.com/markbates/goth/providers/openidConnect"
+	"github.com/rs/zerolog"
 
 	authhttp "github.com/dioad/auth/http/context"
 	authoidc "github.com/dioad/auth/oidc"
@@ -115,6 +116,11 @@ func (h *Handler) AuthWrapper(next http.HandlerFunc) http.HandlerFunc {
 // AuthStart returns an HTTP handler function that starts the OIDC authentication flow.
 func (h *Handler) AuthStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		if provider := req.PathValue("provider"); provider != "" {
+			zerolog.Ctx(req.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+				return c.Str("provider", provider)
+			})
+		}
 		gothic.BeginAuthHandler(w, req)
 	}
 }
@@ -160,6 +166,11 @@ func (h *Handler) handleCallback(w http.ResponseWriter, req *http.Request) (stri
 // Callback handles provider callbacks.
 func (h *Handler) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		if provider := req.PathValue("provider"); provider != "" {
+			zerolog.Ctx(req.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+				return c.Str("provider", provider)
+			})
+		}
 		redirect, err := h.handleCallback(w, req)
 
 		if err != nil {
