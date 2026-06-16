@@ -222,6 +222,10 @@ func (s *oidcPrincipalSource) Roles(ctx context.Context) []string {
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
 	if claims != nil {
 		roles = append(roles, claims.RealmAccess.Roles...)
+		// Include OIDC groups (standard "groups" claim) as roles so services
+		// that map group membership to privileges can use principalCtx.Roles
+		// without maintaining a separate Groups field.
+		roles = append(roles, claims.Groups...)
 	} else {
 		roles = append(roles, extractRolesFromClaimsMap(genericClaimsFromValidatedContext(ctx))...)
 	}

@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/dioad/auth/oidc"
 	authserver "github.com/dioad/auth/http/server"
+	"github.com/dioad/auth/oidc"
 
 	diohttp "github.com/dioad/net/http"
 )
