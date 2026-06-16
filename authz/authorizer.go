@@ -46,13 +46,19 @@ import (
 type Authorizer interface {
 	// Privileges returns the full capability set for the principal. It returns
 	// nil when the principal has no recognised roles (not an error). Callers
-	// should treat a nil Privilege as "no capabilities".
+	// should treat a nil Privilege as "no capabilities". When principalCtx is
+	// nil, enforcing implementations return (nil, nil); callers that need to
+	// distinguish "unauthenticated" from "no roles" should use Can instead.
 	Privileges(ctx context.Context, principalCtx *auth.PrincipalContext) (Privilege, error)
 
 	// Can checks whether the principal holds cap. A non-nil *Decision is
 	// returned for every policy outcome; nil only on infrastructure errors.
 	// Use errors.Is(err, ErrUnauthorized) to detect a missing principal, and
 	// errors.Is(err, ErrForbidden) to detect a policy denial.
+	//
+	// Contract: when principalCtx is nil, all enforcing implementations must
+	// return ErrUnauthorized. AllowAllAuthorizer is the sole exception — it
+	// bypasses all checks by design and must never be used in production.
 	Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error)
 
 	// Metadata returns the policy metadata for introspection.

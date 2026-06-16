@@ -361,6 +361,50 @@ func TestOIDCPrincipalSource_RolesDedupe(t *testing.T) {
 	}
 }
 
+func TestOIDCPrincipalSource_GroupsIncludedInRoles(t *testing.T) {
+	source := &oidcPrincipalSource{}
+
+	claims := &oidc.IntrospectionResponse{
+		Subject: "smoke-user",
+	}
+	claims.RealmAccess.Roles = []string{"realm-role"}
+	claims.Groups = []string{"connect-users", "admin-users"}
+	ctx := jwtcore.SetClaims(context.Background(), claims)
+
+	roles := source.Roles(ctx)
+
+	if !sliceContains(roles, "realm-role") {
+		t.Errorf("Roles() missing realm role: %v", roles)
+	}
+	if !sliceContains(roles, "connect-users") {
+		t.Errorf("Roles() missing OIDC group connect-users: %v", roles)
+	}
+	if !sliceContains(roles, "admin-users") {
+		t.Errorf("Roles() missing OIDC group admin-users: %v", roles)
+	}
+}
+
+func TestOIDCPrincipalSource_GroupsDeduped(t *testing.T) {
+	source := &oidcPrincipalSource{}
+
+	claims := &oidc.IntrospectionResponse{Subject: "smoke-user"}
+	claims.RealmAccess.Roles = []string{"connect-users"} // same as group
+	claims.Groups = []string{"connect-users"}
+	ctx := jwtcore.SetClaims(context.Background(), claims)
+
+	roles := source.Roles(ctx)
+
+	count := 0
+	for _, r := range roles {
+		if r == "connect-users" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("Roles() should deduplicate connect-users; got %v", roles)
+	}
+}
+
 func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t *testing.T) {
 	extractor := NewDefaultPrincipalExtractor()
 
