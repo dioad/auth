@@ -43,7 +43,13 @@ type ValidatorConfig struct {
 	// validation. When non-empty, JWKS discovery is skipped and the secret is
 	// used directly as the signing key. Intended for local development and
 	// smoke testing only; never use a static shared secret in production.
+	// Requires AllowInsecureHMAC: true to prevent accidental production use.
 	HMACSecret string `json:"hmac_secret,omitempty" mapstructure:"hmac_secret"`
+
+	// AllowInsecureHMAC must be set to true when HMACSecret is used. This
+	// explicit opt-in acknowledges that HMAC shared secrets are not suitable
+	// for production deployments. Never set this to true in production config.
+	AllowInsecureHMAC bool `json:"allow_insecure_hmac,omitempty" mapstructure:"allow_insecure_hmac"`
 }
 
 // TrustConfig describes a set of validators that must all succeed.

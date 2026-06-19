@@ -16,8 +16,9 @@ import (
 // with any issuer claim, enabling flexible local smoke testing.
 func TestHMACValidatorAcceptsAnyIssuer(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: "test-secret",
-		Audiences:  []string{"test"}, // Required by validator
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"}, // Required by validator
 		// Issuer omitted to test synthetic issuer path
 	}
 
@@ -46,8 +47,9 @@ func TestHMACValidatorAcceptsAnyIssuer(t *testing.T) {
 // iss claim are rejected (validator library requirement).
 func TestHMACValidatorRejectsEmptyIssuer(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: "test-secret",
-		Audiences:  []string{"test"}, // Required by validator
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"}, // Required by validator
 	}
 
 	v, err := oidc.NewValidatorFromConfig(cfg)
@@ -127,6 +129,7 @@ func TestNormalValidatorEnforcesIssuer(t *testing.T) {
 func TestHMACValidatorEnforcesHS256Algorithm(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
 		HMACSecret:         "test-secret",
+		AllowInsecureHMAC:  true,
 		SignatureAlgorithm: "RS256", // Asymmetric algorithm incompatible with HMAC
 		Audiences:          []string{"test"},
 	}
@@ -155,6 +158,7 @@ func TestHMACValidatorEnforcesHS256Algorithm(t *testing.T) {
 func TestHMACValidatorFiltersNonHMACAlgorithmsFromList(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
 		HMACSecret:          "test-secret",
+		AllowInsecureHMAC:   true,
 		SignatureAlgorithms: []string{"RS256", "HS256"},
 		Audiences:           []string{"test"},
 	}
@@ -199,8 +203,9 @@ func TestHMACValidatorWithCustomKeyFuncAndNoIssuer(t *testing.T) {
 	}
 
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: "test-secret", // Indicates HMAC mode
-		Audiences:  []string{"test"},
+		HMACSecret:        "test-secret", // Indicates HMAC mode
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 		// Issuer omitted, and custom keyFunc provided
 	}
 
@@ -252,7 +257,8 @@ func TestNormalValidatorRequiresAudiences(t *testing.T) {
 // is enforced. Tokens carrying that audience are accepted; others are rejected.
 func TestHMACValidatorWithNoAudiencesUsesLocalSmokeDefault(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: "test-secret",
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
 		// Audiences intentionally omitted to test the "local-smoke" default path
 	}
 
@@ -292,9 +298,10 @@ func TestHMACValidatorWithNoAudiencesUsesLocalSmokeDefault(t *testing.T) {
 // along with an explicit issuer, the issuer is still enforced (not bypassed).
 func TestHMACValidatorEnforcesExplicitIssuer(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: "test-secret",
-		Issuer:     "https://example.com", // Explicit issuer
-		Audiences:  []string{"test"},
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Issuer:            "https://example.com", // Explicit issuer
+		Audiences:         []string{"test"},
 	}
 
 	v, err := oidc.NewValidatorFromConfig(cfg)
@@ -336,8 +343,9 @@ func TestHMACValidatorEnforcesExplicitIssuer(t *testing.T) {
 
 func TestHMACValidatorPopulatesIntrospectionCustomClaims(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: "test-secret",
-		Audiences:  []string{"test"},
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 	}
 
 	v, err := oidc.NewValidatorFromConfig(cfg)

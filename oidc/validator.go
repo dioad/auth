@@ -99,6 +99,9 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 
 	// Static HMAC secret short-circuits JWKS discovery. Intended for local
 	// development / smoke tests only.
+	if cfg.HMACSecret != "" && !cfg.AllowInsecureHMAC {
+		return nil, fmt.Errorf("HMACSecret requires AllowInsecureHMAC: true — HMAC shared secrets are not suitable for production")
+	}
 	if cfg.HMACSecret != "" {
 		secret := []byte(cfg.HMACSecret)
 		// Only override keyFunc if no custom keyFunc was provided via options
