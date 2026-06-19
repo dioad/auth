@@ -55,6 +55,27 @@ func resolveClaimRoleMappingRoles(mappings []ClaimRoleMappingConfig, source stri
 	return resolved
 }
 
+// ValidateRoleMappings returns a warning string for each role name in mappings
+// that does not appear in knownRoles. Call at application startup and log the
+// results at Warn level to surface misconfigured claim-role mappings early.
+//
+// knownRoles should include both canonical role names and alias names from the
+// authoriser's PolicyMetadata (convert RoleCapabilities keys and RoleAliases
+// keys to []string before calling).
+func ValidateRoleMappings(mappings []ClaimRoleMappingConfig, knownRoles []string) []string {
+	known := make(map[string]struct{}, len(knownRoles))
+	for _, r := range knownRoles {
+		known[r] = struct{}{}
+	}
+	var warnings []string
+	for _, m := range mappings {
+		if _, ok := known[m.Role]; !ok {
+			warnings = append(warnings, "claim-role-mapping: unknown role "+m.Role+" — principals with this role may be denied; check your configuration")
+		}
+	}
+	return warnings
+}
+
 // filterMappings returns entries whose Source matches the named source, plus
 // entries with an empty Source which match any source.
 func filterMappings(mappings []ClaimRoleMappingConfig, source string) []ClaimRoleMappingConfig {

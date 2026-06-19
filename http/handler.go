@@ -127,6 +127,8 @@ func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http
 				}
 			case "hmac":
 				a = hmac.NewHandler(cfg.HMACAuthConfig)
+			default:
+				continue
 			}
 
 			ctx, err = a.AuthRequest(r)

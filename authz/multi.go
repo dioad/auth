@@ -23,7 +23,7 @@ type MultiAuthorizer struct {
 func NewMultiAuthorizer(authorizers ...Authorizer) *MultiAuthorizer {
 	var meta PolicyMetadata
 	if len(authorizers) > 0 {
-		meta = authorizers[0].Metadata()
+		meta = CloneMetadata(authorizers[0].Metadata())
 	}
 	return &MultiAuthorizer{authorizers: authorizers, metadata: meta}
 }
