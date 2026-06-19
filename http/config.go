@@ -23,6 +23,11 @@ type GenericAuthConfig struct {
 
 // ServerConfig represents the authentication configuration for an HTTP server.
 type ServerConfig struct {
+	// Type selects the auth handler explicitly: "github", "basic", "hmac", "jwt", "oidc".
+	// When set it takes precedence over zero-value detection. An unrecognised Type
+	// returns an error from NewHandler.
+	Type string `mapstructure:"type"`
+
 	BasicAuthConfig  basic.ServerConfig  `mapstructure:"basic"`
 	GitHubAuthConfig github.ServerConfig `mapstructure:"github"`
 	HMACAuthConfig   hmac.ServerConfig   `mapstructure:"hmac"`
