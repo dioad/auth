@@ -50,8 +50,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	authcontext "github.com/dioad/auth/http/context"
-	dnag "github.com/dioad/auth/http/github"
+	"github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/oidc"
 	"github.com/dioad/auth/oidc/aws"
@@ -144,7 +143,7 @@ type jwtPrincipalSource struct {
 }
 
 func (s *jwtPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
-	principal, _ := authcontext.AuthenticatedPrincipalFromContext(ctx)
+	principal, _ := authctx.AuthenticatedPrincipalFromContext(ctx)
 	return principal, nil
 }
 
@@ -155,12 +154,12 @@ func (s *jwtPrincipalSource) Name() string {
 func (s *jwtPrincipalSource) Claims(ctx context.Context) map[string]any {
 	result := make(map[string]any)
 
-	principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx)
+	principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx)
 	if ok {
 		result["principal"] = principal
 	}
 
-	if registered, ok := authcontext.AuthenticatedRegisteredClaimsFromContext(ctx); ok {
+	if registered, ok := authctx.AuthenticatedRegisteredClaimsFromContext(ctx); ok {
 		if registered.Subject != "" {
 			result["sub"] = registered.Subject
 		}
@@ -172,7 +171,7 @@ func (s *jwtPrincipalSource) Claims(ctx context.Context) map[string]any {
 		}
 	}
 
-	if custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx); ok {
+	if custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx); ok {
 		for key, value := range custom {
 			if key == "principal" {
 				continue
@@ -320,7 +319,7 @@ func (s *oidcPrincipalSource) IsService(ctx context.Context) bool {
 type githubPrincipalSource struct{}
 
 func (s *githubPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
-	userInfo := dnag.GitHubUserInfoFromContext(ctx)
+	userInfo := authctx.GitHubUserInfoFromContext(ctx)
 	if userInfo == nil {
 		return "", nil
 	}
@@ -333,7 +332,7 @@ func (s *githubPrincipalSource) Name() string {
 }
 
 func (s *githubPrincipalSource) Claims(ctx context.Context) map[string]any {
-	userInfo := dnag.GitHubUserInfoFromContext(ctx)
+	userInfo := authctx.GitHubUserInfoFromContext(ctx)
 	if userInfo == nil {
 		return nil
 	}

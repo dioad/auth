@@ -10,11 +10,11 @@ import (
 
 	"github.com/rs/zerolog"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 )
 
 type TokenAuthenticator interface {
-	AuthenticateToken(accessToken string) (*UserInfo, error)
+	AuthenticateToken(accessToken string) (*authhttp.GitHubUserInfo, error)
 }
 
 // NewHandler creates a new GitHub authentication handler with the provided configuration.
@@ -60,7 +60,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(r.Context(), user.Login)
 
-	ctx = NewContextWithGitHubUserInfo(ctx, user)
+	ctx = authhttp.NewContextWithGitHubUserInfo(ctx, user)
 
 	zerolog.Ctx(r.Context()).Debug().
 		Str("principal", user.Login).

@@ -1,4 +1,9 @@
-package context
+// Package authctx defines context keys and accessor functions for credentials
+// stored in a request context by authentication middleware.
+//
+// This package is a domain-level leaf: it imports no auth sub-packages, so any
+// package in the auth module can import it without creating import cycles.
+package authctx
 
 import (
 	"context"
@@ -8,7 +13,6 @@ import (
 
 type principalContextKey struct{}
 type registeredClaimsContextKey struct{}
-
 type customClaimsContextKey struct{}
 
 // ContextWithAuthenticatedPrincipal stores the authenticated principal on the context.
@@ -54,4 +58,33 @@ func AuthenticatedCustomClaimsFromContext(ctx context.Context) (map[string]any, 
 	}
 	claims, ok := val.(map[string]any)
 	return claims, ok
+}
+
+// GitHubUserInfo contains information about a GitHub user.
+type GitHubUserInfo struct {
+	Login                string
+	Name                 string
+	PrimaryEmail         string
+	PrimaryEmailVerified bool
+	Company              string
+	WebSite              string
+	Location             string
+	PlanName             string
+}
+
+type githubUserInfoContextKey struct{}
+
+// NewContextWithGitHubUserInfo returns a new context with the provided GitHub user info.
+func NewContextWithGitHubUserInfo(ctx context.Context, userInfo *GitHubUserInfo) context.Context {
+	return context.WithValue(ctx, githubUserInfoContextKey{}, userInfo)
+}
+
+// GitHubUserInfoFromContext returns the GitHub user info from the provided context.
+// It returns nil if no user info is found.
+func GitHubUserInfoFromContext(ctx context.Context) *GitHubUserInfo {
+	val := ctx.Value(githubUserInfoContextKey{})
+	if val != nil {
+		return val.(*GitHubUserInfo)
+	}
+	return nil
 }

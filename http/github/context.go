@@ -3,44 +3,17 @@ package github
 import (
 	"context"
 
-	"github.com/google/go-github/v33/github"
 	"golang.org/x/oauth2"
 
+	"github.com/google/go-github/v33/github"
+
+	"github.com/dioad/auth/authctx"
 	"github.com/dioad/generics"
 )
 
-// UserInfo contains information about a GitHub user.
-type UserInfo struct {
-	Login                string
-	Name                 string
-	PrimaryEmail         string
-	PrimaryEmailVerified bool
-	Company              string
-	WebSite              string
-	Location             string
-	PlanName             string
-}
-
-type githubUserInfoContext struct{}
-
-// NewContextWithGitHubUserInfo returns a new context with the provided GitHub user info.
-func NewContextWithGitHubUserInfo(ctx context.Context, userInfo *UserInfo) context.Context {
-	return context.WithValue(ctx, githubUserInfoContext{}, userInfo)
-}
-
-// GitHubUserInfoFromContext returns the GitHub user info from the provided context.
-// It returns nil if no user info is found.
-func GitHubUserInfoFromContext(ctx context.Context) *UserInfo {
-	val := ctx.Value(githubUserInfoContext{})
-	if val != nil {
-		return val.(*UserInfo)
-	}
-	return nil
-}
-
 // FetchUserInfo retrieves GitHub user information using the provided access token.
 // It fetches basic profile info and the primary email address.
-func FetchUserInfo(accessToken string) (*UserInfo, error) {
+func FetchUserInfo(accessToken string) (*authctx.GitHubUserInfo, error) {
 	t := &TokenSource{AccessToken: accessToken}
 	oauthClient := oauth2.NewClient(context.Background(), t)
 	client := github.NewClient(oauthClient)
@@ -55,7 +28,7 @@ func FetchUserInfo(accessToken string) (*UserInfo, error) {
 		return nil, err
 	}
 
-	userInfo := &UserInfo{
+	userInfo := &authctx.GitHubUserInfo{
 		Login:    u.GetLogin(),
 		Name:     u.GetName(),
 		WebSite:  u.GetBlog(),

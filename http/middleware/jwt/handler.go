@@ -10,7 +10,7 @@ import (
 	"github.com/auth0/go-jwt-middleware/v3/core"
 	"github.com/dioad/net/http/json"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/jwt"
 )
 

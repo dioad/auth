@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
+	authhttp "github.com/dioad/auth/authctx"
 	authauthz "github.com/dioad/auth/authz"
-	authhttp "github.com/dioad/auth/http/context"
 
 	"github.com/dioad/net/authz"
 )

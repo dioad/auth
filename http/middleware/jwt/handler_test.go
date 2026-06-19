@@ -11,7 +11,7 @@ import (
 	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 
-	authcontext "github.com/dioad/auth/http/context"
+	authcontext "github.com/dioad/auth/authctx"
 )
 
 type stubTokenValidator struct {

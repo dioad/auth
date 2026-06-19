@@ -10,7 +10,7 @@ import (
 	jwtcore "github.com/auth0/go-jwt-middleware/v3/core"
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 
-	authcontext "github.com/dioad/auth/http/context"
+	authcontext "github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/oidc"
 )
 

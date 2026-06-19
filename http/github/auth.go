@@ -8,6 +8,8 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/v33/github"
+
+	"github.com/dioad/auth/authctx"
 )
 
 // Authenticator handles GitHub token validation using the GitHub API.
@@ -31,7 +33,7 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 
 // AuthenticateToken verifies the provided GitHub access token against the GitHub API.
 // It also fetches additional user information if the token is valid.
-func (a *Authenticator) AuthenticateToken(accessToken string) (*UserInfo, error) {
+func (a *Authenticator) AuthenticateToken(accessToken string) (*authctx.GitHubUserInfo, error) {
 	_, response, err := a.Client.Authorizations.Check(context.Background(), a.Config.ClientID, accessToken)
 	if err != nil {
 		return nil, err

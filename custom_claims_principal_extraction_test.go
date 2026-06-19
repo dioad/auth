@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dioad/auth"
-	authcontext "github.com/dioad/auth/http/context"
+	authcontext "github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/oidc/aws"
 	"github.com/dioad/auth/oidc/flyio"
 	"github.com/dioad/auth/oidc/githubactions"

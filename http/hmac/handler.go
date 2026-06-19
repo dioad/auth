@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 )
 
 // NewHandler creates a new HMAC authentication handler with the provided configuration.
