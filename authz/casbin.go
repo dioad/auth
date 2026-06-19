@@ -7,7 +7,6 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
-	"github.com/rs/zerolog"
 
 	"github.com/dioad/auth"
 )
@@ -127,14 +126,9 @@ func (a *CasbinAuthorizer) Metadata() PolicyMetadata {
 	return CloneMetadata(a.metadata)
 }
 
-// NewDefaultCasbinAuthorizer attempts to create a CasbinAuthorizer from the
-// given metadata. If Casbin initialisation fails, it falls back to a
-// [RoleAuthorizer] and logs a warning so operators can investigate.
-func NewDefaultCasbinAuthorizer(metadata PolicyMetadata, logger zerolog.Logger) (Authorizer, error) {
-	a, err := NewCasbinAuthorizer(metadata)
-	if err != nil {
-		logger.Warn().Err(err).Msg("casbin authorizer initialisation failed, falling back to role authorizer")
-		return NewRoleAuthorizer(metadata), nil
-	}
-	return a, nil
+// NewDefaultCasbinAuthorizer creates a [CasbinAuthorizer] from the given
+// metadata. Returns an error if Casbin initialisation fails; the caller decides
+// whether to fall back to a simpler backend.
+func NewDefaultCasbinAuthorizer(metadata PolicyMetadata) (Authorizer, error) {
+	return NewCasbinAuthorizer(metadata)
 }
