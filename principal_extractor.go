@@ -14,13 +14,13 @@
 // Usage Example:
 //
 //	extractor := auth.NewDefaultPrincipalExtractor()
-//	ctx, err := extractor.ExtractPrincipal(req.Context(), req)
+//	pc, err := extractor.ExtractPrincipal(req.Context())
 //	if err != nil {
 //	    // Handle no principal found
 //	    return
 //	}
-//	// Use ctx.ID and ctx.Source for logging/auditing
-//	log.Info("principal", ctx.ID, "source", ctx.Source)
+//	// Use pc.ID and pc.Source for logging/auditing
+//	log.Info("principal", pc.ID, "source", pc.Source)
 //
 // Adding New Sources:
 //
@@ -34,7 +34,7 @@
 // Use mock extractors in tests to avoid needing real authentication:
 //
 //	type mockExtractor struct{ principal string }
-//	func (m *mockExtractor) ExtractPrincipal(ctx context.Context, r *http.Request) (*PrincipalContext, error) {
+//	func (m *mockExtractor) ExtractPrincipal(ctx context.Context) (*PrincipalContext, error) {
 //	    return &PrincipalContext{ID: m.principal, Source: "mock"}, nil
 //	}
 package auth
@@ -45,7 +45,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net/http"
 	"slices"
 
 	"github.com/rs/zerolog/log"
@@ -104,23 +103,23 @@ func PrincipalContextFromContext(ctx context.Context) *PrincipalContext {
 	return nil
 }
 
-// PrincipalExtractor extracts the authenticated principal (user identity) from an HTTP request.
+// PrincipalExtractor extracts the authenticated principal (user identity) from the request context.
 // This is the central service for all principal/identity resolution in the server.
 //
 // The extractor tries multiple sources in priority order and returns the first
 // successful match, along with metadata about how the principal was determined.
 type PrincipalExtractor interface {
-	// ExtractPrincipal attempts to extract a principal from the request context.
+	// ExtractPrincipal attempts to extract a principal from the context.
 	// Returns the principal context about the extraction, or an error if no principal found.
-	ExtractPrincipal(ctx context.Context, r *http.Request) (*PrincipalContext, error)
+	ExtractPrincipal(ctx context.Context) (*PrincipalContext, error)
 }
 
-// PrincipalSource represents a single method of extracting a principal from a request.
+// PrincipalSource represents a single method of extracting a principal from the context.
 // Each source (JWT, OIDC, GitHub, etc.) implements this interface.
 type PrincipalSource interface {
 	// Extract attempts to extract a principal from this source.
 	// Returns the principal identifier or empty string if not available.
-	Extract(ctx context.Context, r *http.Request) (string, error)
+	Extract(ctx context.Context) (string, error)
 
 	// Name returns the identifier for this source (e.g., "jwt", "oidc", "github")
 	Name() string
@@ -142,7 +141,7 @@ type jwtPrincipalSource struct {
 	RoleMapper ClaimRoleMapper
 }
 
-func (s *jwtPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
+func (s *jwtPrincipalSource) Extract(ctx context.Context) (string, error) {
 	principal, _ := authctx.AuthenticatedPrincipalFromContext(ctx)
 	return principal, nil
 }
@@ -231,7 +230,7 @@ func (s *oidcPrincipalSource) Roles(ctx context.Context) []string {
 	return dedupeStrings(roles)
 }
 
-func (s *oidcPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
+func (s *oidcPrincipalSource) Extract(ctx context.Context) (string, error) {
 	// Try standard OIDC IntrospectionResponse claims first
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
 	if claims != nil && claims.Subject != "" {
@@ -318,7 +317,7 @@ func (s *oidcPrincipalSource) IsService(ctx context.Context) bool {
 // githubPrincipalSource extracts principal from GitHub user info
 type githubPrincipalSource struct{}
 
-func (s *githubPrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
+func (s *githubPrincipalSource) Extract(ctx context.Context) (string, error) {
 	userInfo := authctx.GitHubUserInfoFromContext(ctx)
 	if userInfo == nil {
 		return "", nil
@@ -358,17 +357,9 @@ type defaultPrincipalExtractor struct {
 }
 
 // ExtractPrincipal tries each source in order and returns the first successful match.
-// The ctx parameter must equal r.Context() to ensure claims stored on the request
-// context (by middleware) are available to the sources. Use r.Context() rather
-// than a separate context parameter when calling this method.
-func (e *defaultPrincipalExtractor) ExtractPrincipal(ctx context.Context, r *http.Request) (*PrincipalContext, error) {
-	// Use request context if available to ensure claims stored by middleware are accessible
-	if r != nil && r.Context() != ctx {
-		ctx = r.Context()
-	}
-
+func (e *defaultPrincipalExtractor) ExtractPrincipal(ctx context.Context) (*PrincipalContext, error) {
 	for _, source := range e.sources {
-		principal, err := source.Extract(ctx, r)
+		principal, err := source.Extract(ctx)
 		if err != nil {
 			// Log the error at trace level for debugging, but continue to next source
 			// This allows fallback to continue even if a source has issues
@@ -567,7 +558,7 @@ func NewAllowAllPrincipalExtractor() PrincipalExtractor {
 
 type allowAllPrincipalSource struct{}
 
-func (s *allowAllPrincipalSource) Extract(_ context.Context, _ *http.Request) (string, error) {
+func (s *allowAllPrincipalSource) Extract(_ context.Context) (string, error) {
 	return "unauthenticated", nil
 }
 
@@ -597,7 +588,7 @@ type MockPrincipalSource struct {
 	MockIsService bool
 }
 
-func (m *MockPrincipalSource) Extract(_ context.Context, _ *http.Request) (string, error) {
+func (m *MockPrincipalSource) Extract(_ context.Context) (string, error) {
 	return m.MockPrincipal, m.MockError
 }
 

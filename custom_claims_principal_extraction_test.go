@@ -2,7 +2,6 @@ package auth_test
 
 import (
 	"context"
-	"net/http/httptest"
 	"testing"
 
 	jwtcore "github.com/auth0/go-jwt-middleware/v3/core"
@@ -85,9 +84,7 @@ func TestFlyioPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 		"app_name": "dioad-dev-edgerouter",
 		"org_name": "dioad-dev",
 	})
-	req := httptest.NewRequest("GET", "/v1/endpoints", nil).WithContext(ctx)
-
-	principal, err := extractor.ExtractPrincipal(req.Context(), req)
+	principal, err := extractor.ExtractPrincipal(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "flyio", principal.Source, "should be extracted by flyio source")
 	require.Contains(t, principal.Roles, "registry.router-reader")
@@ -122,9 +119,7 @@ func TestAWSPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 	}
 
 	ctx := simulateTypedClaimsContext(context.Background(), vc, nil)
-	req := httptest.NewRequest("GET", "/v1/endpoints", nil).WithContext(ctx)
-
-	principal, err := extractor.ExtractPrincipal(req.Context(), req)
+	principal, err := extractor.ExtractPrincipal(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "aws", principal.Source, "should be extracted by aws source")
 	require.Contains(t, principal.Roles, "registry.dns-reader")
@@ -166,9 +161,7 @@ func TestGitHubActionsPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T)
 	}
 
 	ctx := simulateTypedClaimsContext(context.Background(), vc, nil)
-	req := httptest.NewRequest("GET", "/v1/endpoints", nil).WithContext(ctx)
-
-	principal, err := extractor.ExtractPrincipal(req.Context(), req)
+	principal, err := extractor.ExtractPrincipal(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "githubactions", principal.Source, "should be extracted by githubactions source")
 	require.Contains(t, principal.Roles, "registry.deployer")
@@ -198,9 +191,7 @@ func TestFlyioSource_WithoutTypedClaims_FallsThrough(t *testing.T) {
 		"app_name": "dioad-dev-edgerouter",
 		"org_name": "dioad-dev",
 	})
-	req := httptest.NewRequest("GET", "/v1/endpoints", nil).WithContext(ctx)
-
-	principal, err := extractor.ExtractPrincipal(req.Context(), req)
+	principal, err := extractor.ExtractPrincipal(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "jwt", principal.Source, "without typed claims, should fall through to jwt source")
 	require.NotContains(t, principal.Roles, "registry.router-reader",

@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"net/http"
 	"slices"
 	"testing"
 
@@ -111,10 +110,8 @@ func TestDefaultPrincipalExtractor_FallbackChain(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			req := &http.Request{}
-			req = req.WithContext(ctx)
 
-			principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+			principalCtx, err := extractor.ExtractPrincipal(ctx)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ExtractPrincipal() error = %v, wantErr %v", err, tt.wantErr)
@@ -167,10 +164,8 @@ func TestDefaultPrincipalExtractor_Claims(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &http.Request{}
-	req = req.WithContext(ctx)
 
-	principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+	principalCtx, err := extractor.ExtractPrincipal(ctx)
 
 	if err != nil {
 		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
@@ -205,10 +200,8 @@ func TestDefaultPrincipalExtractor_SourcePriority(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &http.Request{}
-	req = req.WithContext(ctx)
 
-	principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+	principalCtx, err := extractor.ExtractPrincipal(ctx)
 
 	if err != nil {
 		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
@@ -255,7 +248,7 @@ func TestOIDCPrincipalSource_NilClaims(t *testing.T) {
 	// Context without any OIDC claims (claims will be nil)
 	ctx := context.Background()
 
-	principal, err := source.Extract(ctx, nil)
+	principal, err := source.Extract(ctx)
 
 	if err != nil {
 		t.Errorf("Extract() unexpected error: %v", err)
@@ -295,7 +288,7 @@ func TestOIDCPrincipalSource_WithValidClaims(t *testing.T) {
 			// Put claims into context using the same mechanism as the JWT middleware
 			ctx := jwtcore.SetClaims(context.Background(), tt.claims)
 
-			principal, err := source.Extract(ctx, nil)
+			principal, err := source.Extract(ctx)
 
 			if err != nil {
 				t.Errorf("Extract() unexpected error: %v", err)
@@ -423,9 +416,8 @@ func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t
 
 	ctx := jwtcore.SetClaims(context.Background(), vc)
 	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "jwt-subject")
-	req := (&http.Request{}).WithContext(ctx)
 
-	principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+	principalCtx, err := extractor.ExtractPrincipal(ctx)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
 	}
@@ -465,9 +457,8 @@ func TestDefaultPrincipalExtractor_UsesJWTMapperForGenericValidatedClaims(t *tes
 
 	ctx := jwtcore.SetClaims(context.Background(), vc)
 	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "jwt-subject")
-	req := (&http.Request{}).WithContext(ctx)
 
-	principalCtx, err := extractor.ExtractPrincipal(ctx, req)
+	principalCtx, err := extractor.ExtractPrincipal(ctx)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
 	}

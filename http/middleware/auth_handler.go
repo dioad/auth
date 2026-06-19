@@ -19,7 +19,7 @@ func (h *principalExtractionHandler) Middleware(next http.Handler) http.Handler 
 		// Use the request-scoped context logger so that error responses carry
 		// request_id and any other fields already injected by upstream middleware.
 		response := json.NewResponseFromRequest(w, req)
-		principalContext, err := h.principalExtractor.ExtractPrincipal(req.Context(), req)
+		principalContext, err := h.principalExtractor.ExtractPrincipal(req.Context())
 		if err != nil {
 			if errors.Is(err, auth.ErrNoPrincipalFound) {
 				response.Unauthorized(
