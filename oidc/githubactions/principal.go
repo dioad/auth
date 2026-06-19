@@ -3,7 +3,6 @@ package githubactions
 import (
 	"context"
 	"maps"
-	"net/http"
 
 	"github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/jwt"
@@ -49,7 +48,7 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 // attempts the typed-claims path (JWT middleware configured with a GitHub
 // Actions validator), then falls back to fingerprinting generic validated claims
 // stored by a non-typed JWT middleware.
-func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string, error) {
+func (s *PrincipalSource) Extract(ctx context.Context) (string, error) {
 	// Typed path: JWT middleware configured with a GitHub Actions-specific validator.
 	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
 		registered := jwt.RegisteredClaimsFromContext(ctx)

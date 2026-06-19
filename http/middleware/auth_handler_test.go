@@ -18,7 +18,7 @@ type testPrincipalExtractor struct {
 	err       error
 }
 
-func (e testPrincipalExtractor) ExtractPrincipal(_ context.Context, _ *http.Request) (*auth.PrincipalContext, error) {
+func (e testPrincipalExtractor) ExtractPrincipal(_ context.Context) (*auth.PrincipalContext, error) {
 	return e.principal, e.err
 }
 

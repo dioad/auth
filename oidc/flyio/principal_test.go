@@ -31,7 +31,7 @@ func TestExtract_WithFlyioClaims(t *testing.T) {
 	ctx := core.SetClaims(context.Background(), vc)
 
 	s := &PrincipalSource{}
-	principal, err := s.Extract(ctx, nil)
+	principal, err := s.Extract(ctx)
 
 	require.NoError(t, err)
 	assert.Equal(t, "my-machine-id", principal)
@@ -50,7 +50,7 @@ func TestExtract_WithoutFlyioClaims(t *testing.T) {
 	ctx := core.SetClaims(context.Background(), vc)
 
 	s := &PrincipalSource{}
-	principal, err := s.Extract(ctx, nil)
+	principal, err := s.Extract(ctx)
 
 	require.NoError(t, err)
 	assert.Equal(t, "", principal)
@@ -60,7 +60,7 @@ func TestExtract_WithoutFlyioClaims(t *testing.T) {
 // when no claims are in context at all.
 func TestExtract_EmptyContext(t *testing.T) {
 	s := &PrincipalSource{}
-	principal, err := s.Extract(context.Background(), nil)
+	principal, err := s.Extract(context.Background())
 
 	require.NoError(t, err)
 	assert.Equal(t, "", principal)
@@ -238,7 +238,7 @@ func TestExtract_WithGenericClaims(t *testing.T) {
 	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
 
 	s := &PrincipalSource{}
-	principal, err := s.Extract(ctx, nil)
+	principal, err := s.Extract(ctx)
 
 	require.NoError(t, err)
 	assert.Equal(t, "my-org:my-app:cold-shape", principal)
@@ -256,7 +256,7 @@ func TestExtract_WithGenericClaims_NoMatch(t *testing.T) {
 	ctx = authcontext.ContextWithAuthenticatedCustomClaims(ctx, claims)
 
 	s := &PrincipalSource{}
-	principal, err := s.Extract(ctx, nil)
+	principal, err := s.Extract(ctx)
 
 	require.NoError(t, err)
 	assert.Equal(t, "", principal)
