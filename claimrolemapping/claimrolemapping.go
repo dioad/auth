@@ -6,7 +6,6 @@ package claimrolemapping
 
 import (
 	"github.com/dioad/auth"
-	"github.com/dioad/auth/authz"
 	"github.com/rs/zerolog"
 )
 
@@ -48,10 +47,9 @@ type ExtractorConfig struct {
 }
 
 // BuildExtractorConfig constructs a per-source DefaultExtractorConfig from
-// claim-role mapping rules and the application's policy metadata. It emits
-// Info-level startup logs for each configured source and a Warn when any rule
-// has Debug enabled.
-func BuildExtractorConfig(mappings []ClaimRoleMappingConfig, policy authz.PolicyMetadata, logger zerolog.Logger) auth.DefaultExtractorConfig {
+// claim-role mapping rules. It emits Info-level startup logs for each
+// configured source and a Warn when any rule has Debug enabled.
+func BuildExtractorConfig(mappings []ClaimRoleMappingConfig, logger zerolog.Logger) auth.DefaultExtractorConfig {
 	sourceMappings := make(map[string][]ClaimRoleMappingConfig, len(knownSources))
 	for _, src := range knownSources {
 		filtered := filterMappings(mappings, src)
@@ -79,11 +77,11 @@ func BuildExtractorConfig(mappings []ClaimRoleMappingConfig, policy authz.Policy
 	}
 
 	return auth.DefaultExtractorConfig{
-		FlyioMapper:         buildMapper(sourceMappings[SourceFlyio], policy, SourceFlyio, logger),
-		GithubActionsMapper: buildMapper(sourceMappings[SourceGithubActions], policy, SourceGithubActions, logger),
-		AWSMapper:           buildMapper(sourceMappings[SourceAWS], policy, SourceAWS, logger),
-		OIDCMapper:          buildMapper(sourceMappings[SourceOIDC], policy, SourceOIDC, logger),
-		JWTMapper:           buildMapper(sourceMappings[SourceJWT], policy, SourceJWT, logger),
+		FlyioMapper:         buildMapper(sourceMappings[SourceFlyio], SourceFlyio, logger),
+		GithubActionsMapper: buildMapper(sourceMappings[SourceGithubActions], SourceGithubActions, logger),
+		AWSMapper:           buildMapper(sourceMappings[SourceAWS], SourceAWS, logger),
+		OIDCMapper:          buildMapper(sourceMappings[SourceOIDC], SourceOIDC, logger),
+		JWTMapper:           buildMapper(sourceMappings[SourceJWT], SourceJWT, logger),
 	}
 }
 
@@ -91,11 +89,11 @@ func BuildExtractorConfig(mappings []ClaimRoleMappingConfig, policy authz.Policy
 // AllowUnauthenticated is true it returns an allow-all extractor suitable for
 // development. Otherwise it builds a proper extractor with per-source
 // claim-to-role mapping.
-func BuildPrincipalExtractor(config ExtractorConfig, policy authz.PolicyMetadata, logger zerolog.Logger) auth.PrincipalExtractor {
+func BuildPrincipalExtractor(config ExtractorConfig, logger zerolog.Logger) auth.PrincipalExtractor {
 	if config.AllowUnauthenticated {
 		return auth.NewAllowAllPrincipalExtractor()
 	}
 	return auth.NewDefaultPrincipalExtractorWithConfig(
-		BuildExtractorConfig(config.ClaimRoleMappings, policy, logger),
+		BuildExtractorConfig(config.ClaimRoleMappings, logger),
 	)
 }
