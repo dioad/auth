@@ -22,11 +22,11 @@ func NewRoleAuthorizer(metadata PolicyMetadata) *RoleAuthorizer {
 // Privileges resolves the principal's roles from canonical role names or
 // RoleAliases and returns the union of all matching role capabilities. Returns
 // nil when the principal has no recognised roles.
-func (a *RoleAuthorizer) Privileges(_ context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
+func (a *RoleAuthorizer) Privileges(ctx context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
 		return nil, nil
 	}
-	roles := principalRoles(principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
+	roles := principalRoles(ctx, principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
 		return nil, nil
 	}

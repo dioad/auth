@@ -77,11 +77,11 @@ func NewCasbinAuthorizer(metadata PolicyMetadata) (*CasbinAuthorizer, error) {
 // Privileges resolves the principal's roles from canonical role names or
 // RoleAliases and returns the union of all matching role capabilities as a
 // [PrivilegeSet].
-func (a *CasbinAuthorizer) Privileges(_ context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
+func (a *CasbinAuthorizer) Privileges(ctx context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
 		return nil, nil
 	}
-	roles := principalRoles(principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
+	roles := principalRoles(ctx, principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
 		return nil, nil
 	}
@@ -91,12 +91,12 @@ func (a *CasbinAuthorizer) Privileges(_ context.Context, principalCtx *auth.Prin
 // Can checks whether the principal's roles grant cap using Casbin enforcement.
 // The returned Decision includes GrantedBy — the first role that grants the
 // capability — enabling fine-grained audit logging.
-func (a *CasbinAuthorizer) Can(_ context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
+func (a *CasbinAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
 	if principalCtx == nil {
 		return deny(ReasonDeniedNilPrincipal, cap), ErrUnauthorized
 	}
 
-	roles := principalRoles(principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
+	roles := principalRoles(ctx, principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
 		return deny(ReasonDeniedNoRoles, cap), ErrForbidden
 	}

@@ -1,8 +1,11 @@
 package authz
 
 import (
+	"context"
 	"maps"
 	"slices"
+
+	"github.com/rs/zerolog"
 
 	"github.com/dioad/auth"
 )
@@ -54,8 +57,8 @@ func MergeRoleAliases(meta PolicyMetadata, aliases map[string]Role) PolicyMetada
 // A role string is accepted if it is a canonical role name (present as a key in
 // capabilities) or if it maps to one via the alias table. Canonical names take
 // priority, so self-referential alias entries are unnecessary. Unrecognised
-// role strings are silently dropped.
-func principalRoles(principalCtx *auth.PrincipalContext, aliases map[string]Role, capabilities map[Role][]Capability) []Role {
+// role strings are dropped and logged at trace level for operator visibility.
+func principalRoles(ctx context.Context, principalCtx *auth.PrincipalContext, aliases map[string]Role, capabilities map[Role][]Capability) []Role {
 	roles := make([]Role, 0, len(principalCtx.Roles))
 	for _, r := range principalCtx.Roles {
 		role := Role(r)
@@ -65,6 +68,11 @@ func principalRoles(principalCtx *auth.PrincipalContext, aliases map[string]Role
 		}
 		if mapped, ok := aliases[r]; ok {
 			roles = append(roles, mapped)
+		} else {
+			zerolog.Ctx(ctx).Trace().
+				Str("principal", principalCtx.ID).
+				Str("role", r).
+				Msg("authz: dropping unrecognised role")
 		}
 	}
 	return roles
