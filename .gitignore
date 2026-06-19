@@ -56,6 +56,7 @@ go.work.sum
 !apm.yml
 !apm.lock.yaml
 !.apm/instructions/*.md
+!.apm/commands/*.md
 !.github/instructions/*.md
 !.github/workflows/claude.yml
 
