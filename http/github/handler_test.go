@@ -6,15 +6,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 )
 
 type mockAuthenticator struct {
-	user *UserInfo
+	user *authhttp.GitHubUserInfo
 	err  error
 }
 
-func (m *mockAuthenticator) AuthenticateToken(accessToken string) (*UserInfo, error) {
+func (m *mockAuthenticator) AuthenticateToken(accessToken string) (*authhttp.GitHubUserInfo, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -25,7 +25,7 @@ func TestHandler_AuthRequest(t *testing.T) {
 	tests := []struct {
 		name          string
 		authHeader    string
-		mockUser      *UserInfo
+		mockUser      *authhttp.GitHubUserInfo
 		mockErr       error
 		wantPrincipal string
 		wantError     bool
@@ -33,14 +33,14 @@ func TestHandler_AuthRequest(t *testing.T) {
 		{
 			name:          "valid bearer token",
 			authHeader:    "Bearer valid-token",
-			mockUser:      &UserInfo{Login: "test-user"},
+			mockUser:      &authhttp.GitHubUserInfo{Login: "test-user"},
 			wantPrincipal: "test-user",
 			wantError:     false,
 		},
 		{
 			name:          "valid token scheme",
 			authHeader:    "Token valid-token",
-			mockUser:      &UserInfo{Login: "test-user"},
+			mockUser:      &authhttp.GitHubUserInfo{Login: "test-user"},
 			wantPrincipal: "test-user",
 			wantError:     false,
 		},
@@ -85,7 +85,7 @@ func TestHandler_AuthRequest(t *testing.T) {
 					t.Errorf("expected principal %s, got %s", tt.wantPrincipal, principal)
 				}
 
-				user := GitHubUserInfoFromContext(ctx)
+				user := authhttp.GitHubUserInfoFromContext(ctx)
 				if user == nil || user.Login != tt.wantPrincipal {
 					t.Errorf("expected user info in context, got %v", user)
 				}
@@ -95,7 +95,7 @@ func TestHandler_AuthRequest(t *testing.T) {
 }
 
 func TestHandler_Wrap(t *testing.T) {
-	authenticator := &mockAuthenticator{user: &UserInfo{Login: "test-user"}}
+	authenticator := &mockAuthenticator{user: &authhttp.GitHubUserInfo{Login: "test-user"}}
 	handler := NewHandlerWithAuthenticator(authenticator)
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

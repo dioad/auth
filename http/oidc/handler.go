@@ -15,7 +15,7 @@ import (
 	oidcprovider "github.com/markbates/goth/providers/openidConnect"
 	"github.com/rs/zerolog"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 	authoidc "github.com/dioad/auth/oidc"
 )
 

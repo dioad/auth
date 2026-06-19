@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 )
 
 // Handler implements basic authentication for HTTP servers.

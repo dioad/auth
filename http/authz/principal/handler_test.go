@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 
 	"github.com/dioad/net/authz"
 )

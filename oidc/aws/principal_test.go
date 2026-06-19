@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	authcontext "github.com/dioad/auth/http/context"
+	authcontext "github.com/dioad/auth/authctx"
 )
 
 // makeCustomClaims is a helper to create AWS CustomClaims with the nested STS struct.

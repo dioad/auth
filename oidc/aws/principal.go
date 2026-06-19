@@ -5,7 +5,7 @@ import (
 	"maps"
 	"net/http"
 
-	authcontext "github.com/dioad/auth/http/context"
+	"github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/mapper"
 	"github.com/dioad/auth/oidc/oidcutil"
@@ -81,11 +81,11 @@ func (s *PrincipalSource) Extract(ctx context.Context, _ *http.Request) (string,
 	}
 	// Generic path: JWT middleware using a generic validator. Fingerprint the
 	// custom claims map to confirm this is an AWS token before extracting.
-	custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx)
 	if !ok || !HasValidClaims(custom) {
 		return "", nil
 	}
-	if principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
+	if principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
 		return principal, nil
 	}
 	if sub, ok := custom["sub"].(string); ok && sub != "" {
@@ -120,13 +120,13 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 	}
 
 	// Generic path: normalize nested STS claims into flat aws_* keys.
-	custom, ok := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx)
 	if !ok || !HasValidClaims(custom) {
 		return result
 	}
 	maps.Copy(result, NormalizeClaims(custom))
 	if _, exists := result["username"]; !exists {
-		if principal, ok := authcontext.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
+		if principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
 			result["username"] = principal
 		}
 	}
@@ -139,7 +139,7 @@ func (s *PrincipalSource) IsService(ctx context.Context) bool {
 	if jwt.CustomClaimsFromContext[*Claims](ctx) != nil {
 		return true
 	}
-	custom, _ := authcontext.AuthenticatedCustomClaimsFromContext(ctx)
+	custom, _ := authctx.AuthenticatedCustomClaimsFromContext(ctx)
 	return HasValidClaims(custom)
 }
 

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	authhttp "github.com/dioad/auth/http/context"
+	authhttp "github.com/dioad/auth/authctx"
 )
 
 func TestClientHandlerIntegration(t *testing.T) {
