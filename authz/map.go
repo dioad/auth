@@ -51,5 +51,5 @@ func (a *MapAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalCon
 
 // Metadata returns the policy metadata.
 func (a *MapAuthorizer) Metadata() PolicyMetadata {
-	return CloneMetadata(a.metadata)
+	return a.metadata
 }

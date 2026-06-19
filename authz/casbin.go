@@ -123,7 +123,7 @@ func (a *CasbinAuthorizer) Can(_ context.Context, principalCtx *auth.PrincipalCo
 
 // Metadata returns the policy metadata.
 func (a *CasbinAuthorizer) Metadata() PolicyMetadata {
-	return CloneMetadata(a.metadata)
+	return a.metadata
 }
 
 // NewDefaultCasbinAuthorizer creates a [CasbinAuthorizer] from the given

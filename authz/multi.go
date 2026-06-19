@@ -50,5 +50,5 @@ func (m *MultiAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalC
 // Metadata returns the metadata from the first backend, or an empty
 // PolicyMetadata when no backends are configured.
 func (m *MultiAuthorizer) Metadata() PolicyMetadata {
-	return CloneMetadata(m.metadata)
+	return m.metadata
 }
