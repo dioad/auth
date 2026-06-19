@@ -1,7 +1,6 @@
 package http
 
 import (
-	stdctx "context"
 	"net/http"
 
 	"github.com/dioad/generics"
@@ -88,10 +87,7 @@ func NullHandler(next http.HandlerFunc) http.HandlerFunc {
 // MultiAuthnHandlerFunc creates a handler function that supports multiple authentication providers.
 func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		h := origHandler
-
-		// ctx := r.Context()
-		var ctx stdctx.Context
+		ctx := r.Context()
 		var err error
 		for _, provider := range cfg.Providers {
 			var a Authenticator
@@ -119,6 +115,6 @@ func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http
 			return
 		}
 
-		h.ServeHTTP(w, r)
+		origHandler.ServeHTTP(w, r)
 	}
 }
