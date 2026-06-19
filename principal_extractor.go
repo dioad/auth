@@ -72,9 +72,6 @@ type PrincipalContext struct {
 	// Source identifies which authentication method was used (e.g., "jwt", "oidc", "github")
 	Source string
 
-	// TenantID identifies a principal's tenant
-	TenantID string
-
 	// Attributes contains additional authentication data for debugging/logging
 	Attributes map[string]any
 
