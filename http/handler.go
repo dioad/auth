@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/dioad/generics"
@@ -33,6 +34,10 @@ func NewHandler(cfg *ServerConfig) (*Handler, error) {
 }
 
 func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
+	if cfg.Type != "" {
+		return resolveAuthHandlerByType(cfg)
+	}
+	// Legacy: detect handler from whichever config sub-struct is non-zero.
 	if !generics.IsZeroValue(cfg.GitHubAuthConfig) {
 		return github.NewHandler(cfg.GitHubAuthConfig), nil
 	} else if !generics.IsZeroValue(cfg.BasicAuthConfig) {
@@ -50,13 +55,34 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Note: OIDC handler configuration needs more details (paths, etc.)
-		return oidc.NewHandler(client, oidc.OIDCConfig{
-			LoginPath: "/login",
-		}), nil
+		return oidc.NewHandler(client, oidc.OIDCConfig{LoginPath: "/login"}), nil
 	}
-
 	return nil, nil
+}
+
+func resolveAuthHandlerByType(cfg *ServerConfig) (Middleware, error) {
+	switch cfg.Type {
+	case "github":
+		return github.NewHandler(cfg.GitHubAuthConfig), nil
+	case "basic":
+		return basic.NewHandler(cfg.BasicAuthConfig)
+	case "hmac":
+		return hmac.NewHandler(cfg.HMACAuthConfig), nil
+	case "jwt":
+		validator, err := authjwt.NewValidatorFromConfig(&cfg.JWTAuthConfig)
+		if err != nil {
+			return nil, err
+		}
+		return jwt.NewHandler(validator, "auth_token"), nil
+	case "oidc":
+		client, err := authoidc.NewClientFromConfig(&cfg.OIDCAuthConfig)
+		if err != nil {
+			return nil, err
+		}
+		return oidc.NewHandler(client, oidc.OIDCConfig{LoginPath: "/login"}), nil
+	default:
+		return nil, fmt.Errorf("unknown auth type %q — use one of: github, basic, hmac, jwt, oidc", cfg.Type)
+	}
 }
 
 // Wrap wraps an HTTP handler with authentication middleware.
