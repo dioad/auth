@@ -204,7 +204,8 @@ func TestWrap_NoPrincipal(t *testing.T) {
 
 	wrappedHandler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Errorf("Expected status code %d, got %d", http.StatusForbidden, w.Code)
+	// No principal in context → 401 Unauthorized (not 403 Forbidden)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status code %d, got %d", http.StatusUnauthorized, w.Code)
 	}
 }
