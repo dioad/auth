@@ -507,20 +507,16 @@ func hasOIDCLikeClaims(claims map[string]any) bool {
 	if len(claims) == 0 {
 		return false
 	}
-
+	// sub is required in all well-formed JWTs; skip tokens that lack it.
+	if _, ok := claims["sub"]; !ok {
+		return false
+	}
+	// Require at least one claim that is OIDC-specific (not present in plain JWTs).
+	// Broad profile claims (name, given_name, family_name, etc.) are intentionally
+	// excluded because they appear in many non-OIDC tokens.
 	for _, key := range []string{
-		"auth_time",
-		"acr",
-		"amr",
-		"azp",
-		"nonce",
-		"preferred_username",
-		"email_verified",
-		"given_name",
-		"family_name",
-		"middle_name",
-		"nickname",
-		"name",
+		"auth_time", "acr", "amr", "azp", "nonce",
+		"preferred_username", "email_verified",
 	} {
 		if _, ok := claims[key]; ok {
 			return true
