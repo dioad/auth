@@ -122,8 +122,9 @@ func githubActionsToken(t *testing.T) string {
 // the flyio.PrincipalSource to extract principal identity.
 func TestFlyioValidatorProducesTypedClaims(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: testHMACSecret,
-		Audiences:  []string{"test"},
+		HMACSecret:        testHMACSecret,
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 	}
 	cfg.Type = "flyio"
 
@@ -151,8 +152,9 @@ func TestFlyioValidatorProducesTypedClaims(t *testing.T) {
 // the nested STS namespace claims.
 func TestAWSValidatorProducesTypedClaims(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: testHMACSecret,
-		Audiences:  []string{"test"},
+		HMACSecret:        testHMACSecret,
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 	}
 	cfg.Type = "aws"
 
@@ -180,8 +182,9 @@ func TestAWSValidatorProducesTypedClaims(t *testing.T) {
 // *githubactions.Claims.
 func TestGitHubActionsValidatorProducesTypedClaims(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: testHMACSecret,
-		Audiences:  []string{"test"},
+		HMACSecret:        testHMACSecret,
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 	}
 	cfg.Type = "githubactions"
 
@@ -210,8 +213,9 @@ func TestGitHubActionsValidatorProducesTypedClaims(t *testing.T) {
 // This ensures backwards compatibility.
 func TestDefaultTypeProducesGenericClaims(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: testHMACSecret,
-		Audiences:  []string{"test"},
+		HMACSecret:        testHMACSecret,
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 		// Type intentionally not set — should use default (IntrospectionResponse)
 	}
 
@@ -233,8 +237,9 @@ func TestDefaultTypeProducesGenericClaims(t *testing.T) {
 // option can override the claims factory regardless of config Type.
 func TestCustomClaimsValidatorOption(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
-		HMACSecret: testHMACSecret,
-		Audiences:  []string{"test"},
+		HMACSecret:        testHMACSecret,
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
 		// Type not set — factory override should take effect
 	}
 
