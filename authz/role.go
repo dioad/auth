@@ -41,5 +41,5 @@ func (a *RoleAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalCo
 
 // Metadata returns the policy metadata.
 func (a *RoleAuthorizer) Metadata() PolicyMetadata {
-	return CloneMetadata(a.metadata)
+	return a.metadata
 }

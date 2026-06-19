@@ -12,6 +12,10 @@ type Role string
 
 // PolicyMetadata describes a static role→capability policy used to
 // configure [RoleAuthorizer] and [CasbinAuthorizer].
+//
+// PolicyMetadata is treated as immutable after construction. Authorizer
+// constructors deep-copy the value via [CloneMetadata]; callers who need a
+// mutable copy after that point should call [CloneMetadata] themselves.
 type PolicyMetadata struct {
 	// RoleCapabilities maps each internal Role to the set of Capabilities it grants.
 	RoleCapabilities map[Role][]Capability
