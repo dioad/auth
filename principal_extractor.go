@@ -231,19 +231,9 @@ func (s *oidcPrincipalSource) Roles(ctx context.Context) []string {
 }
 
 func (s *oidcPrincipalSource) Extract(ctx context.Context) (string, error) {
-	// Try standard OIDC IntrospectionResponse claims first
 	claims := jwt.CustomClaimsFromContext[*oidc.IntrospectionResponse](ctx)
 	if claims != nil && claims.Subject != "" {
 		return claims.Subject, nil
-	}
-	// Fallback only for generic validated claims that look OIDC-like.
-	if generic := genericClaimsFromValidatedContext(ctx); generic != nil {
-		if !hasOIDCLikeClaims(generic) {
-			return "", nil
-		}
-		if sub, ok := generic["sub"].(string); ok && sub != "" {
-			return sub, nil
-		}
 	}
 	return "", nil
 }
@@ -488,28 +478,6 @@ func genericClaimsFromValidatedContext(ctx context.Context) map[string]any {
 	}
 	maps.Copy(result, asMap)
 	return result
-}
-
-func hasOIDCLikeClaims(claims map[string]any) bool {
-	if len(claims) == 0 {
-		return false
-	}
-	// sub is required in all well-formed JWTs; skip tokens that lack it.
-	if _, ok := claims["sub"]; !ok {
-		return false
-	}
-	// Require at least one claim that is OIDC-specific (not present in plain JWTs).
-	// Broad profile claims (name, given_name, family_name, etc.) are intentionally
-	// excluded because they appear in many non-OIDC tokens.
-	for _, key := range []string{
-		"auth_time", "acr", "amr", "azp", "nonce",
-		"preferred_username", "email_verified",
-	} {
-		if _, ok := claims[key]; ok {
-			return true
-		}
-	}
-	return false
 }
 
 func extractRolesFromClaimsMap(claims map[string]any) []string {

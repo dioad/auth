@@ -31,5 +31,5 @@ func (a *AllowAllAuthorizer) Can(_ context.Context, _ *auth.PrincipalContext, ca
 
 // Metadata returns the policy metadata provided at construction.
 func (a *AllowAllAuthorizer) Metadata() PolicyMetadata {
-	return CloneMetadata(a.metadata)
+	return a.metadata
 }
