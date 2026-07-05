@@ -70,7 +70,6 @@ func principalRoles(ctx context.Context, principalCtx *auth.PrincipalContext, al
 			roles = append(roles, mapped)
 		} else {
 			zerolog.Ctx(ctx).Trace().
-				Str("principal", principalCtx.ID).
 				Str("role", r).
 				Msg("authz: dropping unrecognised role")
 		}
