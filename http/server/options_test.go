@@ -77,6 +77,31 @@ func TestWithServerAuth_OIDC_RegistersRoutesWithoutRedirectLoop(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode, "Callback should run and reject the missing code/state, not be gated")
 }
 
+// TestWithOAuth2Validator_RejectsRequestWithNoCredential is the regression
+// test for the fail-open sibling of the bug fixed for the "type: jwt"
+// dispatch path: OAuth2ValidatorHandler built a jwt.Handler without opting
+// into WithRequireToken(true), so a request presenting no bearer token or
+// cookie at all was forwarded to next unauthenticated instead of rejected —
+// exactly the vulnerable configuration examples/oidc-auth/main.go documents.
+func TestWithOAuth2Validator_RejectsRequestWithNoCredential(t *testing.T) {
+	cfg := []oidc.ValidatorConfig{{
+		EndpointConfig: oidc.EndpointConfig{URL: "http://127.0.0.1:1"},
+		Issuer:         "http://127.0.0.1:1",
+		Audiences:      []string{"test-audience"},
+	}}
+
+	base := startTestServer(t, WithOAuth2Validator(cfg))
+
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	resp, err := client.Get(base + "/secure")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode,
+		"a request with no credential must be rejected, not forwarded unauthenticated")
+}
+
 func TestWithServerAuth_NonOIDC_RegistersNoLoginRoutes(t *testing.T) {
 	cfg := authhttp.ServerConfig{
 		Type: "hmac",

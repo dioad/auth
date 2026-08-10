@@ -24,7 +24,7 @@ func OAuth2ValidatorHandler(v []oidc.ValidatorConfig) (nethttp.Middleware, error
 	}
 
 	multiValidator := &authjwt.MultiValidator{Validators: validators}
-	authHandler := jwt.NewHandler(multiValidator, "auth_token")
+	authHandler := jwt.NewHandler(multiValidator, "auth_token").WithRequireToken(true)
 
 	return func(next http.Handler) http.Handler {
 		return authHandler.Wrap(next)
