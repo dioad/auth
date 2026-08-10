@@ -71,6 +71,13 @@ type OIDCConfig struct {
 	Now           func() time.Time `json:"-" mapstructure:"-"`
 	LoginPath     string           `json:"login_path,omitzero" mapstructure:"login-path,omitzero"`
 	LogoutPath    string           `json:"logout_path,omitzero" mapstructure:"logout-path,omitzero"`
+
+	// AllowInsecureCookies disables the default Secure attribute on session
+	// cookies, allowing them to be sent over plain HTTP. Session cookies
+	// carry live OAuth access and refresh tokens, so this must only be set
+	// for local HTTP development — never in production. Mirrors
+	// oidc.ValidatorConfig.AllowInsecureHMAC's explicit-opt-in shape.
+	AllowInsecureCookies bool `json:"allow_insecure_cookies,omitzero" mapstructure:"allow-insecure-cookies,omitzero"`
 }
 
 type Handler struct {
@@ -107,7 +114,14 @@ func (h *Handler) WithBearerPassthrough(v bool) *Handler {
 // empty Domain is the correct, safe default (the browser scopes the cookie to
 // the current host), whereas defaulting it to DefaultCookieDomain
 // ("localhost") would break every real deployment using a custom domain.
-func applyCookieDefaults(c CookieConfig, name string, maxAge time.Duration) CookieConfig {
+//
+// Secure is forced true unless allowInsecure is set: these cookies carry live
+// OAuth access and refresh tokens, so — unlike Domain — there is no safe
+// implicit default other than "always sent over HTTPS." A bool field can't
+// distinguish "unset" from "explicitly false", so making that distinction
+// configurable goes through OIDCConfig.AllowInsecureCookies instead of a
+// per-cookie zero-value check.
+func applyCookieDefaults(c CookieConfig, name string, maxAge time.Duration, allowInsecure bool) CookieConfig {
 	if c.Name == "" {
 		c.Name = name
 	}
@@ -116,6 +130,9 @@ func applyCookieDefaults(c CookieConfig, name string, maxAge time.Duration) Cook
 	}
 	if c.MaxAge == 0 {
 		c.MaxAge = maxAge
+	}
+	if !allowInsecure {
+		c.Secure = true
 	}
 	return c
 }
@@ -131,10 +148,10 @@ func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
 		cfg.LogoutPath = "/logout"
 	}
 
-	cfg.TokenCookie = applyCookieDefaults(cfg.TokenCookie, DefaultTokenCookieName, DefaultTokenCookieMaxAge)
-	cfg.StateCookie = applyCookieDefaults(cfg.StateCookie, DefaultStateCookieName, DefaultStateCookieMaxAge)
-	cfg.RefreshCookie = applyCookieDefaults(cfg.RefreshCookie, DefaultRefreshCookieName, DefaultRefreshCookieMaxAge)
-	cfg.TokenExpiryCookie = applyCookieDefaults(cfg.TokenExpiryCookie, DefaultTokenExpiryCookieName, DefaultTokenCookieMaxAge)
+	cfg.TokenCookie = applyCookieDefaults(cfg.TokenCookie, DefaultTokenCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.StateCookie = applyCookieDefaults(cfg.StateCookie, DefaultStateCookieName, DefaultStateCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.RefreshCookie = applyCookieDefaults(cfg.RefreshCookie, DefaultRefreshCookieName, DefaultRefreshCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.TokenExpiryCookie = applyCookieDefaults(cfg.TokenExpiryCookie, DefaultTokenExpiryCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
 
 	var callbackPath string
 	if u, err := url.Parse(cfg.RedirectURI); err == nil {

@@ -29,7 +29,25 @@ func TestNewHandler_AppliesDefaults(t *testing.T) {
 		assert.Equalf(t, DefaultCookiePath, cc.got.Path, "%s cookie path should default", cc.name)
 		assert.NotZerof(t, cc.got.MaxAge, "%s cookie max-age should default", cc.name)
 		assert.Emptyf(t, cc.got.Domain, "%s cookie domain must stay empty by default", cc.name)
+		assert.Truef(t, cc.got.Secure, "%s cookie must default Secure to true", cc.name)
 	}
+}
+
+// TestNewHandler_AllowInsecureCookies_OptsOutOfSecureDefault is the
+// regression test for the insecure-by-default session cookie: session
+// cookies carry live OAuth access and refresh tokens, so Secure must default
+// true, with plain-HTTP local development requiring an explicit opt-out —
+// the same shape as oidc.ValidatorConfig.AllowInsecureHMAC.
+func TestNewHandler_AllowInsecureCookies_OptsOutOfSecureDefault(t *testing.T) {
+	h := NewHandler(nil, OIDCConfig{
+		RedirectURI:          "https://tunnel.example/callback",
+		AllowInsecureCookies: true,
+	})
+
+	assert.False(t, h.Config.TokenCookie.Secure)
+	assert.False(t, h.Config.StateCookie.Secure)
+	assert.False(t, h.Config.RefreshCookie.Secure)
+	assert.False(t, h.Config.TokenExpiryCookie.Secure)
 }
 
 func TestNewHandler_PreservesExplicitConfig(t *testing.T) {
