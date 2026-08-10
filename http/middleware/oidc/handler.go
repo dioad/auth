@@ -70,25 +70,105 @@ type OIDCConfig struct {
 	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero"`
 	Now           func() time.Time `json:"-" mapstructure:"-"`
 	LoginPath     string           `json:"login_path,omitzero" mapstructure:"login-path,omitzero"`
+	LogoutPath    string           `json:"logout_path,omitzero" mapstructure:"logout-path,omitzero"`
 }
 
 type Handler struct {
 	Client *oidc.Client
 	Config OIDCConfig
+
+	// callbackPath is the URL path component of Config.RedirectURI, precomputed
+	// once so Wrap doesn't need to reparse it on every request.
+	callbackPath string
+}
+
+// applyCookieDefaults fills in Name, Path, and MaxAge when unset, using the
+// package-level Default* values. Domain is deliberately left untouched: an
+// empty Domain is the correct, safe default (the browser scopes the cookie to
+// the current host), whereas defaulting it to DefaultCookieDomain
+// ("localhost") would break every real deployment using a custom domain.
+func applyCookieDefaults(c CookieConfig, name string, maxAge time.Duration) CookieConfig {
+	if c.Name == "" {
+		c.Name = name
+	}
+	if c.Path == "" {
+		c.Path = DefaultCookiePath
+	}
+	if c.MaxAge == 0 {
+		c.MaxAge = maxAge
+	}
+	return c
 }
 
 func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	return &Handler{
-		Client: client,
-		Config: cfg,
+	if cfg.LoginPath == "" {
+		cfg.LoginPath = "/login"
 	}
+	if cfg.LogoutPath == "" {
+		cfg.LogoutPath = "/logout"
+	}
+
+	cfg.TokenCookie = applyCookieDefaults(cfg.TokenCookie, DefaultTokenCookieName, DefaultTokenCookieMaxAge)
+	cfg.StateCookie = applyCookieDefaults(cfg.StateCookie, DefaultStateCookieName, DefaultStateCookieMaxAge)
+	cfg.RefreshCookie = applyCookieDefaults(cfg.RefreshCookie, DefaultRefreshCookieName, DefaultRefreshCookieMaxAge)
+	cfg.TokenExpiryCookie = applyCookieDefaults(cfg.TokenExpiryCookie, DefaultTokenExpiryCookieName, DefaultTokenCookieMaxAge)
+
+	var callbackPath string
+	if u, err := url.Parse(cfg.RedirectURI); err == nil {
+		callbackPath = u.Path
+	}
+
+	return &Handler{
+		Client:       client,
+		Config:       cfg,
+		callbackPath: callbackPath,
+	}
+}
+
+// LoginPath returns the path AuthStart should be registered at.
+func (h *Handler) LoginPath() string {
+	return h.Config.LoginPath
+}
+
+// CallbackPath returns the URL path component of Config.RedirectURI that
+// Callback should be registered at, or "" if RedirectURI is unset or
+// unparseable.
+func (h *Handler) CallbackPath() string {
+	return h.callbackPath
+}
+
+// LogoutPath returns the path Logout should be registered at.
+func (h *Handler) LogoutPath() string {
+	return h.Config.LogoutPath
+}
+
+// isPublicPath reports whether path is one of this handler's own
+// login/callback/logout routes, which must never be gated by Wrap — otherwise
+// an unauthenticated request to them would be redirected right back to
+// LoginPath, looping forever and preventing login from ever completing.
+func (h *Handler) isPublicPath(path string) bool {
+	if path == h.Config.LoginPath {
+		return true
+	}
+	if h.callbackPath != "" && path == h.callbackPath {
+		return true
+	}
+	if h.Config.LogoutPath != "" && path == h.Config.LogoutPath {
+		return true
+	}
+	return false
 }
 
 func (h *Handler) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h.isPublicPath(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if r.Header.Get("Authorization") != "" {
 			next.ServeHTTP(w, r)
 			return

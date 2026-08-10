@@ -4,9 +4,18 @@ import (
 	"github.com/dioad/auth/http/basic"
 	"github.com/dioad/auth/http/github"
 	"github.com/dioad/auth/http/hmac"
+	oidcmw "github.com/dioad/auth/http/middleware/oidc"
 	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/oidc"
 )
+
+// OIDCServerConfig combines OIDC provider credentials with the login/session
+// middleware settings (redirect-uri, cookies, login/logout paths) needed to
+// complete a login when "type: oidc" is used as a server's sole auth gate.
+type OIDCServerConfig struct {
+	oidc.ClientConfig `mapstructure:",squash"`
+	oidcmw.OIDCConfig `mapstructure:",squash"`
+}
 
 // ClientConfig represents the authentication configuration for an HTTP client.
 type ClientConfig struct {
@@ -32,7 +41,7 @@ type ServerConfig struct {
 	GitHubAuthConfig github.ServerConfig `mapstructure:"github"`
 	HMACAuthConfig   hmac.ServerConfig   `mapstructure:"hmac"`
 	JWTAuthConfig    jwt.ValidatorConfig `mapstructure:"jwt"`
-	OIDCAuthConfig   oidc.ClientConfig   `mapstructure:"oidc"`
+	OIDCAuthConfig   OIDCServerConfig    `mapstructure:"oidc"`
 
 	Providers []string `mapstructure:"providers"`
 }
