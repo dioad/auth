@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"errors"
 	"net/http"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware/v3"
@@ -16,9 +17,10 @@ import (
 
 // Handler handles JWT authentication and sets the authenticated principal in the context.
 type Handler struct {
-	validator  jwt.TokenValidator
-	opts       []jwtmiddleware.Option
-	cookieName string
+	validator    jwt.TokenValidator
+	opts         []jwtmiddleware.Option
+	cookieName   string
+	requireToken bool
 }
 
 // NewHandler creates a JWT authentication handler. All log output uses the
@@ -30,6 +32,16 @@ func NewHandler(validator jwt.TokenValidator, cookieName string, opts ...jwtmidd
 		cookieName: cookieName,
 		opts:       opts,
 	}
+}
+
+// WithRequireToken configures whether Wrap rejects a request with 401 when no
+// bearer token or cookie is presented at all, instead of passing it through
+// unauthenticated. Defaults to false, preserving this handler's pass-through
+// behavior for chained/optional use (e.g. as one of several providers).
+// Callers that use this handler as a server's sole auth gate should opt in.
+func (h *Handler) WithRequireToken(v bool) *Handler {
+	h.requireToken = v
+	return h
 }
 
 func (h *Handler) Wrap(next http.Handler) http.Handler {
@@ -51,6 +63,10 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		}
 
 		if extracted.Token == "" {
+			if h.requireToken {
+				errorHandler(w, r, errors.New("no token provided"))
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
