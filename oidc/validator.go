@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
-	"net/url"
 	"strings"
 	"time"
 
@@ -94,69 +93,21 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		opt(options)
 	}
 
-	// Track whether HMAC mode should use flexible issuer validation
-	hmacFlexibleIssuer := false
-
-	// Static HMAC secret short-circuits JWKS discovery. Intended for local
-	// development / smoke tests only.
-	if cfg.HMACSecret != "" && !cfg.AllowInsecureHMAC {
-		return nil, fmt.Errorf("HMACSecret requires AllowInsecureHMAC: true — HMAC shared secrets are not suitable for production")
+	issuer, algorithms, hmacFlexibleIssuer, err := applyHMACOverrides(cfg, issuer, algorithms, options)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.HMACSecret != "" {
-		secret := []byte(cfg.HMACSecret)
-		// Only override keyFunc if no custom keyFunc was provided via options
-		if options.keyFunc == nil {
-			options.keyFunc = func(_ context.Context) (any, error) { return secret, nil }
-		}
-		// HMAC requires a symmetric signing algorithm (HS256/HS384/HS512).
-		// Override any non-HS algorithm to prevent runtime failures.
-		hmacAlgorithms := make([]validator.SignatureAlgorithm, 0, len(algorithms))
-		for _, algorithm := range algorithms {
-			if isHMACAlgorithm(algorithm) {
-				hmacAlgorithms = append(hmacAlgorithms, algorithm)
-			}
-		}
-		if len(hmacAlgorithms) == 0 {
-			hmacAlgorithms = []validator.SignatureAlgorithm{validator.HS256}
-		}
-		algorithms = hmacAlgorithms
-		// For HMAC smoke tests without an explicit issuer, accept any issuer claim.
-		// If an issuer was explicitly configured, enforce it.
-		if issuer == "" {
-			// No issuer preference; set a dummy issuer for the validator library
-			// (which requires at least one to be set), then use flexible validation.
-			issuer = "local-smoke"
-			hmacFlexibleIssuer = true
-		}
-	}
-
 	if issuer == "" {
 		return nil, fmt.Errorf("issuer or URL must be provided")
 	}
 
 	if options.keyFunc == nil {
-		issuerURL, err := url.Parse(issuer)
+		keyFunc, provider, err := jwt.ResolveKeyFunc(issuer, time.Duration(cfg.CacheTTL)*time.Second, options.jwksProvider)
 		if err != nil {
-			return nil, fmt.Errorf("invalid issuer URL: %w", err)
+			return nil, err
 		}
-		cacheTTL := time.Duration(cfg.CacheTTL) * time.Second
-		if cacheTTL <= 0 {
-			cacheTTL = 5 * time.Minute
-		}
-		if options.jwksProvider == nil {
-			var err error
-			options.jwksProvider, err = jwks.NewCachingProvider(
-				jwks.WithIssuerURL(issuerURL),
-				jwks.WithCacheTTL(cacheTTL),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create JWKS caching provider: %w", err)
-			}
-		}
-		options.keyFunc = options.jwksProvider.KeyFunc
-	}
-	if options.keyFunc == nil {
-		return nil, fmt.Errorf("key function not configured")
+		options.keyFunc = keyFunc
+		options.jwksProvider = provider
 	}
 
 	// Resolve the custom claims factory: explicit option takes precedence,
@@ -165,10 +116,78 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		options.customClaimsFactory = customClaimsFactoryForType(cfg.Type)
 	}
 
-	// Build validator options.
+	validatorOpts, err := buildValidatorOptions(cfg, issuer, algorithms, hmacFlexibleIssuer, options)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := validator.New(validatorOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validator: %w", err)
+	}
+
+	tv := jwt.NewAuth0Validator(v, issuer)
+	if cfg.HMACSecret != "" {
+		// HMAC smoke-test tokens are validated with the generic claims map, not
+		// a provider-specific typed CustomClaims factory, so attempt to
+		// populate CustomClaims by re-parsing the token payload.
+		tv = &enrichingValidator{TokenValidator: tv}
+	}
+
+	return jwt.WrapValidator(tv, cfg.ClaimPredicate, cfg.Debug), nil
+}
+
+// applyHMACOverrides adjusts algorithms/keyFunc/issuer for HMAC shared-secret
+// smoke-test mode: algorithms are restricted to HS*, the key function returns
+// the static secret directly (skipping JWKS discovery), and — when no issuer
+// was configured — issuer validation becomes flexible (any issuer claim is
+// accepted) since smoke tokens may carry an arbitrary iss value. Mutates
+// options.keyFunc in place when HMAC mode applies and no custom keyFunc was
+// already provided. Returns issuer/algorithms unchanged when cfg.HMACSecret
+// is empty.
+func applyHMACOverrides(cfg *ValidatorConfig, issuer string, algorithms []validator.SignatureAlgorithm, options *validatorOptions) (string, []validator.SignatureAlgorithm, bool, error) {
+	if cfg.HMACSecret == "" {
+		return issuer, algorithms, false, nil
+	}
+	if !cfg.AllowInsecureHMAC {
+		return "", nil, false, fmt.Errorf("HMACSecret requires AllowInsecureHMAC: true — HMAC shared secrets are not suitable for production")
+	}
+
+	if options.keyFunc == nil {
+		secret := []byte(cfg.HMACSecret)
+		options.keyFunc = func(_ context.Context) (any, error) { return secret, nil }
+	}
+
+	// HMAC requires a symmetric signing algorithm (HS256/HS384/HS512).
+	// Override any non-HS algorithm to prevent runtime failures.
+	hmacAlgorithms := make([]validator.SignatureAlgorithm, 0, len(algorithms))
+	for _, algorithm := range algorithms {
+		if isHMACAlgorithm(algorithm) {
+			hmacAlgorithms = append(hmacAlgorithms, algorithm)
+		}
+	}
+	if len(hmacAlgorithms) == 0 {
+		hmacAlgorithms = []validator.SignatureAlgorithm{validator.HS256}
+	}
+
+	// For HMAC smoke tests without an explicit issuer, accept any issuer
+	// claim. If an issuer was explicitly configured, enforce it.
+	flexibleIssuer := false
+	if issuer == "" {
+		issuer = "local-smoke"
+		flexibleIssuer = true
+	}
+
+	return issuer, hmacAlgorithms, flexibleIssuer, nil
+}
+
+// buildValidatorOptions assembles the auth0 validator.Option list for cfg,
+// given the already-resolved issuer/algorithms/HMAC-flexible-issuer state and
+// key/custom-claims options.
+func buildValidatorOptions(cfg *ValidatorConfig, issuer string, algorithms []validator.SignatureAlgorithm, hmacFlexibleIssuer bool, options *validatorOptions) ([]validator.Option, error) {
 	validatorOpts := []validator.Option{
 		validator.WithKeyFunc(options.keyFunc),
-		validator.WithAllowedClockSkew(time.Duration(cfg.AllowedClockSkew) * time.Second),
+		validator.WithAllowedClockSkew(jwt.ResolveAllowedClockSkew(cfg.AllowedClockSkew)),
 	}
 	if len(algorithms) == 1 {
 		validatorOpts = append(validatorOpts, validator.WithAlgorithm(algorithms[0]))
@@ -178,13 +197,15 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	if options.customClaimsFactory != nil {
 		validatorOpts = append(validatorOpts, validator.WithCustomClaims(options.customClaimsFactory))
 	}
-	if len(cfg.Audiences) > 0 {
+
+	switch {
+	case len(cfg.Audiences) > 0:
 		validatorOpts = append(validatorOpts, validator.WithAudiences(cfg.Audiences))
-	} else if cfg.HMACSecret != "" {
+	case cfg.HMACSecret != "":
 		// HMAC smoke-test mode with no explicit audiences: accept the default smoke audience.
 		// Tokens generated by gen_smoke_token.py include aud: "local-smoke" by default.
 		validatorOpts = append(validatorOpts, validator.WithAudience("local-smoke"))
-	} else {
+	default:
 		// Non-HMAC mode (production) requires explicit audience configuration to prevent
 		// accidental deployments without audience validation, which is a critical security check.
 		return nil, fmt.Errorf("audiences must be configured in non-HMAC mode")
@@ -193,46 +214,24 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	if cfg.HMACSecret != "" && hmacFlexibleIssuer {
 		// HMAC mode with no explicit issuer: accept any issuer claim by returning the token's issuer.
 		// This enables flexible local smoke testing where tokens can have any iss value.
-		validatorOpts = append(validatorOpts,
-			validator.WithIssuersResolver(func(ctx context.Context) ([]string, error) {
-				// Extract the issuer from the token (already in context by the validator)
-				if iss, ok := validator.IssuerFromContext(ctx); ok && iss != "" {
-					return []string{iss}, nil
-				}
-				// No issuer in token; return empty list which will cause validation to fail
-				// (validator library requires iss claim to be present)
-				return []string{}, nil
-			}),
-		)
+		validatorOpts = append(validatorOpts, validator.WithIssuersResolver(anyIssuerResolver))
 	} else {
 		// Normal mode or HMAC with explicit issuer: enforce the configured issuer
 		validatorOpts = append(validatorOpts, validator.WithIssuer(issuer))
 	}
 
-	v, err := validator.New(validatorOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validator: %w", err)
-	}
+	return validatorOpts, nil
+}
 
-	var tv jwt.TokenValidator = &auth0Validator{
-		v:                  v,
-		issuer:             issuer,
-		enrichCustomClaims: cfg.HMACSecret != "",
+// anyIssuerResolver accepts any issuer claim by echoing the token's own iss
+// value back. Used for HMAC smoke-test mode with no explicit issuer
+// configured; the validator library requires an iss claim to be present, so
+// an absent issuer still fails validation.
+func anyIssuerResolver(ctx context.Context) ([]string, error) {
+	if iss, ok := validator.IssuerFromContext(ctx); ok && iss != "" {
+		return []string{iss}, nil
 	}
-
-	if len(cfg.ClaimPredicate) > 0 {
-		predicate := jwt.ParseClaimPredicates(cfg.ClaimPredicate)
-		tv = &jwt.PredicateValidator{
-			ParentValidator: tv,
-			Predicate:       predicate,
-		}
-	}
-
-	if cfg.Debug {
-		tv = &validatorDebugger{TokenValidator: tv, logger: zerolog.Nop()}
-	}
-
-	return tv, nil
+	return []string{}, nil
 }
 
 // customClaimsFactoryForType returns a custom claims factory for the given
@@ -251,15 +250,18 @@ func customClaimsFactoryForType(providerType string) func() validator.CustomClai
 	}
 }
 
-type auth0Validator struct {
-	v                  *validator.Validator
-	issuer             string
-	enrichCustomClaims bool
+// enrichingValidator wraps a TokenValidator built without a typed CustomClaims
+// factory (the HMAC smoke-test path) and attempts to populate CustomClaims by
+// re-parsing the token payload as an IntrospectionResponse after validation
+// succeeds. String() and all other behavior delegate to the embedded
+// TokenValidator.
+type enrichingValidator struct {
+	jwt.TokenValidator
 }
 
-func (v *auth0Validator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
-	claims, err := v.v.ValidateToken(ctx, tokenString)
-	if err != nil || !v.enrichCustomClaims {
+func (v *enrichingValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
+	claims, err := v.TokenValidator.ValidateToken(ctx, tokenString)
+	if err != nil {
 		return claims, err
 	}
 
@@ -286,10 +288,6 @@ func (v *auth0Validator) ValidateToken(ctx context.Context, tokenString string) 
 
 	vc.CustomClaims = &customClaims
 	return claims, nil
-}
-
-func (v *auth0Validator) String() string {
-	return fmt.Sprintf("Auth0Validator(%s)", v.issuer)
 }
 
 func introspectionFromClaimsMap(rawClaims map[string]any) (IntrospectionResponse, error) {

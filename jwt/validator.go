@@ -65,10 +65,7 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("resolving signature algorithms: %w", err)
 	}
 
-	allowedClockSkew := time.Duration(cfg.AllowedClockSkew) * time.Second
-	if allowedClockSkew <= 0 {
-		allowedClockSkew = time.Minute
-	}
+	allowedClockSkew := ResolveAllowedClockSkew(cfg.AllowedClockSkew)
 
 	options := &validatorOptions{}
 	for _, opt := range opts {
@@ -76,28 +73,12 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	}
 
 	if options.keyFunc == nil {
-		cacheTTL := time.Duration(cfg.CacheTTL) * time.Second
-		if cacheTTL <= 0 {
-			cacheTTL = 5 * time.Minute
-		}
-		issuerURL, err := url.Parse(cfg.Issuer)
+		keyFunc, provider, err := ResolveKeyFunc(cfg.Issuer, time.Duration(cfg.CacheTTL)*time.Second, options.jwksProvider)
 		if err != nil {
-			return nil, fmt.Errorf("invalid issuer URL: %w", err)
+			return nil, err
 		}
-		if options.jwksProvider == nil {
-			var err error
-			options.jwksProvider, err = jwks.NewCachingProvider(
-				jwks.WithIssuerURL(issuerURL),
-				jwks.WithCacheTTL(cacheTTL),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create JWKS caching provider: %w", err)
-			}
-		}
-		options.keyFunc = options.jwksProvider.KeyFunc
-	}
-	if options.keyFunc == nil {
-		return nil, fmt.Errorf("key function not configured")
+		options.keyFunc = keyFunc
+		options.jwksProvider = provider
 	}
 
 	validatorOpts := []jwtvalidator.Option{
@@ -117,29 +98,84 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}
 
-	var tv TokenValidator = &auth0Validator{v: v, issuer: cfg.Issuer}
+	tv := NewAuth0Validator(v, cfg.Issuer)
 
-	if len(cfg.ClaimPredicate) > 0 {
-		predicate := ParseClaimPredicates(cfg.ClaimPredicate)
-		tv = &PredicateValidator{
-			ParentValidator: tv,
-			Predicate:       predicate,
-		}
-	}
-
-	if cfg.Debug {
-		tv = NewValidatorDebugger(tv,
-			WithLabel("issuer", cfg.Issuer),
-			WithLabel("audiences", strings.Join(cfg.Audiences, ",")),
-			WithLabel("signatureAlgorithms", signatureAlgorithmsLogLabel(algorithms)),
-			WithLabel("allowedClockSkew", allowedClockSkew.String()),
-		)
-	}
-
-	return tv, nil
+	return WrapValidator(tv, cfg.ClaimPredicate, cfg.Debug,
+		WithLabel("issuer", cfg.Issuer),
+		WithLabel("audiences", strings.Join(cfg.Audiences, ",")),
+		WithLabel("signatureAlgorithms", SignatureAlgorithmsLabel(algorithms)),
+		WithLabel("allowedClockSkew", allowedClockSkew.String()),
+	), nil
 }
 
-func signatureAlgorithmsLogLabel(algorithms []jwtvalidator.SignatureAlgorithm) string {
+// ResolveAllowedClockSkew converts a configured clock-skew value in seconds
+// to a Duration, defaulting to one minute when unset or non-positive.
+func ResolveAllowedClockSkew(configuredSeconds int) time.Duration {
+	allowedClockSkew := time.Duration(configuredSeconds) * time.Second
+	if allowedClockSkew <= 0 {
+		allowedClockSkew = time.Minute
+	}
+	return allowedClockSkew
+}
+
+// ResolveKeyFunc returns a key function backed by a JWKS caching provider for
+// issuer, reusing provider when it is already set rather than constructing a
+// new one. cacheTTL non-positive defaults to five minutes. Returns the
+// resolved provider so callers that need to reuse it can do so. Shared by jwt
+// and oidc validator construction so both packages resolve signing keys via
+// the same JWKS-discovery path.
+func ResolveKeyFunc(issuer string, cacheTTL time.Duration, provider *jwks.CachingProvider) (func(context.Context) (any, error), *jwks.CachingProvider, error) {
+	if provider != nil {
+		return provider.KeyFunc, provider, nil
+	}
+
+	issuerURL, err := url.Parse(issuer)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid issuer URL: %w", err)
+	}
+	if cacheTTL <= 0 {
+		cacheTTL = 5 * time.Minute
+	}
+
+	provider, err = jwks.NewCachingProvider(
+		jwks.WithIssuerURL(issuerURL),
+		jwks.WithCacheTTL(cacheTTL),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create JWKS caching provider: %w", err)
+	}
+	return provider.KeyFunc, provider, nil
+}
+
+// NewAuth0Validator wraps an already-configured auth0/go-jwt-middleware
+// Validator as a TokenValidator. Exported so packages that build their own
+// jwtvalidator.Option pipeline (e.g. oidc, for HMAC/custom-claims support)
+// can still produce the canonical TokenValidator wrapper instead of
+// duplicating its type.
+func NewAuth0Validator(v *jwtvalidator.Validator, issuer string) TokenValidator {
+	return &auth0Validator{v: v, issuer: issuer}
+}
+
+// WrapValidator layers optional claim-predicate and debug-logging wrappers
+// onto tv, in that order, mirroring the config-driven wrapping pipeline used
+// by NewValidatorFromConfigWithOptions. Shared by jwt and oidc validator
+// construction so both packages apply claim_predicates/debug identically.
+func WrapValidator(tv TokenValidator, claimPredicate map[string]any, debug bool, debugOpts ...ValidatorDebugOpts) TokenValidator {
+	if len(claimPredicate) > 0 {
+		tv = &PredicateValidator{
+			ParentValidator: tv,
+			Predicate:       ParseClaimPredicates(claimPredicate),
+		}
+	}
+	if debug {
+		tv = NewValidatorDebugger(tv, debugOpts...)
+	}
+	return tv
+}
+
+// SignatureAlgorithmsLabel renders algorithms as a comma-separated string for
+// debug-log labels.
+func SignatureAlgorithmsLabel(algorithms []jwtvalidator.SignatureAlgorithm) string {
 	values := make([]string, 0, len(algorithms))
 	for _, algorithm := range algorithms {
 		values = append(values, string(algorithm))
