@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	authhttp "github.com/dioad/auth/authctx"
+	"github.com/dioad/auth/http/authmw"
 )
 
 // Handler implements basic authentication for HTTP servers.
@@ -38,22 +39,19 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 
 // Wrap wraps an HTTP handler with Basic authentication middleware.
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, err := h.AuthRequest(r)
+	return authmw.Wrap(h.AuthRequest, handler, h.writeUnauthorized)
+}
 
-		if err != nil {
-			if h.config.Realm != "" {
-				w.Header().Add("WWW-Authenticate", fmt.Sprintf("Basic realm=\"%s\"", h.config.Realm))
-			} else {
-				w.Header().Add("WWW-Authenticate", "Basic realm=\"Dioad Connect\"")
-			}
+// writeUnauthorized sets the WWW-Authenticate challenge header (per the
+// configured Realm, or a default) and writes a 401 response.
+func (h *Handler) writeUnauthorized(w http.ResponseWriter, _ *http.Request, _ error) {
+	if h.config.Realm != "" {
+		w.Header().Add("WWW-Authenticate", fmt.Sprintf("Basic realm=\"%s\"", h.config.Realm))
+	} else {
+		w.Header().Add("WWW-Authenticate", "Basic realm=\"Dioad Connect\"")
+	}
 
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		handler.ServeHTTP(w, r.WithContext(ctx))
-	})
+	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 }
 
 // NewHandler creates a new Basic authentication handler from the provided configuration.
