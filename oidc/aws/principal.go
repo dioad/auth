@@ -5,7 +5,6 @@ import (
 	"maps"
 
 	"github.com/dioad/auth/authctx"
-	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/mapper"
 	"github.com/dioad/auth/oidc/oidcutil"
 )
@@ -49,6 +48,23 @@ func NormalizeClaims(claims map[string]any) map[string]any {
 	return result
 }
 
+// ClaimsMap implements oidcutil.ClaimsMapper, flattening the typed AWS STS
+// claims into canonical aws_* prefixed keys. AWS tokens don't seed a
+// "username" key on the typed path, so subject is unused.
+func (c *Claims) ClaimsMap(_ string) map[string]any {
+	sts := c.HttpsStsAmazonawsCom
+	return map[string]any{
+		"aws_principal_id":                     sts.PrincipalId,
+		"aws_org_id":                           sts.OrgId,
+		"aws_source_region":                    sts.SourceRegion,
+		"aws_account":                          sts.AwsAccount,
+		"aws_ec2_source_instance_arn":          sts.Ec2SourceInstanceArn,
+		"aws_ec2_instance_source_vpc":          sts.Ec2InstanceSourceVpc,
+		"aws_ec2_instance_source_private_ipv4": sts.Ec2InstanceSourcePrivateIpv4,
+		"aws_ec2_role_delivery":                sts.Ec2RoleDelivery,
+	}
+}
+
 // PrincipalSource extracts principal identity from AWS OIDC tokens.
 type PrincipalSource struct {
 	// RoleMapper maps raw AWS JWT claims to internal role strings.
@@ -59,10 +75,7 @@ type PrincipalSource struct {
 // Roles returns the internal roles derived from AWS claims via the configured
 // RoleMapper. Returns nil when no mapper is set.
 func (s *PrincipalSource) Roles(ctx context.Context) []string {
-	if s.RoleMapper == nil {
-		return nil
-	}
-	return s.RoleMapper.MapRoles(s.Claims(ctx))
+	return oidcutil.GenericRoles(s.RoleMapper, s.Claims(ctx))
 }
 
 // Extract returns the principal subject from an AWS OIDC token. It first
@@ -70,27 +83,7 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 // validator), then falls back to fingerprinting generic validated claims stored
 // by a non-typed JWT middleware.
 func (s *PrincipalSource) Extract(ctx context.Context) (string, error) {
-	// Typed path: JWT middleware configured with an AWS-specific validator.
-	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
-		registered := jwt.RegisteredClaimsFromContext(ctx)
-		if registered == nil {
-			return "", nil
-		}
-		return registered.Subject, nil
-	}
-	// Generic path: JWT middleware using a generic validator. Fingerprint the
-	// custom claims map to confirm this is an AWS token before extracting.
-	custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx)
-	if !ok || !HasValidClaims(custom) {
-		return "", nil
-	}
-	if principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
-		return principal, nil
-	}
-	if sub, ok := custom["sub"].(string); ok && sub != "" {
-		return sub, nil
-	}
-	return "", nil
+	return oidcutil.GenericExtract[Claims](ctx, HasValidClaims)
 }
 
 func (s *PrincipalSource) Name() string {
@@ -102,27 +95,19 @@ func (s *PrincipalSource) Name() string {
 // so that ClaimRoleMapper rules can reference them uniformly across both the
 // typed and generic validation paths.
 func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
+	return oidcutil.GenericClaims[Claims](ctx, HasValidClaims, genericClaims)
+}
+
+// IsService returns true for any valid AWS OIDC token, as these represent
+// machine/role identities rather than human users.
+func (s *PrincipalSource) IsService(ctx context.Context) bool {
+	return oidcutil.GenericIsService[Claims](ctx, HasValidClaims)
+}
+
+// genericClaims builds the fallback-path Claims() result: normalize nested
+// STS claims into flat aws_* keys, alongside the raw custom claims.
+func genericClaims(ctx context.Context, custom map[string]any) map[string]any {
 	result := make(map[string]any)
-
-	// Typed path.
-	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
-		sts := claims.HttpsStsAmazonawsCom
-		result["aws_principal_id"] = sts.PrincipalId
-		result["aws_org_id"] = sts.OrgId
-		result["aws_source_region"] = sts.SourceRegion
-		result["aws_account"] = sts.AwsAccount
-		result["aws_ec2_source_instance_arn"] = sts.Ec2SourceInstanceArn
-		result["aws_ec2_instance_source_vpc"] = sts.Ec2InstanceSourceVpc
-		result["aws_ec2_instance_source_private_ipv4"] = sts.Ec2InstanceSourcePrivateIpv4
-		result["aws_ec2_role_delivery"] = sts.Ec2RoleDelivery
-		return result
-	}
-
-	// Generic path: normalize nested STS claims into flat aws_* keys.
-	custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx)
-	if !ok || !HasValidClaims(custom) {
-		return result
-	}
 	maps.Copy(result, NormalizeClaims(custom))
 	if _, exists := result["username"]; !exists {
 		if principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
@@ -130,16 +115,6 @@ func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
 		}
 	}
 	return result
-}
-
-// IsService returns true for any valid AWS OIDC token, as these represent
-// machine/role identities rather than human users.
-func (s *PrincipalSource) IsService(ctx context.Context) bool {
-	if jwt.CustomClaimsFromContext[*Claims](ctx) != nil {
-		return true
-	}
-	custom, _ := authctx.AuthenticatedCustomClaimsFromContext(ctx)
-	return HasValidClaims(custom)
 }
 
 func copyFromSTS(result, sts map[string]any, srcKey, dstKey string) {

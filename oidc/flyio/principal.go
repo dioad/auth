@@ -5,7 +5,6 @@ import (
 	"maps"
 
 	"github.com/dioad/auth/authctx"
-	"github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/mapper"
 	"github.com/dioad/auth/oidc/oidcutil"
 )
@@ -21,6 +20,27 @@ func HasValidClaims(claims map[string]any) bool {
 	return oidcutil.HasAnyNonEmptyString(claims, "machine_id", "machine_name", "machine_version", "image", "image_digest")
 }
 
+// ClaimsMap implements oidcutil.ClaimsMapper, flattening the typed Fly.io
+// claims. subject (the token's registered "sub" claim) seeds "username" when
+// present.
+func (c *Claims) ClaimsMap(subject string) map[string]any {
+	result := make(map[string]any, 11)
+	if subject != "" {
+		result["username"] = subject
+	}
+	result["app_id"] = c.AppId
+	result["app_name"] = c.AppName
+	result["image"] = c.Image
+	result["image_digest"] = c.ImageDigest
+	result["machine_id"] = c.MachineId
+	result["machine_name"] = c.MachineName
+	result["machine_version"] = c.MachineVersion
+	result["org_id"] = c.OrgId
+	result["org_name"] = c.OrgName
+	result["region"] = c.Region
+	return result
+}
+
 // PrincipalSource extracts principal identity from Fly.io OIDC tokens.
 type PrincipalSource struct {
 	// RoleMapper maps raw Fly.io JWT claims to internal role strings.
@@ -31,10 +51,7 @@ type PrincipalSource struct {
 // Roles returns the internal roles derived from Fly.io claims via the configured
 // RoleMapper. Returns nil when no mapper is set.
 func (s *PrincipalSource) Roles(ctx context.Context) []string {
-	if s.RoleMapper == nil {
-		return nil
-	}
-	return s.RoleMapper.MapRoles(s.Claims(ctx))
+	return oidcutil.GenericRoles(s.RoleMapper, s.Claims(ctx))
 }
 
 // Extract returns the principal subject from a Fly.io token. It first attempts
@@ -42,27 +59,7 @@ func (s *PrincipalSource) Roles(ctx context.Context) []string {
 // falls back to fingerprinting generic validated claims stored by a non-typed
 // JWT middleware.
 func (s *PrincipalSource) Extract(ctx context.Context) (string, error) {
-	// Typed path: JWT middleware configured with a Fly.io-specific validator.
-	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
-		registered := jwt.RegisteredClaimsFromContext(ctx)
-		if registered == nil {
-			return "", nil
-		}
-		return registered.Subject, nil
-	}
-	// Generic path: JWT middleware using a generic validator. Fingerprint the
-	// custom claims map to confirm this is a Fly.io token before extracting.
-	custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx)
-	if !ok || !HasValidClaims(custom) {
-		return "", nil
-	}
-	if principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
-		return principal, nil
-	}
-	if sub, ok := custom["sub"].(string); ok && sub != "" {
-		return sub, nil
-	}
-	return "", nil
+	return oidcutil.GenericExtract[Claims](ctx, HasValidClaims)
 }
 
 func (s *PrincipalSource) Name() string {
@@ -73,47 +70,23 @@ func (s *PrincipalSource) Name() string {
 // (e.g. "username") are included alongside raw Fly.io claim names so that
 // ClaimRoleMapper rules can reference either form.
 func (s *PrincipalSource) Claims(ctx context.Context) map[string]any {
-	result := make(map[string]any)
+	return oidcutil.GenericClaims[Claims](ctx, HasValidClaims, genericClaims)
+}
 
-	// Typed path.
-	registered := jwt.RegisteredClaimsFromContext(ctx)
-	if registered != nil && registered.Subject != "" {
-		result["username"] = registered.Subject
-	}
-	if claims := jwt.CustomClaimsFromContext[*Claims](ctx); claims != nil {
-		result["app_id"] = claims.AppId
-		result["app_name"] = claims.AppName
-		result["image"] = claims.Image
-		result["image_digest"] = claims.ImageDigest
-		result["machine_id"] = claims.MachineId
-		result["machine_name"] = claims.MachineName
-		result["machine_version"] = claims.MachineVersion
-		result["org_id"] = claims.OrgId
-		result["org_name"] = claims.OrgName
-		result["region"] = claims.Region
-		return result
-	}
+// IsService returns true for any valid Fly.io token, as these represent machine identities.
+func (s *PrincipalSource) IsService(ctx context.Context) bool {
+	return oidcutil.GenericIsService[Claims](ctx, HasValidClaims)
+}
 
-	// Generic path: include all claims from the context custom claims map.
-	custom, ok := authctx.AuthenticatedCustomClaimsFromContext(ctx)
-	if !ok || !HasValidClaims(custom) {
-		return result
-	}
+// genericClaims builds the fallback-path Claims() result: the raw custom
+// claims map, seeded with a canonical "username" key when missing.
+func genericClaims(ctx context.Context, custom map[string]any) map[string]any {
+	result := make(map[string]any, len(custom)+1)
 	maps.Copy(result, custom)
 	if _, exists := result["username"]; !exists {
 		if principal, ok := authctx.AuthenticatedPrincipalFromContext(ctx); ok && principal != "" {
 			result["username"] = principal
 		}
 	}
-
 	return result
-}
-
-// IsService returns true for any valid Fly.io token, as these represent machine identities.
-func (s *PrincipalSource) IsService(ctx context.Context) bool {
-	if jwt.CustomClaimsFromContext[*Claims](ctx) != nil {
-		return true
-	}
-	custom, _ := authctx.AuthenticatedCustomClaimsFromContext(ctx)
-	return HasValidClaims(custom)
 }
