@@ -9,6 +9,17 @@ import (
 	"net/http/httptest"
 	"time"
 
+	// go-jose is used here only for JSONWebKey/JSONWebKeySet (de)serialization
+	// of the mock JWKS document below — never for signing or verification,
+	// which use golang-jwt/jwt/v5. It's intentionally kept as a direct
+	// dependency rather than migrated to lestrrat-go/jwx/v3 (already present
+	// for the same purpose in jwt/validator_test.go and oidc/seams_test.go):
+	// go-jose is already an unavoidable transitive dependency of this
+	// module's production build (oidc -> github.com/dioad/net/tls ->
+	// go-acme/lego/v5 -> go-jose/go-jose/v4), so removing this direct usage
+	// would only flip go.mod's require from direct to indirect — it would
+	// not shrink the actual dependency graph, and would add rewrite risk to
+	// this exported test helper for no real benefit.
 	"github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
