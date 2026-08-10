@@ -44,12 +44,24 @@ func WithOAuth2Validator(v []oidc.ValidatorConfig) nethttp.ServerOption {
 }
 
 // WithServerAuth returns a ServerOption that configures the server to use the given authentication configuration.
+// When the resolved auth handler needs additional routes beyond the Wrap
+// middleware chain (currently only OIDC's login/callback/logout flow), those
+// routes are registered on the server's mux automatically.
 func WithServerAuth(cfg authhttp.ServerConfig) nethttp.ServerOption {
 	return func(s *nethttp.Server) {
 		h, err := authhttp.NewHandler(&cfg)
 		if err != nil {
 			s.Logger.Fatal().Err(err).Msg("error creating auth handler.")
 			return
+		}
+		if lr, ok := h.LoginRoutes(); ok {
+			s.AddHandlerFunc(lr.LoginPath(), lr.AuthStart())
+			if cb := lr.CallbackPath(); cb != "" {
+				s.AddHandlerFunc(cb, lr.Callback())
+			}
+			if lp := lr.LogoutPath(); lp != "" {
+				s.AddHandlerFunc(lp, lr.Logout())
+			}
 		}
 		s.Use(func(next http.Handler) http.Handler {
 			return h.Wrap(next)
