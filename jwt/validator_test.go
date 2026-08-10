@@ -36,6 +36,21 @@ func signTestToken(t *testing.T, key *rsa.PrivateKey, issuer string, audiences [
 	return tokenString
 }
 
+// TestResolveAllowedClockSkew_DefaultsToOneMinute is also the regression test
+// for the drift between jwt and oidc's validator builders: oidc previously
+// passed cfg.AllowedClockSkew straight through with no default, so an
+// unconfigured oidc.ValidatorConfig got zero tolerance while an unconfigured
+// jwt.ValidatorConfig got one minute. Both now go through this shared
+// resolver.
+func TestResolveAllowedClockSkew_DefaultsToOneMinute(t *testing.T) {
+	require.Equal(t, time.Minute, ResolveAllowedClockSkew(0))
+	require.Equal(t, time.Minute, ResolveAllowedClockSkew(-5))
+}
+
+func TestResolveAllowedClockSkew_PreservesExplicitValue(t *testing.T) {
+	require.Equal(t, 30*time.Second, ResolveAllowedClockSkew(30))
+}
+
 func TestNewValidatorFromConfigWithKeyFunc(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)

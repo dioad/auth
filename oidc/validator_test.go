@@ -182,6 +182,38 @@ func TestHMACValidatorFiltersNonHMACAlgorithmsFromList(t *testing.T) {
 	require.NoError(t, err, "validator should accept HS256 token after filtering non-HMAC algorithms")
 }
 
+// TestValidatorDefaultsAllowedClockSkewToOneMinute is the regression test for
+// the drift fixed by consolidating onto jwt.ResolveAllowedClockSkew: an
+// unconfigured AllowedClockSkew previously meant zero tolerance in oidc
+// (unlike jwt's one-minute default), so a token already expired by 30
+// seconds would be rejected. It must now be accepted.
+func TestValidatorDefaultsAllowedClockSkewToOneMinute(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Issuer:            "test-issuer",
+		Audiences:         []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfig(cfg)
+	require.NoError(t, err)
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "test-issuer",
+		"aud": "test",
+		"iat": now.Add(-2 * time.Hour).Unix(),
+		"exp": now.Add(-30 * time.Second).Unix(), // expired 30s ago
+	})
+
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+
+	_, err = v.ValidateToken(context.Background(), tokenString)
+	require.NoError(t, err, "a token expired 30s ago must validate within the default one-minute clock skew")
+}
+
 func TestValidatorRejectsInvalidSignatureAlgorithms(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
 		Issuer:              "https://example.com",
