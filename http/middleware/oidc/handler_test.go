@@ -90,6 +90,49 @@ func TestHandler_Wrap_ExemptsOwnRoutesFromTheGate(t *testing.T) {
 	}
 }
 
+// TestHandler_Wrap_ForgedAuthorizationHeaderDoesNotBypassSessionCheck is the
+// regression test for the sole-gate bypass: previously any request bearing a
+// non-empty Authorization header — regardless of its value — skipped the
+// cookie/session check entirely and reached next unauthenticated. When this
+// Handler is a server's sole auth gate (its default, primary configuration)
+// that let an attacker bypass authentication with a single forged header.
+func TestHandler_Wrap_ForgedAuthorizationHeaderDoesNotBypassSessionCheck(t *testing.T) {
+	h := newTestHandler()
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "forged-value")
+	rr := httptest.NewRecorder()
+
+	called := false
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})).ServeHTTP(rr, req)
+
+	require.False(t, called, "next handler must not run for a forged Authorization header with no valid session")
+	require.Equal(t, http.StatusSeeOther, rr.Code)
+	require.Equal(t, "/login", rr.Header().Get("Location"))
+}
+
+// TestHandler_WithBearerPassthrough_ForwardsAuthorizationHeader verifies the
+// opt-in escape hatch for callers that explicitly chain this Handler ahead of
+// a separate bearer-token validator: passthrough only happens when requested.
+func TestHandler_WithBearerPassthrough_ForwardsAuthorizationHeader(t *testing.T) {
+	h := newTestHandler().WithBearerPassthrough(true)
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.Header.Set("Authorization", "Bearer some-token")
+	rr := httptest.NewRecorder()
+
+	called := false
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rr, req)
+
+	require.True(t, called, "next handler must run when bearer passthrough is explicitly enabled")
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
 func TestHandler_Logout_ClearsCookiesAndRedirects(t *testing.T) {
 	h := newTestHandler()
 
