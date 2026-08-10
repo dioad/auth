@@ -14,6 +14,7 @@ import (
 	"time"
 
 	authhttp "github.com/dioad/auth/authctx"
+	"github.com/dioad/auth/http/authmw"
 )
 
 // NewHandler creates a new HMAC authentication handler with the provided configuration.
@@ -203,14 +204,7 @@ func verifyTimestamp(r *http.Request, timestampHeader string, maxTimestampDiff, 
 }
 
 func (a *Handler) Wrap(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, err := a.AuthRequest(r)
-
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		handler.ServeHTTP(w, r.WithContext(ctx))
+	return authmw.Wrap(a.AuthRequest, handler, func(w http.ResponseWriter, r *http.Request, err error) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }

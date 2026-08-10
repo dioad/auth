@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 
 	authhttp "github.com/dioad/auth/authctx"
+	"github.com/dioad/auth/http/authmw"
 )
 
 type TokenAuthenticator interface {
@@ -72,14 +73,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 }
 
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, err := h.AuthRequest(r)
-
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		handler.ServeHTTP(w, r.WithContext(ctx))
+	return authmw.Wrap(h.AuthRequest, handler, func(w http.ResponseWriter, r *http.Request, err error) {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }
