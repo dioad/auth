@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	DefaultCookieDomain        = "localhost"
 	DefaultCookiePath          = "/"
 	DefaultTokenCookieName     = "oidc_token"
 	DefaultTokenCookieMaxAge   = time.Hour
@@ -112,8 +111,8 @@ func (h *Handler) WithBearerPassthrough(v bool) *Handler {
 // applyCookieDefaults fills in Name, Path, and MaxAge when unset, using the
 // package-level Default* values. Domain is deliberately left untouched: an
 // empty Domain is the correct, safe default (the browser scopes the cookie to
-// the current host), whereas defaulting it to DefaultCookieDomain
-// ("localhost") would break every real deployment using a custom domain.
+// the current host), whereas defaulting it to a fixed value like "localhost"
+// would break every real deployment using a custom domain.
 //
 // Secure is forced true unless allowInsecure is set: these cookies carry live
 // OAuth access and refresh tokens, so — unlike Domain — there is no safe
