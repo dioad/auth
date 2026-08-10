@@ -98,3 +98,35 @@ func TestHandler_PrefersValidatedCustomClaimsOverTokenPayloadFallback(t *testing
 
 	require.Equal(t, http.StatusOK, rr.Code)
 }
+
+func TestHandler_RequireToken_RejectsRequestWithNoCredential(t *testing.T) {
+	h := NewHandler(&stubTokenValidator{}, "auth_token").WithRequireToken(true)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+
+	called := false
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rr, req)
+
+	require.False(t, called, "next handler must not run when no credential is presented and RequireToken is set")
+	require.Equal(t, http.StatusUnauthorized, rr.Code)
+}
+
+func TestHandler_RequireTokenUnset_PreservesPassThroughForNoCredential(t *testing.T) {
+	h := NewHandler(&stubTokenValidator{}, "auth_token")
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+
+	called := false
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rr, req)
+
+	require.True(t, called, "next handler must still run when RequireToken is unset, for backward compatibility")
+	require.Equal(t, http.StatusOK, rr.Code)
+}
