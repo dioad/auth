@@ -476,6 +476,41 @@ func TestAuthorizerConfig_ToMetadata(t *testing.T) {
 	assert.Equal(t, authz.Role("publisher"), meta.RoleAliases["external.publisher"])
 }
 
+func TestAuthorizerConfig_NewAuthorizer_AllowAllReturnsAllowAllAuthorizer(t *testing.T) {
+	cfg := authz.AuthorizerConfig{AllowAll: true}
+
+	a, err := cfg.NewAuthorizer()
+
+	require.NoError(t, err)
+	require.IsType(t, &authz.AllowAllAuthorizer{}, a)
+
+	d, err := a.Can(context.Background(), principal("nobody"), authz.Permission("tunnel", "write"))
+	require.NoError(t, err)
+	assert.True(t, d.Allowed)
+}
+
+func TestAuthorizerConfig_NewAuthorizer_DefaultBuildsCasbinBackedRBAC(t *testing.T) {
+	cfg := authz.AuthorizerConfig{
+		RoleCapabilities: []authz.RoleCapabilityConfig{
+			{Role: "publisher", Capabilities: []string{"tunnel:write"}},
+		},
+		RoleAliases: map[string]string{"external.publisher": "publisher"},
+	}
+
+	a, err := cfg.NewAuthorizer()
+
+	require.NoError(t, err)
+	require.NotNil(t, a)
+
+	d, err := a.Can(context.Background(), principal("p1", "external.publisher"), authz.Permission("tunnel", "write"))
+	require.NoError(t, err)
+	assert.True(t, d.Allowed)
+
+	d, err = a.Can(context.Background(), principal("p2"), authz.Permission("tunnel", "write"))
+	require.ErrorIs(t, err, authz.ErrForbidden, "a principal with no matching role must be denied, not allowed")
+	assert.False(t, d.Allowed)
+}
+
 // ─── Security: ErrForbidden vs infrastructure errors ─────────────────────────
 
 func TestDecision_NilOnInfrastructureError(t *testing.T) {

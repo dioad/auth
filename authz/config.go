@@ -26,6 +26,20 @@ type AuthorizerConfig struct {
 	AllowAll bool `mapstructure:"allow-all"`
 }
 
+// NewAuthorizer builds an [Authorizer] from c: an [AllowAllAuthorizer] when
+// c.AllowAll is set — dev/test only, see AllowAll's doc comment — otherwise
+// the default Casbin-backed RBAC authorizer built from c's role/capability
+// metadata. This consolidates a wiring pattern ("allow-all flag picks between
+// a bypass authorizer and the real RBAC backend") that callers have
+// previously had to duplicate themselves.
+func (c AuthorizerConfig) NewAuthorizer() (Authorizer, error) {
+	metadata := c.ToMetadata()
+	if c.AllowAll {
+		return NewAllowAllAuthorizer(metadata), nil
+	}
+	return NewDefaultCasbinAuthorizer(metadata)
+}
+
 // ToMetadata converts the config into a [PolicyMetadata] value suitable for
 // constructing a [RoleAuthorizer] or [CasbinAuthorizer].
 func (c AuthorizerConfig) ToMetadata() PolicyMetadata {
