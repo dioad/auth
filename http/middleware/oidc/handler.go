@@ -80,6 +80,26 @@ type Handler struct {
 	// callbackPath is the URL path component of Config.RedirectURI, precomputed
 	// once so Wrap doesn't need to reparse it on every request.
 	callbackPath string
+
+	// bearerPassthrough configures whether Wrap forwards requests carrying a
+	// non-empty Authorization header straight to next without validating the
+	// OIDC session cookie. See WithBearerPassthrough.
+	bearerPassthrough bool
+}
+
+// WithBearerPassthrough configures whether Wrap forwards a request carrying a
+// non-empty Authorization header to next without checking the OIDC session
+// cookie, on the assumption a separately chained bearer-token validator
+// (e.g. jwt.Handler) will authenticate that header itself. Defaults to false.
+//
+// Only enable this when this Handler is explicitly chained ahead of another
+// auth middleware that validates the Authorization header — never when it is
+// used as a sole auth gate (e.g. via resolveOIDCHandler/WithServerAuth),
+// since an unvalidated header would then let any request bypass
+// authentication entirely.
+func (h *Handler) WithBearerPassthrough(v bool) *Handler {
+	h.bearerPassthrough = v
+	return h
 }
 
 // applyCookieDefaults fills in Name, Path, and MaxAge when unset, using the
@@ -169,31 +189,21 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 			return
 		}
 
-		if r.Header.Get("Authorization") != "" {
+		if h.bearerPassthrough && r.Header.Get("Authorization") != "" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		token, err := h.extractTokenFromCookies(r)
 		if err != nil {
-			h.clearAllCookies(w)
-			http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
+			h.redirectToLogin(w, r)
 			return
 		}
 
-		if shouldRefreshTokenBasedOnExpiry(token.Expiry, h.Config.RefreshWindow, h.Config.Now()) {
-			refreshedToken, err := h.Client.RefreshToken(r.Context(), token.RefreshToken)
-			if err != nil {
-				zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to refresh token")
-				h.clearAllCookies(w)
-				http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
-				return
-			}
-			h.saveTokenToCookies(w, refreshedToken)
-			token = refreshedToken
-			zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
-				return c.Bool("token_refreshed", true)
-			})
+		token, err = h.refreshIfNeeded(w, r, token)
+		if err != nil {
+			h.redirectToLogin(w, r)
+			return
 		}
 
 		// Enrich the request-scoped logger so auth_source propagates to child
@@ -204,6 +214,34 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		ctx := ContextWithAccessToken(r.Context(), token.AccessToken)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// redirectToLogin clears any stale session cookies and sends the browser to
+// the configured login path.
+func (h *Handler) redirectToLogin(w http.ResponseWriter, r *http.Request) {
+	h.clearAllCookies(w)
+	http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
+}
+
+// refreshIfNeeded refreshes token via the OIDC provider when it falls inside
+// the configured refresh window, persisting the refreshed token to cookies.
+// It returns token unchanged when no refresh is needed.
+func (h *Handler) refreshIfNeeded(w http.ResponseWriter, r *http.Request, token *oauth2.Token) (*oauth2.Token, error) {
+	if !shouldRefreshTokenBasedOnExpiry(token.Expiry, h.Config.RefreshWindow, h.Config.Now()) {
+		return token, nil
+	}
+
+	refreshedToken, err := h.Client.RefreshToken(r.Context(), token.RefreshToken)
+	if err != nil {
+		zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to refresh token")
+		return nil, err
+	}
+
+	h.saveTokenToCookies(w, refreshedToken)
+	zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Bool("token_refreshed", true)
+	})
+	return refreshedToken, nil
 }
 
 // AuthStart initiates the OIDC authentication flow.
