@@ -2,8 +2,10 @@ package basic
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -114,6 +116,19 @@ func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	}
 
 	return authMap, nil
+}
+
+// LoadBasicAuthFromFileOrEmpty behaves like LoadBasicAuthFromFile, except a
+// missing file returns an empty AuthMap and a nil error instead of the
+// underlying os.Open error. Other errors (bad permissions, unreadable file)
+// are returned unchanged. Useful for callers that treat "no credentials file
+// yet" as a valid, empty starting state rather than a failure.
+func LoadBasicAuthFromFileOrEmpty(filePath string) (AuthMap, error) {
+	authMap, err := LoadBasicAuthFromFile(filePath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return AuthMap{}, nil
+	}
+	return authMap, err
 }
 
 func LoadBasicAuthFromReader(reader io.Reader) AuthMap {
