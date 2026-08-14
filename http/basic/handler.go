@@ -5,15 +5,35 @@ import (
 	stdctx "context"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 
 	authhttp "github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/http/authmw"
 )
 
-// Handler implements basic authentication for HTTP servers.
+// Handler implements basic authentication for HTTP servers. The credential
+// map can be replaced at any time via SetAuthMap, safely concurrent with
+// in-flight AuthRequest calls - Handler does not need to be rebuilt to pick
+// up new or changed credentials.
 type Handler struct {
-	authMap AuthMap
+	authMap atomic.Pointer[AuthMap]
 	config  ServerConfig
+}
+
+// SetAuthMap atomically replaces the credentials Handler authenticates
+// against. Safe to call concurrently with in-flight AuthRequest calls.
+func (h *Handler) SetAuthMap(m AuthMap) {
+	h.authMap.Store(&m)
+}
+
+// AuthMap returns the credentials Handler currently authenticates against.
+// Safe to call concurrently with SetAuthMap and AuthRequest.
+func (h *Handler) AuthMap() AuthMap {
+	m := h.authMap.Load()
+	if m == nil {
+		return nil
+	}
+	return *m
 }
 
 // AuthRequest authenticates an HTTP request using Basic authentication.
@@ -24,7 +44,12 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 		return r.Context(), fmt.Errorf("no credentials provided")
 	}
 
-	authenticated, err := h.authMap.Authenticate(reqUser, reqPass)
+	authMap := h.authMap.Load()
+	if authMap == nil {
+		return r.Context(), fmt.Errorf("authentication failed")
+	}
+
+	authenticated, err := authMap.Authenticate(reqUser, reqPass)
 
 	if authenticated {
 		return authhttp.ContextWithAuthenticatedPrincipal(r.Context(), reqUser), nil
@@ -56,23 +81,22 @@ func (h *Handler) writeUnauthorized(w http.ResponseWriter, _ *http.Request, _ er
 
 // NewHandler creates a new Basic authentication handler from the provided configuration.
 func NewHandler(cfg ServerConfig) (*Handler, error) {
-	// TODO: reload from file every x seconds
-	// and figure out a way to handle the err
 	authMap, err := LoadBasicAuthFromFile(cfg.HTPasswdFile)
 
-	h := &Handler{
-		authMap: authMap,
-		config:  cfg,
-	}
+	h := &Handler{config: cfg}
+	h.SetAuthMap(authMap)
 
 	return h, err
 }
 
-// NewHandlerWithMap creates a new Basic authentication handler using the provided AuthMap.
-func NewHandlerWithMap(authMap AuthMap) (*Handler, error) {
-	h := &Handler{
-		authMap: authMap,
-	}
+// NewHandlerWithMap creates a new Basic authentication handler using the
+// provided AuthMap and configuration (for Realm, used in the
+// WWW-Authenticate challenge header). Call h.SetAuthMap later to replace the
+// credentials the returned Handler authenticates against, e.g. after a
+// credentials file changes on disk.
+func NewHandlerWithMap(cfg ServerConfig, authMap AuthMap) (*Handler, error) {
+	h := &Handler{config: cfg}
+	h.SetAuthMap(authMap)
 
 	return h, nil
 }
