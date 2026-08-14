@@ -188,12 +188,16 @@ type Client struct {
 }
 
 // NewClientFromConfig creates a new OIDC client from the provided configuration.
-func NewClientFromConfig(config *ClientConfig) (*Client, error) {
+// Additional opts are applied after the config-derived client ID and secret, so
+// callers can extend or override behavior (for example WithDeviceCodeUI) without
+// re-deriving the endpoint/credential setup NewClientFromConfig already does.
+func NewClientFromConfig(config *ClientConfig, opts ...ClientOpt) (*Client, error) {
 	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new oidc endpoint: %w", err)
 	}
-	return NewClient(endpoint, WithClientIDAndSecret(config.ClientID, config.ClientSecret.UnmaskedString())), nil
+	allOpts := append([]ClientOpt{WithClientIDAndSecret(config.ClientID, config.ClientSecret.UnmaskedString())}, opts...)
+	return NewClient(endpoint, allOpts...), nil
 }
 
 // NewClient creates a new OIDC client with the provided endpoint and options.
