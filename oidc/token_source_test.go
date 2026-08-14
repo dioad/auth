@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -44,6 +45,50 @@ func TestTokenSourceFromFile(t *testing.T) {
 	token, err := source.Token()
 	require.NoError(t, err)
 	require.Equal(t, "abc123", token.AccessToken)
+}
+
+type flakyTokenSource struct {
+	failuresRemaining int
+	token             *oauth2.Token
+}
+
+func (s *flakyTokenSource) Token() (*oauth2.Token, error) {
+	if s.failuresRemaining > 0 {
+		s.failuresRemaining--
+		return nil, errors.New("token not available yet")
+	}
+	return s.token, nil
+}
+
+func TestWaitingTokenSource_IndefiniteTimeoutSucceedsAfterRetries(t *testing.T) {
+	source := &flakyTokenSource{failuresRemaining: 3, token: &oauth2.Token{AccessToken: "eventual"}}
+	waiting := NewWaitingTokenSource(context.Background(), source, time.Millisecond, 0)
+
+	token, err := waiting.Token()
+	require.NoError(t, err)
+	require.Equal(t, "eventual", token.AccessToken)
+}
+
+func TestWaitingTokenSource_IndefiniteTimeoutStopsOnContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	source := &flakyTokenSource{failuresRemaining: 1 << 30} // never succeeds
+	waiting := NewWaitingTokenSource(ctx, source, time.Millisecond, 0)
+
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		cancel()
+	}()
+
+	_, err := waiting.Token()
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestWaitingTokenSource_PositiveTimeoutStillExpires(t *testing.T) {
+	source := &flakyTokenSource{failuresRemaining: 1 << 30} // never succeeds
+	waiting := NewWaitingTokenSource(context.Background(), source, time.Millisecond, 5*time.Millisecond)
+
+	_, err := waiting.Token()
+	require.ErrorContains(t, err, "timeout waiting for token")
 }
 
 func TestTokenSourceCustomFactory(t *testing.T) {

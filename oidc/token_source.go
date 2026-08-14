@@ -123,7 +123,12 @@ func (s *fileTokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-// NewWaitingTokenSource returns a token source that waits for a token to be available.
+// NewWaitingTokenSource returns a token source that waits for a token to be
+// available, polling source every interval until it succeeds. A timeout of
+// zero or less means wait indefinitely, until ctx is done - useful for a
+// long-lived daemon coordinating with an out-of-band process (e.g. a
+// bootstrap wizard) that may take an unbounded amount of time to produce a
+// token, as opposed to a bounded timeout suited to a short-lived caller.
 func NewWaitingTokenSource(ctx context.Context, source oauth2.TokenSource, interval, timeout time.Duration) oauth2.TokenSource {
 	return &waitingTokenSource{
 		ctx:      ctx,
@@ -161,7 +166,7 @@ func (s *waitingTokenSource) Token() (*oauth2.Token, error) {
 			return token, nil
 		}
 
-		if time.Since(start) > s.timeout {
+		if s.timeout > 0 && time.Since(start) > s.timeout {
 			return nil, fmt.Errorf("timeout waiting for token: %w", err)
 		}
 
