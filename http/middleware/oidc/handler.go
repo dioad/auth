@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"
 
+	"github.com/dioad/auth/authctx"
+	authjwt "github.com/dioad/auth/jwt"
 	"github.com/dioad/auth/oidc"
 )
 
@@ -23,6 +26,8 @@ var (
 	DefaultRefreshCookieMaxAge = 24 * time.Hour
 	// #nosec G101
 	DefaultTokenExpiryCookieName = "oidc_expires_in"
+	// #nosec G101
+	DefaultIDTokenCookieName = "oidc_id_token"
 )
 
 type CookieConfig struct {
@@ -65,6 +70,7 @@ type OIDCConfig struct {
 	RefreshCookie     CookieConfig `json:"refresh_cookie,omitzero" mapstructure:"refresh-cookie,omitzero"`
 	TokenExpiryCookie CookieConfig `json:"token_expiry,omitzero" mapstructure:"token-expiry,omitzero"`
 	RedirectCookie    CookieConfig `json:"redirect_cookie,omitzero" mapstructure:"redirect-cookie,omitzero"`
+	IDTokenCookie     CookieConfig `json:"id_token_cookie,omitzero" mapstructure:"id-token-cookie,omitzero"`
 
 	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero"`
 	Now           func() time.Time `json:"-" mapstructure:"-"`
@@ -86,6 +92,11 @@ type Handler struct {
 	// callbackPath is the URL path component of Config.RedirectURI, precomputed
 	// once so Wrap doesn't need to reparse it on every request.
 	callbackPath string
+
+	// clientID is Client.ClientID(), precomputed once so Wrap doesn't need to
+	// call it on every request. Used as the expected audience when validating
+	// the ID token cookie in populatePrincipal.
+	clientID string
 
 	// bearerPassthrough configures whether Wrap forwards requests carrying a
 	// non-empty Authorization header straight to next without validating the
@@ -151,16 +162,23 @@ func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
 	cfg.StateCookie = applyCookieDefaults(cfg.StateCookie, DefaultStateCookieName, DefaultStateCookieMaxAge, cfg.AllowInsecureCookies)
 	cfg.RefreshCookie = applyCookieDefaults(cfg.RefreshCookie, DefaultRefreshCookieName, DefaultRefreshCookieMaxAge, cfg.AllowInsecureCookies)
 	cfg.TokenExpiryCookie = applyCookieDefaults(cfg.TokenExpiryCookie, DefaultTokenExpiryCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.IDTokenCookie = applyCookieDefaults(cfg.IDTokenCookie, DefaultIDTokenCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
 
 	var callbackPath string
 	if u, err := url.Parse(cfg.RedirectURI); err == nil {
 		callbackPath = u.Path
 	}
 
+	var clientID string
+	if client != nil {
+		clientID = client.ClientID()
+	}
+
 	return &Handler{
 		Client:       client,
 		Config:       cfg,
 		callbackPath: callbackPath,
+		clientID:     clientID,
 	}
 }
 
@@ -228,8 +246,40 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 			return c.Str("auth_source", "oidc_session")
 		})
 		ctx := ContextWithAccessToken(r.Context(), token.AccessToken)
+		ctx = h.populatePrincipal(ctx, r)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// populatePrincipal reads the ID token cookie, verifies it against this
+// client's JWKS, and — on success — attaches the authenticated principal and
+// custom claims to ctx, mirroring what the jwt middleware does with a
+// validated bearer token. On any failure (cookie absent, ID token expired or
+// invalid) it logs at debug and returns ctx unchanged: the ID token is
+// enrichment for callers like X-Forwarded-User header forwarding, not the
+// session's auth gate, so a stale or missing ID token degrades that
+// enrichment rather than the request.
+func (h *Handler) populatePrincipal(ctx context.Context, r *http.Request) context.Context {
+	idToken, err := extractValueFromCookie(r, h.Config.IDTokenCookie.Name)
+	if err != nil || idToken == "" {
+		return ctx
+	}
+
+	claims, err := h.Client.ValidateToken(ctx, idToken, []string{h.clientID})
+	if err != nil {
+		zerolog.Ctx(ctx).Debug().Err(err).Msg("unable to validate oidc id token for principal extraction")
+		return ctx
+	}
+
+	if claims.RegisteredClaims.Subject != "" {
+		ctx = authctx.ContextWithAuthenticatedPrincipal(ctx, claims.RegisteredClaims.Subject)
+		ctx = authctx.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
+	}
+	if customClaims, err := authjwt.ResolveCustomClaimsMap(claims, idToken); err == nil && len(customClaims) > 0 {
+		ctx = authctx.ContextWithAuthenticatedCustomClaims(ctx, customClaims)
+	}
+
+	return ctx
 }
 
 // redirectToLogin clears any stale session cookies and sends the browser to
@@ -356,12 +406,21 @@ func (h *Handler) saveTokenToCookies(w http.ResponseWriter, token *oauth2.Token)
 	h.Config.TokenCookie.Set(w, token.AccessToken)
 	h.Config.RefreshCookie.Set(w, token.RefreshToken)
 	h.Config.TokenExpiryCookie.Set(w, token.Expiry.Format(time.RFC3339))
+
+	// Only overwrite the ID token cookie when this token actually carries one.
+	// A refresh grant is not guaranteed to re-issue an id_token (provider-
+	// dependent) — leaving the existing cookie in place on those responses
+	// avoids losing the authenticated principal on every token refresh.
+	if idToken, ok := token.Extra("id_token").(string); ok && idToken != "" {
+		h.Config.IDTokenCookie.Set(w, idToken)
+	}
 }
 
 func (h *Handler) clearAllCookies(w http.ResponseWriter) {
 	h.Config.TokenCookie.Delete(w)
 	h.Config.RefreshCookie.Delete(w)
 	h.Config.TokenExpiryCookie.Delete(w)
+	h.Config.IDTokenCookie.Delete(w)
 }
 
 func extractValueFromCookie(r *http.Request, name string) (string, error) {
