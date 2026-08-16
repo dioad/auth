@@ -235,6 +235,12 @@ func (c *Client) Endpoint() Endpoint {
 	return c.endpoint
 }
 
+// ClientID returns the OAuth2 client ID this Client authenticates as. Used
+// as the expected audience when validating ID tokens issued to this client.
+func (c *Client) ClientID() string {
+	return c.clientID
+}
+
 func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
 	ge, ok := c.endpoint.(GothEndpoint)
 	if !ok {
