@@ -105,7 +105,7 @@ jobs:
 
       - name: Upload Fuzzing Crashers
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-crashers
           path: "**/testdata/fuzz/**"
@@ -166,7 +166,7 @@ jobs:
         env:
           CI: false
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.OUTPUT_ZIP }}
           path: ${{ env.OUTPUT_ZIP }}
