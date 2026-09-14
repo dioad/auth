@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -146,7 +147,6 @@ func NullHandler(next http.HandlerFunc) http.HandlerFunc {
 // MultiAuthnHandlerFunc creates a handler function that supports multiple authentication providers.
 func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
 		var err error
 		for _, provider := range cfg.Providers {
 			var a Authenticator
@@ -164,6 +164,7 @@ func MultiAuthnHandlerFunc(cfg *ServerConfig, origHandler http.HandlerFunc) http
 				continue
 			}
 
+			var ctx context.Context
 			ctx, err = a.AuthRequest(r)
 			if err == nil {
 				r = r.WithContext(ctx)

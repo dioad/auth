@@ -45,7 +45,7 @@ func main() {
 	fmt.Printf("Creating validator:\n")
 	fmt.Printf("  Issuer: %s\n", validatorConfig.Issuer)
 	fmt.Printf("  Audiences: %v\n", validatorConfig.Audiences)
-	fmt.Printf("  Endpoint: %s\n\n", validatorConfig.EndpointConfig.URL)
+	fmt.Printf("  Endpoint: %s\n\n", validatorConfig.URL)
 
 	// Create a validator
 	validator, err := oidc.NewValidatorFromConfig(&validatorConfig)
