@@ -42,7 +42,12 @@ type ClaimRoleMappingConfig struct {
 // service config with the mapstructure ",squash" tag to preserve the flat YAML
 // key structure.
 type ExtractorConfig struct {
-	AllowUnauthenticated bool                     `mapstructure:"allow-unauthenticated"`
+	// AllowUnauthenticated is a *bool, not a bool, so callers merging this
+	// config against a layered default (e.g. connect's per-service overrides)
+	// can tell "not set at this level" (nil) apart from an explicit false -
+	// a plain bool can't distinguish the two, which would let a true default
+	// silently override a service's explicit false.
+	AllowUnauthenticated *bool                    `mapstructure:"allow-unauthenticated"`
 	ClaimRoleMappings    []ClaimRoleMappingConfig `mapstructure:"claim-role-mappings"`
 }
 
@@ -90,7 +95,7 @@ func BuildExtractorConfig(mappings []ClaimRoleMappingConfig, logger zerolog.Logg
 // development. Otherwise it builds a proper extractor with per-source
 // claim-to-role mapping.
 func BuildPrincipalExtractor(config ExtractorConfig, logger zerolog.Logger) auth.PrincipalExtractor {
-	if config.AllowUnauthenticated {
+	if config.AllowUnauthenticated != nil && *config.AllowUnauthenticated {
 		return auth.NewAllowAllPrincipalExtractor()
 	}
 	return auth.NewDefaultPrincipalExtractorWithConfig(
