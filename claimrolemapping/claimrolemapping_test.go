@@ -103,7 +103,7 @@ func TestBuildMapper_ReturnsStandardMapperWithNoDebugRules(t *testing.T) {
 }
 
 func TestBuildPrincipalExtractor_AllowUnauthenticated(t *testing.T) {
-	config := ExtractorConfig{AllowUnauthenticated: true}
+	config := ExtractorConfig{AllowUnauthenticated: new(true)}
 	extractor := BuildPrincipalExtractor(config, zerolog.Nop())
 	if extractor == nil {
 		t.Fatal("expected non-nil extractor in unauthenticated mode")
@@ -112,7 +112,7 @@ func TestBuildPrincipalExtractor_AllowUnauthenticated(t *testing.T) {
 
 func TestBuildPrincipalExtractor_Authenticated(t *testing.T) {
 	config := ExtractorConfig{
-		AllowUnauthenticated: false,
+		AllowUnauthenticated: new(false),
 		ClaimRoleMappings: []ClaimRoleMappingConfig{
 			{Source: SourceFlyio, Role: "role.publisher", Claims: map[string]string{"org_name": "my-org"}},
 		},
