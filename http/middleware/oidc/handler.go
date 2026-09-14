@@ -39,6 +39,9 @@ type CookieConfig struct {
 }
 
 func (c CookieConfig) Cookie(value string) *http.Cookie {
+	// #nosec G124 -- Secure is deliberately configurable (CookieConfig.Secure) so
+	// deployments can run over plain HTTP in local development; HttpOnly and
+	// SameSite are always set.
 	return &http.Cookie{
 		Name:     c.Name,
 		Domain:   c.Domain,
@@ -56,7 +59,7 @@ func (c CookieConfig) Set(w http.ResponseWriter, value string) {
 }
 
 func (c CookieConfig) Delete(w http.ResponseWriter) {
-	cookie := c.Cookie("")
+	cookie := c.Cookie("") // #nosec G124 -- see justification in Cookie above
 	cookie.MaxAge = 0
 	http.SetCookie(w, cookie)
 }

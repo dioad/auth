@@ -101,6 +101,9 @@ func (i *MockIdP) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	code := uuid.New().String()
 
+	// #nosec G710 -- test-only mock IdP deliberately echoes the caller-supplied
+	// redirect_uri to emulate a real OIDC authorization endpoint; never used
+	// outside tests.
 	http.Redirect(w, r, fmt.Sprintf("%s?code=%s&state=%s", redirectURI, code, state), http.StatusFound)
 }
 

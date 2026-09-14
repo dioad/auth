@@ -28,7 +28,9 @@ func main() {
 
 	// Create a simple handler
 	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, authenticated user!\n")
+		if _, err := fmt.Fprintf(w, "Hello, authenticated user!\n"); err != nil {
+			log.Printf("error writing response: %v\n", err)
+		}
 	})
 
 	// Create server with OIDC validator as global middleware
@@ -38,11 +40,15 @@ func main() {
 	server.AddHandler("/secure", myHandler)
 
 	// Create listener
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
 	}
-	defer ln.Close()
+	defer func() {
+		if err := ln.Close(); err != nil {
+			log.Printf("error closing listener: %v\n", err)
+		}
+	}()
 
 	fmt.Println("Starting HTTP server with OIDC authentication on :8080")
 	fmt.Println("Note: This server requires a valid GitHub Actions OIDC token")

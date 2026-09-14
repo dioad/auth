@@ -17,7 +17,7 @@ func TestHandlerFunc(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	})
 
 	handlerFunc := HandlerFunc(cfg, nextHandler)
@@ -139,7 +139,7 @@ func TestWrap_Authorised(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("authorized"))
+		_, _ = w.Write([]byte("authorized"))
 	})
 
 	wrappedHandler := handler.Wrap(nextHandler)
