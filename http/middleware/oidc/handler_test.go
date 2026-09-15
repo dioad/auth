@@ -187,6 +187,73 @@ func TestHandler_Logout_ClearsCookiesAndRedirects(t *testing.T) {
 	assert.True(t, cleared[h.Config.IDTokenCookie.Name])
 }
 
+// TestHandler_Wrap_RedirectsWhenOneSessionCookieMissing covers
+// extractTokenFromCookies's four sequential guards individually.
+// newAuthenticatedRequest bundles all three session cookies together, so a
+// request missing all of them (the plain unauthenticated case) can't prove
+// any one guard in particular is doing its job -- whichever guard fires
+// first would mask the other three being silently skipped. Each subtest
+// here omits exactly one cookie while keeping the other two valid.
+func TestHandler_Wrap_RedirectsWhenOneSessionCookieMissing(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		omit func(h *Handler) string
+	}{
+		{"access token cookie missing", func(h *Handler) string { return h.Config.TokenCookie.Name }},
+		{"refresh cookie missing", func(h *Handler) string { return h.Config.RefreshCookie.Name }},
+		{"expiry cookie missing", func(h *Handler) string { return h.Config.TokenExpiryCookie.Name }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newTestHandler()
+			omitName := tc.omit(h)
+
+			req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+			for _, c := range []*http.Cookie{
+				h.Config.TokenCookie.Cookie("test-access-token"),
+				h.Config.RefreshCookie.Cookie("test-refresh-token"),
+				h.Config.TokenExpiryCookie.Cookie(time.Now().Add(time.Hour).Format(time.RFC3339)),
+			} {
+				if c.Name != omitName {
+					req.AddCookie(c)
+				}
+			}
+			rr := httptest.NewRecorder()
+
+			called := false
+			h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				w.WriteHeader(http.StatusOK)
+			})).ServeHTTP(rr, req)
+
+			assert.False(t, called, "request must not reach next with a missing session cookie")
+			assert.Equal(t, http.StatusSeeOther, rr.Code)
+			assert.Equal(t, "/login", rr.Header().Get("Location"))
+		})
+	}
+}
+
+// TestHandler_Wrap_RedirectsWhenExpiryCookieIsUnparsable covers the fourth
+// guard: an expiry cookie that's present but not a valid RFC3339 timestamp.
+func TestHandler_Wrap_RedirectsWhenExpiryCookieIsUnparsable(t *testing.T) {
+	h := newTestHandler()
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	req.AddCookie(h.Config.TokenCookie.Cookie("test-access-token"))
+	req.AddCookie(h.Config.RefreshCookie.Cookie("test-refresh-token"))
+	req.AddCookie(h.Config.TokenExpiryCookie.Cookie("not-a-valid-timestamp"))
+	rr := httptest.NewRecorder()
+
+	called := false
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rr, req)
+
+	assert.False(t, called, "request must not reach next with an unparsable expiry cookie")
+	assert.Equal(t, http.StatusSeeOther, rr.Code)
+	assert.Equal(t, "/login", rr.Header().Get("Location"))
+}
+
 func TestHandler_Callback_RejectsMissingCode(t *testing.T) {
 	h := newTestHandler()
 
