@@ -76,6 +76,36 @@ func TestHMACValidatorRejectsEmptyIssuer(t *testing.T) {
 	require.Error(t, err, "validator should reject token without iss claim")
 }
 
+// TestHMACValidatorRejectsEmptyStringIssuer covers a token that carries an
+// "iss" claim present but set to an empty string -- distinct from the
+// claim being absent entirely (the sibling test above): the flexible-issuer
+// resolver used in HMAC smoke-test mode must not treat an empty issuer
+// claim as an acceptable issuer to match against.
+func TestHMACValidatorRejectsEmptyStringIssuer(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfig(cfg)
+	require.NoError(t, err)
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "",
+		"aud": "test",
+		"iat": now.Unix(),
+		"exp": now.Add(1 * time.Hour).Unix(),
+	})
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+
+	_, err = v.ValidateToken(context.Background(), tokenString)
+	require.Error(t, err, "validator should reject a token with an empty-string iss claim")
+}
+
 // TestNormalValidatorEnforcesIssuer verifies that in non-HMAC mode,
 // the configured issuer is enforced (mismatched issuer claims are rejected).
 func TestNormalValidatorEnforcesIssuer(t *testing.T) {
