@@ -2,11 +2,13 @@ package oidc_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dioad/auth/oidc"
@@ -410,4 +412,156 @@ func TestHMACValidatorPopulatesIntrospectionCustomClaims(t *testing.T) {
 	require.Equal(t, "test", custom.Audience)
 	require.Equal(t, []string{"connect-admin", "registry.publisher"}, custom.RealmAccess.Roles)
 	require.Equal(t, "Bearer", custom.TokenType)
+}
+
+// TestNewValidatorFromConfigWithOptions_ExplicitIssuerTakesPrecedenceOverURL
+// is the regression test for issuer pinning: when both Issuer and the
+// endpoint URL are configured with different values, the explicit Issuer
+// must win. A validator that silently fell back to the URL whenever both
+// were set would let a separately-supplied URL field override a pinned
+// issuer -- weakening issuer enforcement.
+func TestNewValidatorFromConfigWithOptions_ExplicitIssuerTakesPrecedenceOverURL(t *testing.T) {
+	const explicitIssuer = "https://explicit-issuer.example"
+	const fallbackURL = "https://fallback-url.example"
+
+	cfg := &oidc.ValidatorConfig{
+		EndpointConfig:     oidc.EndpointConfig{URL: fallbackURL},
+		Issuer:             explicitIssuer,
+		SignatureAlgorithm: "HS256",
+		Audiences:          []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfigWithOptions(
+		cfg,
+		oidc.WithValidatorKeyFunc(func(context.Context) (any, error) {
+			return []byte("test-secret"), nil
+		}),
+	)
+	require.NoError(t, err)
+
+	now := time.Now()
+	newToken := func(issuer string) string {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"sub": "test-user",
+			"iss": issuer,
+			"aud": "test",
+			"iat": now.Unix(),
+			"exp": now.Add(time.Hour).Unix(),
+		})
+		s, signErr := token.SignedString([]byte("test-secret"))
+		require.NoError(t, signErr)
+		return s
+	}
+
+	_, err = v.ValidateToken(context.Background(), newToken(explicitIssuer))
+	assert.NoError(t, err, "validator must accept the explicitly configured issuer")
+
+	_, err = v.ValidateToken(context.Background(), newToken(fallbackURL))
+	assert.Error(t, err, "validator must not accept the URL as issuer when Issuer is explicitly set")
+}
+
+// TestNewValidatorFromConfigWithOptions_FallsBackToURLWhenIssuerEmpty
+// verifies the intended use of the URL-as-issuer fallback: when Issuer is
+// unset, the validator must use the configured URL as the issuer.
+func TestNewValidatorFromConfigWithOptions_FallsBackToURLWhenIssuerEmpty(t *testing.T) {
+	const fallbackURL = "https://fallback-url.example"
+
+	cfg := &oidc.ValidatorConfig{
+		EndpointConfig:     oidc.EndpointConfig{URL: fallbackURL},
+		SignatureAlgorithm: "HS256",
+		Audiences:          []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfigWithOptions(
+		cfg,
+		oidc.WithValidatorKeyFunc(func(context.Context) (any, error) {
+			return []byte("test-secret"), nil
+		}),
+	)
+	require.NoError(t, err)
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "test-user",
+		"iss": fallbackURL,
+		"aud": "test",
+		"iat": now.Unix(),
+		"exp": now.Add(time.Hour).Unix(),
+	})
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+
+	_, err = v.ValidateToken(context.Background(), tokenString)
+	assert.NoError(t, err, "validator should accept the URL as the issuer when Issuer is unset")
+}
+
+// TestNewValidatorFromConfigWithOptions_RequiresIssuerOrURL pins the error
+// returned when neither Issuer nor URL is configured.
+func TestNewValidatorFromConfigWithOptions_RequiresIssuerOrURL(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		SignatureAlgorithm: "HS256",
+		Audiences:          []string{"test"},
+	}
+
+	_, err := oidc.NewValidatorFromConfigWithOptions(cfg)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "issuer or URL must be provided")
+}
+
+// TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionError
+// verifies both that an invalid signature-algorithm entry is rejected, and
+// that the error is wrapped (not just stringified) so callers can unwrap it.
+func TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionError(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		Issuer:              "https://issuer.example",
+		SignatureAlgorithms: []string{""},
+		Audiences:           []string{"test"},
+	}
+
+	_, err := oidc.NewValidatorFromConfigWithOptions(cfg)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "resolving signature algorithms")
+
+	inner := errors.Unwrap(err)
+	require.NotNil(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
+	assert.ErrorContains(t, inner, "signature_algorithms[0] must not be empty")
+}
+
+// TestNewValidatorFromConfigWithOptions_RejectsHMACSecretWithoutAllowInsecureHMAC
+// is the regression test for accidental production use of a static HMAC
+// shared secret: HMACSecret must be rejected unless AllowInsecureHMAC is
+// explicitly set to true.
+func TestNewValidatorFromConfigWithOptions_RejectsHMACSecretWithoutAllowInsecureHMAC(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret: "test-secret",
+		Audiences:  []string{"test"},
+		// AllowInsecureHMAC intentionally omitted (defaults to false).
+	}
+
+	_, err := oidc.NewValidatorFromConfigWithOptions(cfg)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "AllowInsecureHMAC")
+}
+
+// TestNewValidatorFromConfigWithOptions_RequiresAudiencesInNonHMACMode is the
+// regression test for the "critical security check" documented on
+// buildValidatorOptions: non-HMAC (production) mode must reject a config
+// with no configured audiences rather than silently constructing a
+// validator that accepts tokens for any audience.
+func TestNewValidatorFromConfigWithOptions_RequiresAudiencesInNonHMACMode(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		Issuer:             "https://issuer.example",
+		SignatureAlgorithm: "HS256",
+		// Audiences intentionally omitted; HMACSecret intentionally unset so
+		// the HMAC smoke-test default audience doesn't apply.
+	}
+
+	_, err := oidc.NewValidatorFromConfigWithOptions(
+		cfg,
+		oidc.WithValidatorKeyFunc(func(context.Context) (any, error) {
+			return []byte("test-secret"), nil
+		}),
+	)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "audiences must be configured in non-HMAC mode")
 }
