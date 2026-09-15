@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -28,6 +29,57 @@ func makeTokenString(t *testing.T, claims gojwt.MapClaims) string {
 	signed, err := token.SignedString([]byte("test-secret"))
 	require.NoError(t, err)
 	return signed
+}
+
+// arrayCustomClaims marshals to a JSON array rather than an object, so
+// json.Unmarshal into map[string]any fails -- used to reach
+// CustomClaimsMapFromValidatedClaims's unmarshal error path, distinct
+// from brokenCustomClaims's marshal error path above.
+type arrayCustomClaims struct{}
+
+func (a *arrayCustomClaims) Validate(_ context.Context) error { return nil }
+func (a *arrayCustomClaims) MarshalJSON() ([]byte, error)     { return []byte("[1,2,3]"), nil }
+
+func TestCustomClaimsMapFromValidatedClaims_NilValidatedClaims(t *testing.T) {
+	claims, err := CustomClaimsMapFromValidatedClaims(nil)
+	require.NoError(t, err)
+	require.Nil(t, claims)
+}
+
+func TestCustomClaimsMapFromValidatedClaims_NilCustomClaims(t *testing.T) {
+	claims, err := CustomClaimsMapFromValidatedClaims(&jwtvalidator.ValidatedClaims{})
+	require.NoError(t, err)
+	require.Nil(t, claims)
+}
+
+func TestCustomClaimsMapFromValidatedClaims_Populated(t *testing.T) {
+	vc := &jwtvalidator.ValidatedClaims{CustomClaims: &sourceCustomClaims{Source: "validated"}}
+
+	claims, err := CustomClaimsMapFromValidatedClaims(vc)
+	require.NoError(t, err)
+	require.Equal(t, "validated", claims["source"])
+}
+
+func TestCustomClaimsMapFromValidatedClaims_MarshalError(t *testing.T) {
+	vc := &jwtvalidator.ValidatedClaims{CustomClaims: &brokenCustomClaims{Bad: make(chan int)}}
+
+	claims, err := CustomClaimsMapFromValidatedClaims(vc)
+	require.Error(t, err)
+	require.Nil(t, claims)
+	// "marshal custom claims" alone is a substring of "unmarshal custom
+	// claims" (the sibling error message a few lines down), so pin the full
+	// wrapped message to actually distinguish the two paths.
+	require.ErrorContains(t, err, "marshal custom claims: json: unsupported type: chan int")
+	require.NotNil(t, errors.Unwrap(err), "the underlying marshal error must be unwrappable, not just interpolated")
+}
+
+func TestCustomClaimsMapFromValidatedClaims_UnmarshalError(t *testing.T) {
+	vc := &jwtvalidator.ValidatedClaims{CustomClaims: &arrayCustomClaims{}}
+
+	claims, err := CustomClaimsMapFromValidatedClaims(vc)
+	require.Error(t, err)
+	require.Nil(t, claims)
+	require.ErrorContains(t, err, "unmarshal custom claims")
 }
 
 func TestResolveCustomClaimsMap_UsesValidatedCustomClaims(t *testing.T) {
