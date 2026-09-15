@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestHeaderCaseNormalization verifies that header names are normalized to lowercase
@@ -172,4 +175,45 @@ func TestCanonicalDataCaseNormalization(t *testing.T) {
 	if canonical1 != canonical2 {
 		t.Errorf("Canonical data mismatch:\n%q\nvs\n%q", canonical1, canonical2)
 	}
+}
+
+// TestCanonicalData_ProducesExpectedFormat pins the exact byte layout of the
+// canonical string. Equality-between-two-calls tests (as above) cannot catch
+// a component silently dropped from the signed data, since both sides of the
+// comparison drop it identically; this test asserts on the literal signed
+// string so a dropped method, path, timestamp, principal, header, or body
+// segment is detected directly.
+func TestCanonicalData_ProducesExpectedFormat(t *testing.T) {
+	req, err := http.NewRequest("POST", "http://example.com/api/data?id=123", bytes.NewBufferString("body-content"))
+	require.NoError(t, err)
+	req.Header.Set("X-Api-Key", "  secret123  ")
+	req.Header.Set("Content-Type", "application/json")
+
+	canonical := CanonicalData(req, "user123", "1700000000", []string{"X-Api-Key", "Content-Type"}, []byte("body-content"))
+
+	expected := "POST\n" +
+		"/api/data?id=123\n" +
+		"1700000000\n" +
+		"user123\n" +
+		"x-api-key,content-type\n" +
+		"x-api-key:secret123\n" +
+		"content-type:application/json\n" +
+		"body-content"
+	assert.Equal(t, expected, canonical)
+}
+
+// TestCanonicalData_DefaultsEmptyPathToSlash verifies the empty-path fallback
+// and the omission of the "?" segment when there are no query parameters.
+func TestCanonicalData_DefaultsEmptyPathToSlash(t *testing.T) {
+	req, err := http.NewRequest("GET", "http://example.com", nil)
+	require.NoError(t, err)
+
+	canonical := CanonicalData(req, "user123", "1700000000", nil, nil)
+
+	expected := "GET\n" +
+		"/\n" +
+		"1700000000\n" +
+		"user123\n" +
+		"\n"
+	assert.Equal(t, expected, canonical)
 }
