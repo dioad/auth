@@ -17,6 +17,7 @@ import (
 
 	"github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/oidc"
+	"github.com/dioad/auth/testutil"
 )
 
 func TestNewHandler_AppliesDefaults(t *testing.T) {
@@ -229,6 +230,67 @@ func TestHandler_Callback_RejectsStateMismatch(t *testing.T) {
 	h.Callback().ServeHTTP(rr, req)
 
 	require.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+// TestHandler_Callback_RejectsEmptyStateCookieValue is the regression test
+// for a real state-validation gap: a present-but-empty state cookie (valid
+// syntactically, no decode error) must be rejected at the cookie-validity
+// check with "Invalid state cookie", not fall through to the
+// stateFromCookie != state mismatch check with a different message. Both
+// paths happen to end in 400 today, so a mutation that weakens the guard
+// (e.g. turning its OR into an AND) previously went unnoticed; asserting on
+// the exact rejection message pins the guard itself, not just the status.
+func TestHandler_Callback_RejectsEmptyStateCookieValue(t *testing.T) {
+	h := newTestHandler()
+
+	req := httptest.NewRequest(http.MethodGet, h.CallbackPath()+"?code=abc&state=xyz", nil)
+	req.AddCookie(h.Config.StateCookie.Cookie(""))
+	rr := httptest.NewRecorder()
+
+	h.Callback().ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	assert.Contains(t, rr.Body.String(), "Invalid state cookie")
+}
+
+// TestHandler_Callback_SucceedsWithMatchingStateAndValidCode is the only
+// happy-path test for Callback: every other Callback test only proves a
+// rejection. Without this, a mutation that makes the state/code guards
+// reject valid requests (e.g. negating the state-cookie comparison) would go
+// undetected, since no test ever exercises the success path through those
+// guards.
+func TestHandler_Callback_SucceedsWithMatchingStateAndValidCode(t *testing.T) {
+	idp, err := testutil.NewMockIdP()
+	require.NoError(t, err)
+	defer idp.Close()
+
+	client, err := oidc.NewClientFromConfig(&oidc.ClientConfig{
+		EndpointConfig: oidc.EndpointConfig{URL: idp.Issuer},
+		ClientID:       "test-client",
+	})
+	require.NoError(t, err)
+
+	h := NewHandler(client, OIDCConfig{RedirectURI: "https://tunnel.example/callback"})
+
+	req := httptest.NewRequest(http.MethodGet, h.CallbackPath()+"?code=mock-code&state=xyz", nil)
+	req.AddCookie(h.Config.StateCookie.Cookie("xyz"))
+	rr := httptest.NewRecorder()
+
+	h.Callback().ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusFound, rr.Code)
+	require.Equal(t, "/", rr.Header().Get("Location"))
+
+	cookies := map[string]*http.Cookie{}
+	for _, c := range rr.Result().Cookies() {
+		cookies[c.Name] = c
+	}
+	if assert.Contains(t, cookies, h.Config.TokenCookie.Name) {
+		assert.NotEmpty(t, cookies[h.Config.TokenCookie.Name].Value)
+	}
+	if assert.Contains(t, cookies, h.Config.StateCookie.Name) {
+		assert.LessOrEqual(t, cookies[h.Config.StateCookie.Name].MaxAge, 0, "state cookie must be cleared after a successful callback")
+	}
 }
 
 func TestHandler_SaveTokenToCookies_SetsIDTokenCookieWhenPresent(t *testing.T) {
