@@ -396,14 +396,52 @@ func TestHandler_Wrap_PopulatesPrincipalFromValidIDToken(t *testing.T) {
 
 	var gotPrincipal string
 	var gotOK bool
+	var gotRegisteredClaims jwtvalidator.RegisteredClaims
+	var gotRegisteredOK bool
+	var gotCustomClaims map[string]any
+	var gotCustomOK bool
 	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPrincipal, gotOK = authctx.AuthenticatedPrincipalFromContext(r.Context())
+		gotRegisteredClaims, gotRegisteredOK = authctx.AuthenticatedRegisteredClaimsFromContext(r.Context())
+		gotCustomClaims, gotCustomOK = authctx.AuthenticatedCustomClaimsFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)
 
 	require.Equal(t, http.StatusOK, rr.Code)
 	require.True(t, gotOK, "principal should be populated from a valid id token cookie")
 	require.Equal(t, "test-subject", gotPrincipal)
+
+	require.True(t, gotRegisteredOK, "registered claims should be populated alongside the principal")
+	assert.Equal(t, "test-subject", gotRegisteredClaims.Subject)
+
+	require.True(t, gotCustomOK, "custom claims should be populated from the id token payload")
+	assert.NotEmpty(t, gotCustomClaims)
+}
+
+// TestHandler_Wrap_LeavesPrincipalAbsentWhenIDTokenCookieEmpty covers the
+// present-but-empty id token cookie case, distinct from the cookie being
+// absent entirely: extractValueFromCookie returns ("", nil) here (no
+// error), so only the idToken == "" half of the guard rejects it.
+func TestHandler_Wrap_LeavesPrincipalAbsentWhenIDTokenCookieEmpty(t *testing.T) {
+	h := newTestHandler()
+	req := newAuthenticatedRequest(h, "")
+	// Add the id token cookie with an explicitly empty value, rather than
+	// omitting it entirely (which produces the different "missing cookie"
+	// error path already covered elsewhere).
+	req.AddCookie(h.Config.IDTokenCookie.Cookie(""))
+	rr := httptest.NewRecorder()
+
+	called := false
+	var gotOK bool
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		_, gotOK = authctx.AuthenticatedPrincipalFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rr, req)
+
+	require.True(t, called, "an empty id token cookie must not block the request")
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.False(t, gotOK)
 }
 
 // TestHandler_Wrap_LeavesPrincipalAbsentWhenIDTokenCookieMissing is the
