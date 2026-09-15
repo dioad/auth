@@ -3,6 +3,7 @@ package jwt
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/auth0/go-jwt-middleware/v3/core"
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
@@ -53,6 +54,59 @@ func TestRegisteredClaimsFromContext_RealMiddlewarePath(t *testing.T) {
 	require.NotNil(t, rc)
 	assert.Equal(t, "bob", rc.Subject)
 	assert.Equal(t, "test-issuer", rc.Issuer)
+}
+
+// TestRegisteredClaimsFromContext_ConvertsTimestamps pins the int64-to-
+// NumericDate conversion for NotBefore/IssuedAt/Expiry, including the zero
+// value (which must stay nil, not become NewNumericDate(time.Unix(0, 0))).
+func TestRegisteredClaimsFromContext_ConvertsTimestamps(t *testing.T) {
+	t.Run("populated", func(t *testing.T) {
+		vc := &jwtvalidator.ValidatedClaims{
+			RegisteredClaims: jwtvalidator.RegisteredClaims{
+				Subject:   "bob",
+				NotBefore: 1700000000,
+				IssuedAt:  1700000050,
+				Expiry:    1700000100,
+			},
+		}
+		ctx := core.SetClaims(context.Background(), vc)
+
+		rc := RegisteredClaimsFromContext(ctx)
+		require.NotNil(t, rc)
+		assert.Equal(t, gojwt.NewNumericDate(time.Unix(1700000000, 0)), rc.NotBefore)
+		assert.Equal(t, gojwt.NewNumericDate(time.Unix(1700000050, 0)), rc.IssuedAt)
+		assert.Equal(t, gojwt.NewNumericDate(time.Unix(1700000100, 0)), rc.ExpiresAt)
+	})
+
+	t.Run("boundary value of 1", func(t *testing.T) {
+		// A timestamp of exactly 1 distinguishes the intended "> 0" guard from
+		// an off-by-one ("> 1"): the populated case above uses large values
+		// that satisfy both, so it can't catch that mutation alone.
+		vc := &jwtvalidator.ValidatedClaims{
+			RegisteredClaims: jwtvalidator.RegisteredClaims{
+				NotBefore: 1,
+				IssuedAt:  1,
+				Expiry:    1,
+			},
+		}
+		ctx := core.SetClaims(context.Background(), vc)
+
+		rc := RegisteredClaimsFromContext(ctx)
+		require.NotNil(t, rc)
+		assert.Equal(t, gojwt.NewNumericDate(time.Unix(1, 0)), rc.NotBefore)
+		assert.Equal(t, gojwt.NewNumericDate(time.Unix(1, 0)), rc.IssuedAt)
+		assert.Equal(t, gojwt.NewNumericDate(time.Unix(1, 0)), rc.ExpiresAt)
+	})
+
+	t.Run("zero value stays nil", func(t *testing.T) {
+		ctx := middlewareContext("bob", nil)
+
+		rc := RegisteredClaimsFromContext(ctx)
+		require.NotNil(t, rc)
+		assert.Nil(t, rc.NotBefore)
+		assert.Nil(t, rc.IssuedAt)
+		assert.Nil(t, rc.ExpiresAt)
+	})
 }
 
 // TestRegisteredClaimsFromContext_DirectStoreFallback verifies that the fallback path works
