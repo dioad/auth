@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"testing"
 	"time"
 
+	"github.com/auth0/go-jwt-middleware/v3/jwks"
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -364,6 +366,31 @@ func TestNewValidatorFromConfigWithOptions_PropagatesKeyFuncResolutionError(t *t
 	_, err := NewValidatorFromConfigWithOptions(&cfg)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "invalid issuer URL")
+}
+
+// TestResolveKeyFunc_ReusesExplicitProvider covers the pre-existing-provider
+// guard: when a provider is already supplied, it must be returned as-is --
+// including when the issuer argument doesn't even match the provider's own
+// issuer, proving the issuer argument is genuinely ignored in that case,
+// not just coincidentally consistent.
+func TestResolveKeyFunc_ReusesExplicitProvider(t *testing.T) {
+	issuerURL, err := url.Parse("https://provider-issuer.example")
+	require.NoError(t, err)
+	provider, err := jwks.NewCachingProvider(jwks.WithIssuerURL(issuerURL))
+	require.NoError(t, err)
+
+	_, gotProvider, err := ResolveKeyFunc("https://different-issuer.example", time.Minute, provider)
+	require.NoError(t, err)
+	assert.Same(t, provider, gotProvider)
+}
+
+func TestResolveKeyFunc_WrapsInvalidIssuerURLError(t *testing.T) {
+	_, _, err := ResolveKeyFunc("https://issuer.example/\x7f", time.Minute, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "invalid issuer URL")
+
+	inner := errors.Unwrap(err)
+	require.NotNil(t, inner, "the underlying url.Parse error must be unwrappable, not just interpolated")
 }
 
 // TestValidatedClaimsToMapClaims_PopulatesRegisteredClaims pins the exact
