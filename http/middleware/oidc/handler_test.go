@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -371,14 +372,36 @@ func TestHandler_SaveTokenToCookies_SetsIDTokenCookieWhenPresent(t *testing.T) {
 
 	h.saveTokenToCookies(rr, token)
 
-	var found bool
+	cookies := map[string]string{}
 	for _, c := range rr.Result().Cookies() {
-		if c.Name == h.Config.IDTokenCookie.Name {
-			found = true
-			require.Equal(t, "signed-id-token", c.Value)
-		}
+		v, err := url.QueryUnescape(c.Value)
+		require.NoError(t, err)
+		cookies[c.Name] = v
 	}
-	require.True(t, found, "id token cookie should be set when the token carries an id_token")
+	require.Equal(t, "signed-id-token", cookies[h.Config.IDTokenCookie.Name],
+		"id token cookie should be set when the token carries an id_token")
+	require.Equal(t, "refresh", cookies[h.Config.RefreshCookie.Name])
+	require.Equal(t, token.Expiry.Format(time.RFC3339), cookies[h.Config.TokenExpiryCookie.Name])
+}
+
+// TestHandler_SaveTokenToCookies_OmitsIDTokenCookieWhenEmpty covers the
+// present-but-empty id_token case, distinct from it being absent entirely:
+// an empty string must not overwrite the existing id token cookie either.
+func TestHandler_SaveTokenToCookies_OmitsIDTokenCookieWhenEmpty(t *testing.T) {
+	h := newTestHandler()
+	token := (&oauth2.Token{
+		AccessToken:  "access",
+		RefreshToken: "refresh",
+		Expiry:       time.Now().Add(time.Hour),
+	}).WithExtra(map[string]any{"id_token": ""})
+	rr := httptest.NewRecorder()
+
+	h.saveTokenToCookies(rr, token)
+
+	for _, c := range rr.Result().Cookies() {
+		require.NotEqualf(t, h.Config.IDTokenCookie.Name, c.Name,
+			"an empty id_token must not overwrite the existing id token cookie")
+	}
 }
 
 // TestHandler_SaveTokenToCookies_OmitsIDTokenCookieWhenAbsent is the
