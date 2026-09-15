@@ -375,6 +375,43 @@ func TestHMACValidatorEnforcesExplicitIssuer(t *testing.T) {
 	require.Error(t, err, "validator should reject token with wrong issuer, even in HMAC mode")
 }
 
+// TestHMACValidatorSwallowsIntrospectionParseFailure is the regression test
+// for enrichingValidator's graceful-degradation contract: a token with a
+// custom claim shape json.Unmarshal can't coerce into IntrospectionResponse
+// (here, "email_verified" as a string instead of a bool -- a type the
+// underlying jwt-middleware validator itself never inspects, so the token
+// still validates) must not fail overall validation, and CustomClaims must
+// stay nil rather than being set to a partially-populated struct.
+func TestHMACValidatorSwallowsIntrospectionParseFailure(t *testing.T) {
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret:        "test-secret",
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfig(cfg)
+	require.NoError(t, err)
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":            "test-user",
+		"iss":            "custom-issuer",
+		"aud":            "test",
+		"iat":            now.Unix(),
+		"exp":            now.Add(1 * time.Hour).Unix(),
+		"email_verified": "not-a-bool",
+	})
+	tokenString, err := token.SignedString([]byte("test-secret"))
+	require.NoError(t, err)
+
+	out, err := v.ValidateToken(context.Background(), tokenString)
+	require.NoError(t, err, "an unparsable custom-claims shape must not fail overall token validation")
+
+	vc, ok := out.(*jwtvalidator.ValidatedClaims)
+	require.True(t, ok)
+	assert.Nil(t, vc.CustomClaims, "CustomClaims must stay nil, not a partially-populated struct, when introspection parsing fails")
+}
+
 func TestHMACValidatorPopulatesIntrospectionCustomClaims(t *testing.T) {
 	cfg := &oidc.ValidatorConfig{
 		HMACSecret:        "test-secret",
