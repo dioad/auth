@@ -209,9 +209,33 @@ func TestDecodeTokenData(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, "1234567890", dataMap["sub"])
-	assert.NotNil(t, dataMap["exp_datetime"])
-	assert.NotNil(t, dataMap["iat_datetime"])
-	assert.NotNil(t, dataMap["nbf_datetime"])
+	// Pin the exact converted time, not just non-nil: time.Unix(sec, 0) with
+	// the nanosecond argument mutated to ±1 would still produce a non-nil
+	// time.Time that NotNil can't distinguish from the correct one.
+	assert.Equal(t, time.Unix(now+3600, 0), dataMap["exp_datetime"])
+	assert.Equal(t, time.Unix(now, 0), dataMap["iat_datetime"])
+	assert.Equal(t, time.Unix(now, 0), dataMap["nbf_datetime"])
+}
+
+func TestDecodeTokenData_RejectsWrongSegmentCount(t *testing.T) {
+	_, err := decodeTokenData("only-one-segment")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "invalid token format")
+}
+
+func TestDecodeTokenData_RejectsInvalidBase64Payload(t *testing.T) {
+	_, err := decodeTokenData("header.not-valid-base64!!!.signature")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to decode token payload")
+}
+
+func TestDecodeTokenData_RejectsInvalidJSONPayload(t *testing.T) {
+	payloadEncoded := base64.RawURLEncoding.EncodeToString([]byte("not json"))
+	tokenString := fmt.Sprintf("header.%s.signature", payloadEncoded)
+
+	_, err := decodeTokenData(tokenString)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to unmarshal token payload")
 }
 
 func TestPredicateValidator(t *testing.T) {
