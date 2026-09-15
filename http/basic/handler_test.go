@@ -117,3 +117,39 @@ func TestLoadBasicAuthFromFileOrEmpty_ExistingFileLoadsNormally(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, authMap.UserExists("alice"))
 }
+
+// TestLoadBasicAuthFromFile_Accepts0400Permissions covers the second half
+// of the permission check (stat.Mode() != 0400): the sibling success test
+// above only exercises 0600, which the first half of the check alone
+// already accepts, so it can't prove 0400 is independently accepted too.
+func TestLoadBasicAuthFromFile_Accepts0400Permissions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "htpasswd")
+	pair, err := NewBasicAuthPairWithPlainPassword("alice", "secret")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, []byte("alice:"+pair.HashedPassword+"\n"), 0400))
+
+	authMap, err := LoadBasicAuthFromFile(path)
+	require.NoError(t, err)
+	require.True(t, authMap.UserExists("alice"))
+}
+
+func TestLoadBasicAuthFromFile_PropagatesOpenError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "does-not-exist")
+
+	_, err := LoadBasicAuthFromFile(path)
+	assert.Error(t, err)
+}
+
+// TestLoadBasicAuthFromFile_PropagatesHomedirExpandError covers the
+// homedir.Expand error path: a "~otheruser/..." path, which go-homedir
+// explicitly refuses to resolve.
+func TestLoadBasicAuthFromFile_PropagatesHomedirExpandError(t *testing.T) {
+	_, err := LoadBasicAuthFromFile("~otheruser/htpasswd")
+	require.Error(t, err)
+	// Skipping this guard falls through to opening "." (filepath.Clean of
+	// the empty path Expand returns alongside its error), which still ends
+	// up erroring -- via the permissions check, since a directory's mode
+	// never equals 0600/0400 -- so a bare assert.Error can't distinguish
+	// the two failure paths; pin the specific homedir error message.
+	assert.ErrorContains(t, err, "cannot expand user-specific home dir")
+}
