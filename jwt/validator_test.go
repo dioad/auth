@@ -342,6 +342,75 @@ func TestNewValidatorFromConfigWithOptions_PropagatesKeyFuncResolutionError(t *t
 	assert.ErrorContains(t, err, "invalid issuer URL")
 }
 
+// TestValidatedClaimsToMapClaims_PopulatesRegisteredClaims pins the exact
+// map produced from a fully-populated RegisteredClaims and from an
+// all-zero-value one. Each registered field is guarded by its own
+// if-non-zero check before being added to the map; asserting on the exact
+// key set (not just individual field presence) catches a guard that was
+// silently dropped or a comparison that was weakened.
+func TestValidatedClaimsToMapClaims_PopulatesRegisteredClaims(t *testing.T) {
+	t.Run("fully populated", func(t *testing.T) {
+		vc := &jwtvalidator.ValidatedClaims{
+			RegisteredClaims: jwtvalidator.RegisteredClaims{
+				Issuer:    "https://issuer.example",
+				Subject:   "test-user",
+				Audience:  []string{"aud1", "aud2"},
+				Expiry:    1700000100,
+				NotBefore: 1700000000,
+				IssuedAt:  1700000050,
+				ID:        "jti-123",
+			},
+		}
+
+		m, err := validatedClaimsToMapClaims(vc)
+		require.NoError(t, err)
+		assert.Equal(t, jwt.MapClaims{
+			"iss": "https://issuer.example",
+			"sub": "test-user",
+			"aud": []string{"aud1", "aud2"},
+			"exp": int64(1700000100),
+			"nbf": int64(1700000000),
+			"iat": int64(1700000050),
+			"jti": "jti-123",
+		}, m)
+	})
+
+	t.Run("zero value", func(t *testing.T) {
+		vc := &jwtvalidator.ValidatedClaims{}
+
+		m, err := validatedClaimsToMapClaims(vc)
+		require.NoError(t, err)
+		assert.Equal(t, jwt.MapClaims{}, m)
+	})
+
+	t.Run("single audience", func(t *testing.T) {
+		// A single-element Audience distinguishes len(rc.Audience) > 0 from a
+		// boundary off-by-one (> 1): the multi-element "fully populated" case
+		// above satisfies both, so it can't catch that mutation alone.
+		vc := &jwtvalidator.ValidatedClaims{
+			RegisteredClaims: jwtvalidator.RegisteredClaims{Audience: []string{"aud1"}},
+		}
+
+		m, err := validatedClaimsToMapClaims(vc)
+		require.NoError(t, err)
+		assert.Equal(t, jwt.MapClaims{"aud": []string{"aud1"}}, m)
+	})
+
+	t.Run("merges custom claims", func(t *testing.T) {
+		vc := &jwtvalidator.ValidatedClaims{
+			RegisteredClaims: jwtvalidator.RegisteredClaims{Subject: "test-user"},
+			CustomClaims:     &testCustomClaims{Role: "admin"},
+		}
+
+		m, err := validatedClaimsToMapClaims(vc)
+		require.NoError(t, err)
+		assert.Equal(t, jwt.MapClaims{
+			"sub":  "test-user",
+			"role": "admin",
+		}, m)
+	})
+}
+
 type mockValidator struct {
 	claims any
 	err    error
