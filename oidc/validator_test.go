@@ -8,6 +8,7 @@ import (
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -182,6 +183,64 @@ func TestHMACValidatorFiltersNonHMACAlgorithmsFromList(t *testing.T) {
 
 	_, err = v.ValidateToken(context.Background(), tokenString)
 	require.NoError(t, err, "validator should accept HS256 token after filtering non-HMAC algorithms")
+}
+
+// TestHMACValidatorFiltersNonHMACAlgorithmsFromMiddleOfList is the
+// regression test for a loop-scope bug class in the HMAC-algorithm filter:
+// the sibling test above has only one HMAC algorithm, positioned last,
+// which happens to equal the filter's own single-HS256 fallback default --
+// so a loop that stops after its first iteration (e.g. an accidental
+// break) produces the same final result by coincidence. Configuring two
+// HMAC algorithms with a non-HMAC one between them proves the filter
+// actually keeps every matching entry, not just the first.
+func TestHMACValidatorFiltersNonHMACAlgorithmsFromMiddleOfList(t *testing.T) {
+	const secret = "test-secret"
+	const kid = "test-hmac-key"
+
+	// Validating more than one algorithm requires a keyFunc that returns a
+	// jwk.Set (the HMAC-mode default keyFunc returns a raw key, which only
+	// supports a single configured algorithm), so supply one explicitly
+	// instead of relying on ValidatorConfig.HMACSecret's auto-generated one.
+	jwkKey, err := jwk.Import([]byte(secret))
+	require.NoError(t, err)
+	require.NoError(t, jwkKey.Set(jwk.KeyIDKey, kid))
+	keySet := jwk.NewSet()
+	require.NoError(t, keySet.AddKey(jwkKey))
+
+	cfg := &oidc.ValidatorConfig{
+		HMACSecret:          secret,
+		AllowInsecureHMAC:   true,
+		SignatureAlgorithms: []string{"HS256", "RS256", "HS384"},
+		Audiences:           []string{"test"},
+	}
+
+	v, err := oidc.NewValidatorFromConfigWithOptions(cfg, oidc.WithValidatorKeyFunc(func(context.Context) (any, error) {
+		return keySet, nil
+	}))
+	require.NoError(t, err)
+
+	now := time.Now()
+	claims := jwt.MapClaims{
+		"sub": "test-user",
+		"iss": "test-issuer",
+		"aud": "test",
+		"iat": now.Unix(),
+		"exp": now.Add(1 * time.Hour).Unix(),
+	}
+
+	hs256Token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	hs256Token.Header["kid"] = kid
+	hs256TokenString, err := hs256Token.SignedString([]byte(secret))
+	require.NoError(t, err)
+	_, err = v.ValidateToken(context.Background(), hs256TokenString)
+	require.NoError(t, err, "validator should still accept HS256, the first HMAC algorithm in the list")
+
+	hs384Token := jwt.NewWithClaims(jwt.SigningMethodHS384, claims)
+	hs384Token.Header["kid"] = kid
+	hs384TokenString, err := hs384Token.SignedString([]byte(secret))
+	require.NoError(t, err)
+	_, err = v.ValidateToken(context.Background(), hs384TokenString)
+	require.NoError(t, err, "validator should accept HS384, the HMAC algorithm listed after a non-HMAC entry")
 }
 
 // TestValidatorDefaultsAllowedClockSkewToOneMinute is the regression test for
