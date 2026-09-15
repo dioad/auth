@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"testing"
@@ -283,6 +284,62 @@ func TestMultiValidator(t *testing.T) {
 	_, err = mv2.ValidateToken(context.Background(), "some-token")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "token validation failed")
+}
+
+func TestNewValidatorFromConfigWithOptions_RejectsNilConfig(t *testing.T) {
+	_, err := NewValidatorFromConfigWithOptions(nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "validator config is nil")
+}
+
+func TestNewValidatorFromConfigWithOptions_RequiresIssuer(t *testing.T) {
+	cfg := ValidatorConfig{
+		Audiences:          []string{"aud"},
+		SignatureAlgorithm: "RS256",
+	}
+
+	_, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(context.Context) (any, error) {
+		return "unused", nil
+	}))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "issuer must be provided")
+}
+
+// TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionError
+// verifies both that an invalid signature-algorithm entry is rejected, and
+// that the error is wrapped (not just stringified) so callers can unwrap it.
+func TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionError(t *testing.T) {
+	cfg := ValidatorConfig{
+		Issuer:              "https://issuer.example",
+		Audiences:           []string{"aud"},
+		SignatureAlgorithms: []string{""},
+	}
+
+	_, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(context.Context) (any, error) {
+		return "unused", nil
+	}))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "resolving signature algorithms")
+
+	inner := errors.Unwrap(err)
+	require.NotNil(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
+	assert.ErrorContains(t, inner, "signature_algorithms[0] must not be empty")
+}
+
+// TestNewValidatorFromConfigWithOptions_PropagatesKeyFuncResolutionError pins
+// the error path when no WithValidatorKeyFunc is supplied and key resolution
+// itself fails (here, via an issuer that url.Parse rejects), verifying
+// ResolveKeyFunc's error reaches the caller rather than being swallowed.
+func TestNewValidatorFromConfigWithOptions_PropagatesKeyFuncResolutionError(t *testing.T) {
+	cfg := ValidatorConfig{
+		Issuer:             "https://issuer.example/\x7f",
+		Audiences:          []string{"aud"},
+		SignatureAlgorithm: "RS256",
+	}
+
+	_, err := NewValidatorFromConfigWithOptions(&cfg)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "invalid issuer URL")
 }
 
 type mockValidator struct {
