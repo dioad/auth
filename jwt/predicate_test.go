@@ -172,7 +172,13 @@ func TestParseOrClaimPredicate(t *testing.T) {
 	}
 }
 
-func TestParseOrWithEmbeddedAnyClaimPredicate(t *testing.T) {
+// TestParseOrWithEmbeddedAnyClaimPredicate_FirstBranchAlone and
+// TestParseOrWithEmbeddedAnyClaimPredicate_SecondBranchAlone together prove
+// genuine OR short-circuit semantics for a predicate with an embedded AND
+// branch (`or(key==value, and(key2==value2, key3==value3))`): each supplies
+// claims that satisfy exactly one OR branch while leaving the other branch
+// unsatisfied, so neither branch is erroneously treated as required.
+func TestParseOrWithEmbeddedAnyClaimPredicate_FirstBranchAlone(t *testing.T) {
 	input := map[string]any{
 		"or": []map[string]any{
 			{
@@ -193,6 +199,8 @@ func TestParseOrWithEmbeddedAnyClaimPredicate(t *testing.T) {
 
 	cp := ParseClaimPredicates(input)
 
+	// key3 is present but key2 is absent, so the second (AND) branch alone
+	// would be false; only the first branch (key == value) is satisfied.
 	claims := jwt.MapClaims{
 		"key":  "value",
 		"key3": "value3",
@@ -203,7 +211,7 @@ func TestParseOrWithEmbeddedAnyClaimPredicate(t *testing.T) {
 	}
 }
 
-func TestParseOrWithEmbeddedAnyClaimPredicate2(t *testing.T) {
+func TestParseOrWithEmbeddedAnyClaimPredicate_SecondBranchAlone(t *testing.T) {
 	input := map[string]any{
 		"or": []map[string]any{
 			{
@@ -224,6 +232,8 @@ func TestParseOrWithEmbeddedAnyClaimPredicate2(t *testing.T) {
 
 	cp := ParseClaimPredicates(input)
 
+	// key is entirely absent, so the first branch alone would be false;
+	// only the second (AND) branch is satisfied.
 	claims := jwt.MapClaims{
 		"key2": "value2",
 		"key3": "value3",
