@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dioad/auth"
+	"github.com/dioad/auth/mapper"
 	"github.com/rs/zerolog"
 )
 
@@ -74,32 +75,43 @@ func (m *debugAwareMapper) MapRoles(claims map[string]any) []string {
 	return roles
 }
 
-// evalMapping reports whether all claim predicates in required are satisfied by
-// claims. On mismatch it returns the first failing claim key, the expected value
-// (want), and the observed value (got). Got is "<missing>" when the key is
-// absent, "<empty>" when a wildcard sees an empty string, and "<type:T>" when
-// the value is not a string.
+// evalMapping reports whether all claim predicates in required are satisfied
+// by claims, using the same matching semantics as mapper.MatchesValue: string
+// equality, wildcard "*", or array-membership for a []any/[]string claim (as
+// produced by decoding a JSON array such as Keycloak's "groups"/"roles"
+// list). On mismatch it returns the first failing claim key, the expected
+// value (want), and a description of the observed value (got): "<missing>"
+// when the key is absent, "<empty>" when a wildcard sees an empty string, the
+// array's contents when an array claim doesn't contain want, and "<type:T>"
+// for any other type MatchesValue never matches (e.g. a number or bool).
 func evalMapping(claims map[string]any, required map[string]string) (matched bool, failedClaim, want, got string) {
 	for key, wantVal := range required {
 		val, ok := claims[key]
 		if !ok {
 			return false, key, wantVal, "<missing>"
 		}
-		s, ok := val.(string)
-		if !ok {
-			return false, key, wantVal, fmt.Sprintf("<type:%T>", val)
-		}
-		if wantVal == "*" {
-			if s == "" {
-				return false, key, "*", "<empty>"
-			}
+		if mapper.MatchesValue(val, wantVal) {
 			continue
 		}
-		if s != wantVal {
-			return false, key, wantVal, s
-		}
+		return false, key, wantVal, describeMismatch(val, wantVal)
 	}
 	return true, "", "", ""
+}
+
+// describeMismatch renders val for a debug log's "got" field after
+// mapper.MatchesValue has already reported that it does not satisfy want.
+func describeMismatch(val any, want string) string {
+	switch v := val.(type) {
+	case string:
+		if want == "*" {
+			return "<empty>"
+		}
+		return v
+	case []any, []string:
+		return fmt.Sprintf("%v", v)
+	default:
+		return fmt.Sprintf("<type:%T>", val)
+	}
 }
 
 // toAuthMapping converts a ClaimRoleMappingConfig to the auth.ClaimRoleMapping

@@ -267,3 +267,68 @@ func TestEvalMapping_ValueMismatch(t *testing.T) {
 		t.Errorf("got = %q, expected %q", got, "staging")
 	}
 }
+
+// TestEvalMapping_ArrayClaimContainsMatch is the regression test for the
+// debug-logging path silently reverting to string-only matching: evalMapping
+// must accept an array claim (e.g. Keycloak's "groups"/"roles" list, decoded
+// as []any) the same way mapper.MatchesValue does, not just a scalar string.
+func TestEvalMapping_ArrayClaimContainsMatch(t *testing.T) {
+	matched, _, _, _ := evalMapping(
+		map[string]any{"groups": []any{"plan:pro", "other-group"}},
+		map[string]string{"groups": "plan:pro"},
+	)
+	if !matched {
+		t.Fatal("expected array claim containing want to match")
+	}
+}
+
+func TestEvalMapping_ArrayClaimNoMatchReportsElements(t *testing.T) {
+	matched, failedClaim, want, got := evalMapping(
+		map[string]any{"groups": []any{"plan:free"}},
+		map[string]string{"groups": "plan:pro"},
+	)
+	if matched {
+		t.Fatal("expected mismatch when array does not contain want")
+	}
+	if failedClaim != "groups" {
+		t.Errorf("failedClaim = %q, want %q", failedClaim, "groups")
+	}
+	if want != "plan:pro" {
+		t.Errorf("want = %q, expected %q", want, "plan:pro")
+	}
+	if got != "[plan:free]" {
+		t.Errorf("got = %q, expected the array's contents", got)
+	}
+}
+
+func TestEvalMapping_ArrayClaimWildcardMatchesNonEmpty(t *testing.T) {
+	matched, _, _, _ := evalMapping(
+		map[string]any{"groups": []any{"plan:free"}},
+		map[string]string{"groups": "*"},
+	)
+	if !matched {
+		t.Fatal("expected wildcard to match a non-empty array")
+	}
+}
+
+// TestDebugAwareMapper_ArrayClaimMatchesLikeStandardMapper is the end-to-end
+// regression test: a rule keyed on an array claim must grant its role via the
+// debug-logging mapper exactly as it would via the standard mapper.Mapper —
+// enabling debug on one rule must not change matching behaviour for others.
+func TestDebugAwareMapper_ArrayClaimMatchesLikeStandardMapper(t *testing.T) {
+	var buf bytes.Buffer
+	logger := newTestLogger(&buf)
+
+	m := &debugAwareMapper{
+		source: SourceOIDC,
+		logger: logger,
+		mappings: []ClaimRoleMappingConfig{
+			{Source: SourceOIDC, Role: "pro-tier", Claims: map[string]string{"groups": "plan:pro"}, Debug: true},
+		},
+	}
+
+	roles := m.MapRoles(map[string]any{"groups": []any{"plan:pro", "other-group"}})
+	if len(roles) != 1 || roles[0] != "pro-tier" {
+		t.Fatalf("expected [pro-tier], got %v", roles)
+	}
+}
