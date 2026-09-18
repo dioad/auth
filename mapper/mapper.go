@@ -63,20 +63,24 @@ func matchesAll(claims map[string]any, required map[string]string) bool {
 		if !ok {
 			return false
 		}
-		if !matchesValue(val, want) {
+		if !MatchesValue(val, want) {
 			return false
 		}
 	}
 	return true
 }
 
-// matchesValue reports whether a single claim value satisfies want. val may
+// MatchesValue reports whether a single claim value satisfies want. val may
 // be a plain string, or an array of strings — []any (as produced by decoding
 // a JSON array claim, e.g. Keycloak's "groups"/"roles" list) or []string. Any
 // other type never matches. want == "*" matches a non-empty string, or a
 // non-empty array; any other want requires an exact match against the
 // string, or against at least one array element.
-func matchesValue(val any, want string) bool {
+//
+// Exported so other claim-matching implementations in this module (e.g.
+// claimrolemapping's debug-logging mapper) share these exact semantics
+// instead of drifting from them.
+func MatchesValue(val any, want string) bool {
 	switch v := val.(type) {
 	case string:
 		if want == "*" {
