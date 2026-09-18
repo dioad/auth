@@ -14,6 +14,15 @@ import (
 // If a principal ID is not found in the map, Privileges returns nil (no
 // capabilities). In a [MultiAuthorizer] chain this causes the next backend to
 // be tried.
+//
+// A principal ID that IS in the map always returns a non-nil Privilege, even
+// if its PrivilegeSet is empty (created via NewPrivilegeSet() with no
+// capabilities). In a MultiAuthorizer chain this counts as a match and stops
+// the chain there — later backends are not tried for that principal, even
+// ones that would grant it broader access. See [MultiAuthorizer]'s "Sharp
+// edge" note. If you want an entry to defer to later backends instead of
+// asserting "no capabilities," omit it from the map rather than mapping it to
+// an empty PrivilegeSet.
 type MapAuthorizer struct {
 	privileges map[string]*PrivilegeSet
 	metadata   PolicyMetadata
