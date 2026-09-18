@@ -2,6 +2,8 @@ package mapper
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMapRoles_ExactMatch(t *testing.T) {
@@ -10,9 +12,7 @@ func TestMapRoles_ExactMatch(t *testing.T) {
 	})
 
 	got := m.MapRoles(map[string]any{"repository": "org/repo", "environment": "production"})
-	if len(got) != 1 || got[0] != "registry.publisher" {
-		t.Errorf("expected [registry.publisher], got %v", got)
-	}
+	assert.Equal(t, []string{"registry.publisher"}, got)
 }
 
 func TestMapRoles_PartialMatch(t *testing.T) {
@@ -21,9 +21,7 @@ func TestMapRoles_PartialMatch(t *testing.T) {
 	})
 
 	got := m.MapRoles(map[string]any{"repository": "org/repo"}) // missing environment
-	if len(got) != 0 {
-		t.Errorf("expected no roles, got %v", got)
-	}
+	assert.Empty(t, got)
 }
 
 func TestMapRoles_Wildcard(t *testing.T) {
@@ -32,15 +30,11 @@ func TestMapRoles_Wildcard(t *testing.T) {
 	})
 
 	got := m.MapRoles(map[string]any{"app_name": "connect-server-prod"})
-	if len(got) != 1 || got[0] != "registry.publisher" {
-		t.Errorf("expected [registry.publisher], got %v", got)
-	}
+	assert.Equal(t, []string{"registry.publisher"}, got)
 
 	// empty value should not match wildcard
 	got = m.MapRoles(map[string]any{"app_name": ""})
-	if len(got) != 0 {
-		t.Errorf("expected no roles for empty value, got %v", got)
-	}
+	assert.Empty(t, got)
 }
 
 func TestMapRoles_MultipleRules(t *testing.T) {
@@ -50,9 +44,7 @@ func TestMapRoles_MultipleRules(t *testing.T) {
 	})
 
 	got := m.MapRoles(map[string]any{"app_name": "connect-server"})
-	if len(got) != 2 {
-		t.Errorf("expected 2 roles, got %v", got)
-	}
+	assert.Len(t, got, 2)
 }
 
 func TestMapRoles_NoMatch(t *testing.T) {
@@ -61,21 +53,12 @@ func TestMapRoles_NoMatch(t *testing.T) {
 	})
 
 	got := m.MapRoles(map[string]any{"app_name": "other-app"})
-	if len(got) != 0 {
-		t.Errorf("expected no roles, got %v", got)
-	}
+	assert.Empty(t, got)
 }
 
 func TestNew_EmptyMappings(t *testing.T) {
-	m := New(nil)
-	if m != nil {
-		t.Errorf("expected nil mapper for empty mappings")
-	}
-
-	m = New([]ClaimRoleMapping{})
-	if m != nil {
-		t.Errorf("expected nil mapper for empty slice")
-	}
+	assert.Nil(t, New(nil))
+	assert.Nil(t, New([]ClaimRoleMapping{}))
 }
 
 func TestMapRoles_MissingClaim(t *testing.T) {
@@ -84,7 +67,60 @@ func TestMapRoles_MissingClaim(t *testing.T) {
 	})
 
 	got := m.MapRoles(map[string]any{"other_key": "value"})
-	if len(got) != 0 {
-		t.Errorf("expected no roles when claim key absent, got %v", got)
-	}
+	assert.Empty(t, got)
+}
+
+func TestMapRoles_ArrayClaimContainsMatch(t *testing.T) {
+	m := New([]ClaimRoleMapping{
+		{Claims: map[string]string{"groups": "plan:pro"}, Role: "pro-tier"},
+	})
+
+	// []any is what encoding/json produces for a JSON array claim decoded
+	// into map[string]any, e.g. a Keycloak groups/roles list.
+	got := m.MapRoles(map[string]any{"groups": []any{"plan:pro", "other-group"}})
+	assert.Equal(t, []string{"pro-tier"}, got)
+
+	got = m.MapRoles(map[string]any{"groups": []any{"plan:free"}})
+	assert.Empty(t, got)
+}
+
+func TestMapRoles_ArrayClaimStringSlice(t *testing.T) {
+	m := New([]ClaimRoleMapping{
+		{Claims: map[string]string{"groups": "plan:pro"}, Role: "pro-tier"},
+	})
+
+	got := m.MapRoles(map[string]any{"groups": []string{"plan:pro"}})
+	assert.Equal(t, []string{"pro-tier"}, got)
+}
+
+func TestMapRoles_ArrayClaimWildcard(t *testing.T) {
+	m := New([]ClaimRoleMapping{
+		{Claims: map[string]string{"groups": "*"}, Role: "any-group-member"},
+	})
+
+	got := m.MapRoles(map[string]any{"groups": []any{"plan:free"}})
+	assert.Equal(t, []string{"any-group-member"}, got)
+
+	// empty array should not match wildcard, mirroring the empty-string case
+	got = m.MapRoles(map[string]any{"groups": []any{}})
+	assert.Empty(t, got)
+}
+
+func TestMapRoles_ArrayClaimNonStringElementsIgnored(t *testing.T) {
+	m := New([]ClaimRoleMapping{
+		{Claims: map[string]string{"groups": "plan:pro"}, Role: "pro-tier"},
+	})
+
+	// non-string elements are skipped rather than causing a panic or a false match
+	got := m.MapRoles(map[string]any{"groups": []any{1, true, "plan:pro"}})
+	assert.Equal(t, []string{"pro-tier"}, got)
+}
+
+func TestMapRoles_UnsupportedClaimType(t *testing.T) {
+	m := New([]ClaimRoleMapping{
+		{Claims: map[string]string{"groups": "plan:pro"}, Role: "pro-tier"},
+	})
+
+	got := m.MapRoles(map[string]any{"groups": 42})
+	assert.Empty(t, got)
 }

@@ -4,13 +4,20 @@
 // custom role claims.
 package mapper
 
+import "slices"
+
 // ClaimRoleMapping maps a set of claim predicates to an internal role.
 // All claim predicates must match (AND semantics).
 type ClaimRoleMapping struct {
 	// Claims maps claim key → required value.
 	// Keys may be canonical attribute names (e.g. "primary_email", "username")
 	// or raw JWT claim names specific to the IdP (e.g. "repository", "app_name").
-	// A value of "*" matches any non-empty string.
+	// A value of "*" matches any non-empty string, or any non-empty array.
+	//
+	// The corresponding claim value may be a plain string, or an array (e.g.
+	// []any, as produced by decoding a JSON array such as Keycloak's "groups"
+	// or "roles" claim). For an array claim, the predicate matches when want
+	// equals any one element.
 	Claims map[string]string
 
 	// Role is the role string granted when all claim predicates match.
@@ -56,19 +63,42 @@ func matchesAll(claims map[string]any, required map[string]string) bool {
 		if !ok {
 			return false
 		}
-		s, ok := val.(string)
-		if !ok {
-			return false
-		}
-		if want == "*" {
-			if s == "" {
-				return false
-			}
-			continue
-		}
-		if s != want {
+		if !matchesValue(val, want) {
 			return false
 		}
 	}
 	return true
+}
+
+// matchesValue reports whether a single claim value satisfies want. val may
+// be a plain string, or an array of strings — []any (as produced by decoding
+// a JSON array claim, e.g. Keycloak's "groups"/"roles" list) or []string. Any
+// other type never matches. want == "*" matches a non-empty string, or a
+// non-empty array; any other want requires an exact match against the
+// string, or against at least one array element.
+func matchesValue(val any, want string) bool {
+	switch v := val.(type) {
+	case string:
+		if want == "*" {
+			return v != ""
+		}
+		return v == want
+	case []any:
+		if want == "*" {
+			return len(v) > 0
+		}
+		for _, elem := range v {
+			if s, ok := elem.(string); ok && s == want {
+				return true
+			}
+		}
+		return false
+	case []string:
+		if want == "*" {
+			return len(v) > 0
+		}
+		return slices.Contains(v, want)
+	default:
+		return false
+	}
 }
