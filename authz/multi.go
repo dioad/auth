@@ -13,6 +13,15 @@ import (
 //
 // This matches the connect MultiAuthoriser semantics and is useful for
 // composing inline + dynamic backends.
+//
+// Sharp edge: "recognised" and "has any capability" are not the same thing
+// here. A backend that returns a non-nil but empty Privilege for a principal
+// it recognises — for example a [MapAuthorizer] entry created with
+// [NewPrivilegeSet] and no capabilities — still counts as a match and stops
+// the chain. Later backends that would have granted that principal broader
+// access are never consulted. If a backend should defer to the next one
+// instead of asserting "this principal has nothing," it must return a nil
+// Privilege (and nil error), not an empty one.
 type MultiAuthorizer struct {
 	authorizers []Authorizer
 	metadata    PolicyMetadata
