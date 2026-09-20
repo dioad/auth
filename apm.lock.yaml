@@ -1,0 +1,87 @@
+lockfile_version: '1'
+generated_at: '2026-09-15T18:30:07.962604+00:00'
+apm_version: 0.18.0
+dependencies:
+- repo_url: dioad/agent-skills
+  host: github.com
+  resolved_commit: cbcf7b62fd0cf042fdf3ffbc2c863e3b3826170a
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/architecture-review
+  - .agents/skills/beta-release-readiness
+  - .agents/skills/test-quality
+  - .claude/commands/architecture-review.md
+  - .claude/commands/beta-release-readiness.md
+  - .claude/commands/test-quality.md
+  - .claude/rules/cross-repo-workflow.md
+  - .claude/rules/git-workflow.md
+  - .claude/rules/go-testing.md
+  - .claude/rules/go.md
+  - .claude/rules/phased-refactor.md
+  - .claude/rules/playwright-typescript.md
+  - .claude/rules/project-checks.md
+  - .claude/rules/shared-library-extraction.md
+  - .claude/rules/zerolog.md
+  - .claude/skills/architecture-review
+  - .claude/skills/beta-release-readiness
+  - .claude/skills/test-quality
+  - .github/instructions/cross-repo-workflow.instructions.md
+  - .github/instructions/git-workflow.instructions.md
+  - .github/instructions/go-testing.instructions.md
+  - .github/instructions/go.instructions.md
+  - .github/instructions/phased-refactor.instructions.md
+  - .github/instructions/playwright-typescript.instructions.md
+  - .github/instructions/project-checks.instructions.md
+  - .github/instructions/shared-library-extraction.instructions.md
+  - .github/instructions/zerolog.instructions.md
+  - .github/prompts/architecture-review.prompt.md
+  - .github/prompts/beta-release-readiness.prompt.md
+  - .github/prompts/test-quality.prompt.md
+  deployed_file_hashes:
+    .claude/commands/architecture-review.md: sha256:c37b3ba1098ce7efc2c574b6cfa23ef600482c80f4dc2d1e16fa4700bbea8cd2
+    .claude/commands/beta-release-readiness.md: sha256:26c1d5bd6e52a379372399fde435d2200ee71047e4268cb39a126e6ffae50bd2
+    .claude/commands/test-quality.md: sha256:3346f705ed4d6f056151795a1ad255eac75ff3b9eda25bfb8b3bc0313aa43434
+    .claude/rules/cross-repo-workflow.md: sha256:a63b5a4b2485f94f421ac563a00a8c580b8456a6124fa15835d49dc63a6c5b80
+    .claude/rules/git-workflow.md: sha256:db8a1ab89cdeddc4e005ee835f390da3b1f8555cab57e010feede6f6a2e4d856
+    .claude/rules/go-testing.md: sha256:f445b581991c2c689b6113f49764dffa76e7d82623f91668542aee06a2d05742
+    .claude/rules/go.md: sha256:76b9619cf21d1751ae006d0036597b8ec1ec4d4f5d7908ddd67635dbe5c2691c
+    .claude/rules/phased-refactor.md: sha256:5c0d9392c279dada29842b6cd23da518b65fec293ab6a12cc2282c8c2155feff
+    .claude/rules/playwright-typescript.md: sha256:f51d34d02282ccf49f9a252a8631b6b7edde4437d72b7384cdbf1122e5180714
+    .claude/rules/project-checks.md: sha256:75f0d6081481640d3949846ed94f4a5bf4e063d7e235a3590da08a559b877b90
+    .claude/rules/shared-library-extraction.md: sha256:9aba9ee2bd875e0c91491e0b96ae288da1719246306c8f3477f88a93d9ab3def
+    .claude/rules/zerolog.md: sha256:fb5b23427827aa696b3c81f22fb21df10e6ffeec55121e8ed8fc8f2fe2ac46ec
+    .github/instructions/cross-repo-workflow.instructions.md: sha256:7b837ac6ff70d29c799e0bcbbdeeebe43b23fc3e3d9048c69691e69d3ca43a8e
+    .github/instructions/git-workflow.instructions.md: sha256:c23c5a6f2889bfc047907608ff4a5fd283bbad7a519d384ef43503a9bae65273
+    .github/instructions/go-testing.instructions.md: sha256:5931eeaa6a3a49ac6c3ffdb89f966a429197491ae9448e512ca690a5261eacfb
+    .github/instructions/go.instructions.md: sha256:50a461e417027bedbfdb8ddae47a1a7fd385e7843509899dfd0e660b5b089c95
+    .github/instructions/phased-refactor.instructions.md: sha256:35afe2c7967168123eeb67d068c08b40df181e877ca67d43f2f87c50bcbbdadf
+    .github/instructions/playwright-typescript.instructions.md: sha256:bf42d14519531fddc310b2e786982d3d669d8d1618acc1a1a4b833013fff06f1
+    .github/instructions/project-checks.instructions.md: sha256:1b12cd26a3c81412492a6c658957d527164f616d51f90ea7f67c3c4c17f75194
+    .github/instructions/shared-library-extraction.instructions.md: sha256:11a56f6c36543a484beb60b5adf0547deaf9a4b9c113f444f7a099d4f31ca153
+    .github/instructions/zerolog.instructions.md: sha256:5012e60382207b5d1b68cc260944f0a9dc3e01493639672a0a7b88d9956e17c2
+    .github/prompts/architecture-review.prompt.md: sha256:0d6ce95982e6e71247d032009c5704bc4e16e7df317e4c3b33ab41025f10f802
+    .github/prompts/beta-release-readiness.prompt.md: sha256:786831e0cfcfd7011a3cb706192fe977272e580d65414b30e9c5082c64ea1a7c
+    .github/prompts/test-quality.prompt.md: sha256:781af13356e0c7b336a8bc6c306a5bf6fa8059e66a07bb4daa524e60a3f15637
+  content_hash: sha256:c5c3d70c3dd7c45d77ec795a3b2d1c85911d4bb45f20d34753bc47a3d5c4adc4
+local_deployed_files:
+- .claude/rules/git-workflow.md
+- .claude/rules/go.md
+- .claude/rules/playwright-typescript.md
+- .claude/rules/project-checks.md
+- .claude/rules/zerolog.md
+- .github/instructions/git-workflow.instructions.md
+- .github/instructions/go.instructions.md
+- .github/instructions/playwright-typescript.instructions.md
+- .github/instructions/project-checks.instructions.md
+- .github/instructions/zerolog.instructions.md
+local_deployed_file_hashes:
+  .claude/rules/git-workflow.md: sha256:db8a1ab89cdeddc4e005ee835f390da3b1f8555cab57e010feede6f6a2e4d856
+  .claude/rules/go.md: sha256:76b9619cf21d1751ae006d0036597b8ec1ec4d4f5d7908ddd67635dbe5c2691c
+  .claude/rules/playwright-typescript.md: sha256:f51d34d02282ccf49f9a252a8631b6b7edde4437d72b7384cdbf1122e5180714
+  .claude/rules/project-checks.md: sha256:75f0d6081481640d3949846ed94f4a5bf4e063d7e235a3590da08a559b877b90
+  .claude/rules/zerolog.md: sha256:fb5b23427827aa696b3c81f22fb21df10e6ffeec55121e8ed8fc8f2fe2ac46ec
+  .github/instructions/git-workflow.instructions.md: sha256:c23c5a6f2889bfc047907608ff4a5fd283bbad7a519d384ef43503a9bae65273
+  .github/instructions/go.instructions.md: sha256:50a461e417027bedbfdb8ddae47a1a7fd385e7843509899dfd0e660b5b089c95
+  .github/instructions/playwright-typescript.instructions.md: sha256:bf42d14519531fddc310b2e786982d3d669d8d1618acc1a1a4b833013fff06f1
+  .github/instructions/project-checks.instructions.md: sha256:1b12cd26a3c81412492a6c658957d527164f616d51f90ea7f67c3c4c17f75194
+  .github/instructions/zerolog.instructions.md: sha256:5012e60382207b5d1b68cc260944f0a9dc3e01493639672a0a7b88d9956e17c2
