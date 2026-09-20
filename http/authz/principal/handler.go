@@ -36,7 +36,13 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 		return r.Context(), authauthz.ErrUnauthorized
 	}
 
-	if !authz.IsPrincipalAuthorised(principal, h.Config.AllowList, h.Config.DenyList) {
+	// dioad/net's IsPrincipalAuthorised now requires the "no rules
+	// configured" default to be explicit (it used to hardcode allow-all).
+	// Passing true here preserves this handler's existing behavior exactly;
+	// switching to h.Config.AllowByDefault (deny-by-default, matching
+	// NetworkACL) is a separate, deliberate decision for operators of this
+	// package to make -- not one to fold silently into this signature fix.
+	if !authz.IsPrincipalAuthorised(principal, h.Config.AllowList, h.Config.DenyList, true) {
 		return r.Context(), fmt.Errorf("user %s: %w", principal, authauthz.ErrForbidden)
 	}
 	return r.Context(), nil
