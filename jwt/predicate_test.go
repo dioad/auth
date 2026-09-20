@@ -51,9 +51,7 @@ func TestParseSingleKeyValueClaimPredicate(t *testing.T) {
 		"key": "value",
 	}
 
-	if !cp.Validate(claims) {
-		t.Error("expected true")
-	}
+	assert.True(t, cp.Validate(claims))
 }
 
 func TestParseSingleKeyListClaimPredicate(t *testing.T) {
@@ -99,9 +97,7 @@ func TestParseSingleKeyListClaimPredicate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cp := ParseClaimPredicates(tc.input)
 
-			if cp.Validate(tc.claims) != tc.expected {
-				t.Errorf("expected %v", tc.expected)
-			}
+			assert.Equal(t, tc.expected, cp.Validate(tc.claims))
 		})
 	}
 }
@@ -119,9 +115,7 @@ func TestParseClaimPredicateMap(t *testing.T) {
 		"key2": "value2",
 	}
 
-	if !cp.Validate(claims) {
-		t.Error("expected true")
-	}
+	assert.True(t, cp.Validate(claims))
 }
 
 func TestParseAndClaimPredicate(t *testing.T) {
@@ -143,9 +137,7 @@ func TestParseAndClaimPredicate(t *testing.T) {
 		"key2": "value2",
 	}
 
-	if !cp.Validate(claims) {
-		t.Error("expected true")
-	}
+	assert.True(t, cp.Validate(claims))
 }
 
 func TestParseOrClaimPredicate(t *testing.T) {
@@ -167,9 +159,7 @@ func TestParseOrClaimPredicate(t *testing.T) {
 		"key3": "value3",
 	}
 
-	if !cp.Validate(claims) {
-		t.Error("expected true")
-	}
+	assert.True(t, cp.Validate(claims))
 }
 
 // TestParseOrWithEmbeddedAnyClaimPredicate_FirstBranchAlone and
@@ -206,9 +196,7 @@ func TestParseOrWithEmbeddedAnyClaimPredicate_FirstBranchAlone(t *testing.T) {
 		"key3": "value3",
 	}
 
-	if !cp.Validate(claims) {
-		t.Error("expected true")
-	}
+	assert.True(t, cp.Validate(claims))
 }
 
 func TestParseOrWithEmbeddedAnyClaimPredicate_SecondBranchAlone(t *testing.T) {
@@ -239,7 +227,5 @@ func TestParseOrWithEmbeddedAnyClaimPredicate_SecondBranchAlone(t *testing.T) {
 		"key3": "value3",
 	}
 
-	if !cp.Validate(claims) {
-		t.Error("expected true")
-	}
+	assert.True(t, cp.Validate(claims))
 }

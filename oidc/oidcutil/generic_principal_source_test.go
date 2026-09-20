@@ -154,7 +154,7 @@ func TestGenericClaims_TypedPath(t *testing.T) {
 	ctx := typedContext("alice", &stubClaims{Foo: "bar"})
 
 	claims := oidcutil.GenericClaims[stubClaims](ctx, hasMarker, func(context.Context, map[string]any) map[string]any {
-		t.Fatal("fallback must not be called when the typed path has claims")
+		require.Fail(t, "fallback must not be called when the typed path has claims")
 		return nil
 	})
 	assert.Equal(t, map[string]any{"foo": "bar", "subject": "alice"}, claims)
@@ -181,7 +181,7 @@ func TestGenericClaims_InvalidClaimsReturnsEmptyMap(t *testing.T) {
 	ctx := authctx.ContextWithAuthenticatedCustomClaims(context.Background(), map[string]any{"raw": "value"})
 
 	claims := oidcutil.GenericClaims[stubClaims](ctx, hasMarker, func(context.Context, map[string]any) map[string]any {
-		t.Fatal("fallback must not be called when claims are invalid")
+		require.Fail(t, "fallback must not be called when claims are invalid")
 		return nil
 	})
 	assert.Equal(t, map[string]any{}, claims)
@@ -189,7 +189,7 @@ func TestGenericClaims_InvalidClaimsReturnsEmptyMap(t *testing.T) {
 
 func TestGenericClaims_NoClaimsReturnsEmptyMap(t *testing.T) {
 	claims := oidcutil.GenericClaims[stubClaims](context.Background(), hasMarker, func(context.Context, map[string]any) map[string]any {
-		t.Fatal("fallback must not be called when no claims are present")
+		require.Fail(t, "fallback must not be called when no claims are present")
 		return nil
 	})
 	assert.Equal(t, map[string]any{}, claims)

@@ -5,6 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBrowserConfigValidate(t *testing.T) {
@@ -18,15 +21,11 @@ func TestBrowserConfigValidate(t *testing.T) {
 		CookieSecure: true,
 	}
 
-	if err := valid.Validate(); err != nil {
-		t.Fatalf("expected valid config, got error: %v", err)
-	}
+	require.NoError(t, valid.Validate())
 
 	invalid := valid
 	invalid.CookieSecure = false
-	if err := invalid.Validate(); err == nil {
-		t.Fatal("expected validation error for insecure cookie config")
-	}
+	require.Error(t, invalid.Validate(), "expected validation error for insecure cookie config")
 }
 
 func TestBrowserConfigToOIDCConfigDefaults(t *testing.T) {
@@ -42,18 +41,10 @@ func TestBrowserConfigToOIDCConfigDefaults(t *testing.T) {
 
 	mw := cfg.ToOIDCConfig()
 
-	if mw.LoginPath != "/auth/login" {
-		t.Fatalf("expected default login path, got %q", mw.LoginPath)
-	}
-	if len(mw.Scopes) != 3 || mw.Scopes[0] != "openid" || mw.Scopes[1] != "profile" || mw.Scopes[2] != "email" {
-		t.Fatalf("expected default scopes, got %v", mw.Scopes)
-	}
-	if mw.TokenCookie.Name != "auth_token" {
-		t.Fatalf("expected auth token cookie name, got %q", mw.TokenCookie.Name)
-	}
-	if mw.RefreshWindow != 5*time.Minute {
-		t.Fatalf("expected refresh window 5m, got %s", mw.RefreshWindow)
-	}
+	require.Equal(t, "/auth/login", mw.LoginPath)
+	require.Equal(t, []string{"openid", "profile", "email"}, mw.Scopes)
+	require.Equal(t, "auth_token", mw.TokenCookie.Name)
+	require.Equal(t, 5*time.Minute, mw.RefreshWindow)
 }
 
 func TestCallbackRejectsMissingCodeAndState(t *testing.T) {
@@ -70,9 +61,7 @@ func TestCallbackRejectsMissingCodeAndState(t *testing.T) {
 
 		h.Callback().ServeHTTP(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
-		}
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("missing state", func(t *testing.T) {
@@ -81,8 +70,6 @@ func TestCallbackRejectsMissingCodeAndState(t *testing.T) {
 
 		h.Callback().ServeHTTP(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
-		}
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

@@ -2,6 +2,8 @@ package github
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
@@ -25,18 +27,13 @@ func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			user, _ := authenticator.AuthenticateToken(tc.token)
-			if tc.userNil && user != nil {
-				t.Fatalf("expected nil user, got %v", user.Login)
+			if tc.userNil {
+				require.Nil(t, user)
+				return
 			}
 
-			if !tc.userNil {
-				if user == nil {
-					t.Fatalf("did not expect nil user")
-				}
-				if user.Login != tc.login {
-					t.Fatalf("expected %v, got %v", tc.login, user.Login)
-				}
-			}
+			require.NotNil(t, user)
+			require.Equal(t, tc.login, user.Login)
 		})
 	}
 }

@@ -3,11 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
-	"slices"
 	"testing"
 
 	jwtcore "github.com/auth0/go-jwt-middleware/v3/core"
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	authcontext "github.com/dioad/auth/authctx"
 	"github.com/dioad/auth/oidc"
@@ -113,35 +114,18 @@ func TestDefaultPrincipalExtractor_FallbackChain(t *testing.T) {
 
 			principalCtx, err := extractor.ExtractPrincipal(ctx)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ExtractPrincipal() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
 			if tt.wantErr {
-				if err == nil {
-					t.Error("ExtractPrincipal() expected error but got nil")
-				} else if tt.wantErrContains != "" {
-					errMsg := err.Error()
-					if !contains(errMsg, tt.wantErrContains) {
-						t.Errorf("ExtractPrincipal() error = %v, want error containing %v", err, tt.wantErrContains)
-					}
+				require.Error(t, err)
+				if tt.wantErrContains != "" {
+					assert.Contains(t, err.Error(), tt.wantErrContains)
 				}
 				return
 			}
+			require.NoError(t, err)
 
-			if principalCtx.ID != tt.wantPrincipal {
-				t.Errorf("ExtractPrincipal() principal = %v, want %v", principalCtx.ID, tt.wantPrincipal)
-			}
-
-			if principalCtx == nil {
-				t.Error("ExtractPrincipal() principalCtx is nil")
-				return
-			}
-
-			if principalCtx.Source != tt.wantSource {
-				t.Errorf("ExtractPrincipal() source = %v, want %v", principalCtx.Source, tt.wantSource)
-			}
+			require.NotNil(t, principalCtx)
+			assert.Equal(t, tt.wantPrincipal, principalCtx.ID)
+			assert.Equal(t, tt.wantSource, principalCtx.Source)
 		})
 	}
 }
@@ -167,25 +151,11 @@ func TestDefaultPrincipalExtractor_Claims(t *testing.T) {
 
 	principalCtx, err := extractor.ExtractPrincipal(ctx)
 
-	if err != nil {
-		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
-	}
-
-	if principalCtx.ID != "testuser" {
-		t.Errorf("ExtractPrincipal() principal = %v, want testuser", principalCtx.ID)
-	}
-
-	if principalCtx.Attributes == nil {
-		t.Fatal("ExtractPrincipal() claims is nil")
-	}
-
-	if principalCtx.Attributes["email"] != "user@example.com" {
-		t.Errorf("ExtractPrincipal() claims[email] = %v, want user@example.com", principalCtx.Attributes["email"])
-	}
-
-	if principalCtx.Attributes["role"] != "admin" {
-		t.Errorf("ExtractPrincipal() claims[role] = %v, want admin", principalCtx.Attributes["role"])
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "testuser", principalCtx.ID)
+	require.NotNil(t, principalCtx.Attributes, "ExtractPrincipal() claims is nil")
+	assert.Equal(t, "user@example.com", principalCtx.Attributes["email"])
+	assert.Equal(t, "admin", principalCtx.Attributes["role"])
 }
 
 // TestDefaultPrincipalExtractor_SourcePriority tests that sources are tried in the exact order provided
@@ -203,34 +173,9 @@ func TestDefaultPrincipalExtractor_SourcePriority(t *testing.T) {
 
 	principalCtx, err := extractor.ExtractPrincipal(ctx)
 
-	if err != nil {
-		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
-	}
-
-	if principalCtx.ID != "user-high" {
-		t.Errorf("ExtractPrincipal() principal = %v, want user-high (from highest priority source)", principalCtx.ID)
-	}
-
-	if principalCtx.Source != "high-priority" {
-		t.Errorf("ExtractPrincipal() source = %v, want high-priority", principalCtx.Source)
-	}
-}
-
-// contains is a helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && findSubstring(s, substr)
-}
-
-func findSubstring(s, substr string) bool {
-	if len(substr) == 0 {
-		return true
-	}
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	require.NoError(t, err)
+	assert.Equal(t, "user-high", principalCtx.ID, "expected principal from highest priority source")
+	assert.Equal(t, "high-priority", principalCtx.Source)
 }
 
 type testValidatedCustomClaims struct {
@@ -250,14 +195,10 @@ func TestOIDCPrincipalSource_NilClaims(t *testing.T) {
 
 	principal, err := source.Extract(ctx)
 
-	if err != nil {
-		t.Errorf("Extract() unexpected error: %v", err)
-	}
+	assert.NoError(t, err)
 
 	// Should return empty string when claims are nil, not panic
-	if principal != "" {
-		t.Errorf("Extract() principal = %v, want empty string", principal)
-	}
+	assert.Empty(t, principal)
 }
 
 // TestOIDCPrincipalSource_WithValidClaims tests that Extract works with valid claims
@@ -290,13 +231,8 @@ func TestOIDCPrincipalSource_WithValidClaims(t *testing.T) {
 
 			principal, err := source.Extract(ctx)
 
-			if err != nil {
-				t.Errorf("Extract() unexpected error: %v", err)
-			}
-
-			if principal != tt.wantPrinc {
-				t.Errorf("Extract() principal = %v, want %v", principal, tt.wantPrinc)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantPrinc, principal)
 		})
 	}
 }
@@ -320,15 +256,9 @@ func TestOIDCPrincipalSource_RolesIncludesMappedClaims(t *testing.T) {
 
 	roles := source.Roles(ctx)
 
-	if len(roles) != 2 {
-		t.Fatalf("Roles() len = %d, want 2 (%v)", len(roles), roles)
-	}
-	if !sliceContains(roles, "connect-admin") {
-		t.Fatalf("Roles() missing realm role connect-admin: %v", roles)
-	}
-	if !sliceContains(roles, "registry.admin.readonly") {
-		t.Fatalf("Roles() missing mapped role registry.admin.readonly: %v", roles)
-	}
+	require.Len(t, roles, 2, "roles: %v", roles)
+	assert.Contains(t, roles, "connect-admin", "missing realm role")
+	assert.Contains(t, roles, "registry.admin.readonly", "missing mapped role")
 }
 
 func TestOIDCPrincipalSource_RolesDedupe(t *testing.T) {
@@ -349,9 +279,7 @@ func TestOIDCPrincipalSource_RolesDedupe(t *testing.T) {
 	ctx := jwtcore.SetClaims(context.Background(), claims)
 
 	roles := source.Roles(ctx)
-	if len(roles) != 1 || roles[0] != "registry.admin.readonly" {
-		t.Fatalf("Roles() = %v, want [registry.admin.readonly]", roles)
-	}
+	require.Equal(t, []string{"registry.admin.readonly"}, roles)
 }
 
 func TestOIDCPrincipalSource_GroupsIncludedInRoles(t *testing.T) {
@@ -366,15 +294,9 @@ func TestOIDCPrincipalSource_GroupsIncludedInRoles(t *testing.T) {
 
 	roles := source.Roles(ctx)
 
-	if !sliceContains(roles, "realm-role") {
-		t.Errorf("Roles() missing realm role: %v", roles)
-	}
-	if !sliceContains(roles, "connect-users") {
-		t.Errorf("Roles() missing OIDC group connect-users: %v", roles)
-	}
-	if !sliceContains(roles, "admin-users") {
-		t.Errorf("Roles() missing OIDC group admin-users: %v", roles)
-	}
+	assert.Contains(t, roles, "realm-role", "missing realm role")
+	assert.Contains(t, roles, "connect-users", "missing OIDC group connect-users")
+	assert.Contains(t, roles, "admin-users", "missing OIDC group admin-users")
 }
 
 func TestOIDCPrincipalSource_GroupsDeduped(t *testing.T) {
@@ -393,9 +315,7 @@ func TestOIDCPrincipalSource_GroupsDeduped(t *testing.T) {
 			count++
 		}
 	}
-	if count != 1 {
-		t.Errorf("Roles() should deduplicate connect-users; got %v", roles)
-	}
+	assert.Equal(t, 1, count, "Roles() should deduplicate connect-users; got %v", roles)
 }
 
 func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t *testing.T) {
@@ -418,16 +338,10 @@ func TestDefaultPrincipalExtractor_JWTSourcePreferredForNonOIDCValidatedClaims(t
 	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "jwt-subject")
 
 	principalCtx, err := extractor.ExtractPrincipal(ctx)
-	if err != nil {
-		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if principalCtx.Source != "jwt" {
-		t.Fatalf("ExtractPrincipal() source = %q, want %q", principalCtx.Source, "jwt")
-	}
-	if principalCtx.ID != "jwt-subject" {
-		t.Fatalf("ExtractPrincipal() ID = %q, want %q", principalCtx.ID, "jwt-subject")
-	}
+	require.Equal(t, "jwt", principalCtx.Source)
+	require.Equal(t, "jwt-subject", principalCtx.ID)
 }
 
 func TestDefaultPrincipalExtractor_UsesJWTMapperForGenericValidatedClaims(t *testing.T) {
@@ -459,19 +373,11 @@ func TestDefaultPrincipalExtractor_UsesJWTMapperForGenericValidatedClaims(t *tes
 	ctx = authcontext.ContextWithAuthenticatedPrincipal(ctx, "jwt-subject")
 
 	principalCtx, err := extractor.ExtractPrincipal(ctx)
-	if err != nil {
-		t.Fatalf("ExtractPrincipal() unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if principalCtx.Source != "jwt" {
-		t.Fatalf("ExtractPrincipal() source = %q, want %q", principalCtx.Source, "jwt")
-	}
-	if !sliceContains(principalCtx.Roles, "jwt-role") {
-		t.Fatalf("ExtractPrincipal() roles = %v, expected jwt-role", principalCtx.Roles)
-	}
-	if sliceContains(principalCtx.Roles, "oidc-role") {
-		t.Fatalf("ExtractPrincipal() roles = %v, did not expect oidc-role", principalCtx.Roles)
-	}
+	require.Equal(t, "jwt", principalCtx.Source)
+	assert.Contains(t, principalCtx.Roles, "jwt-role")
+	assert.NotContains(t, principalCtx.Roles, "oidc-role")
 }
 
 func TestJWTPrincipalSource_RolesIncludeMappedCustomClaims(t *testing.T) {
@@ -491,9 +397,7 @@ func TestJWTPrincipalSource_RolesIncludeMappedCustomClaims(t *testing.T) {
 	})
 
 	roles := source.Roles(ctx)
-	if !sliceContains(roles, "registry.admin.readonly") {
-		t.Fatalf("Roles() = %v, expected mapped role", roles)
-	}
+	assert.Contains(t, roles, "registry.admin.readonly", "expected mapped role")
 }
 
 func TestJWTPrincipalSource_ClaimsPreserveAuthenticatedPrincipal(t *testing.T) {
@@ -513,14 +417,10 @@ func TestJWTPrincipalSource_ClaimsPreserveAuthenticatedPrincipal(t *testing.T) {
 	})
 
 	claims := source.Claims(ctx)
-	if claims["principal"] != "smoke-principal" {
-		t.Fatalf("Claims()[principal] = %v, want %q", claims["principal"], "smoke-principal")
-	}
+	require.Equal(t, "smoke-principal", claims["principal"])
 
 	roles := source.Roles(ctx)
-	if !sliceContains(roles, "registry.admin.readonly") {
-		t.Fatalf("Roles() = %v, expected mapped role from authenticated principal", roles)
-	}
+	assert.Contains(t, roles, "registry.admin.readonly", "expected mapped role from authenticated principal")
 }
 
 func TestJWTPrincipalSource_RolesIncludeNativeClaimsRoles(t *testing.T) {
@@ -535,11 +435,5 @@ func TestJWTPrincipalSource_RolesIncludeNativeClaimsRoles(t *testing.T) {
 	})
 
 	roles := source.Roles(ctx)
-	if !sliceContains(roles, "registry.admin.readonly") {
-		t.Fatalf("Roles() = %v, expected native realm_access role", roles)
-	}
-}
-
-func sliceContains(values []string, target string) bool {
-	return slices.Contains(values, target)
+	assert.Contains(t, roles, "registry.admin.readonly", "expected native realm_access role")
 }

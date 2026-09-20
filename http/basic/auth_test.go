@@ -5,7 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -16,9 +17,7 @@ userB:$2y$10$oLAH9Nt949RBaRQB5ThTd./kZFGfrvtVYgsaHnbgkkgHbSSYK9jMi`
 
 func testCompare(t *testing.T, basicAuth BasicAuthPair, password string) {
 	_, err := basicAuth.VerifyPassword(password)
-	if err != nil {
-		t.Errorf("password comparison failed: %v", err)
-	}
+	assert.NoError(t, err, "password comparison failed")
 }
 
 func TestBasicAuthCompare(t *testing.T) {
@@ -48,15 +47,10 @@ func TestLoadBasicAuthFromScanner(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			scanner := bufio.NewScanner(strings.NewReader(tc.input))
 			userMap := LoadBasicAuthFromScanner(scanner)
-			diff := cmp.Diff(tc.mapLength, len(userMap))
-			if diff != "" {
-				t.Fatal(diff)
-			}
+			require.Len(t, userMap, tc.mapLength)
 
 			valid, _ := userMap.Authenticate(tc.checkUser, tc.checkPassword)
-			if !valid {
-				t.Fatalf("unable to authenticate %s with %s", tc.checkUser, tc.checkPassword)
-			}
+			require.Truef(t, valid, "unable to authenticate %s with %s", tc.checkUser, tc.checkPassword)
 		})
 	}
 }

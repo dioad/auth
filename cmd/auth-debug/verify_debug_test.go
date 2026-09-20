@@ -278,11 +278,7 @@ func TestVerifyDebug_RawToken(t *testing.T) {
 
 	// Verify the token — set a breakpoint here to step into verification.
 	err = verifyTokenWithConfig(t.Context(), rawToken, issuer, audiences)
-	if err != nil {
-		t.Logf("✗ Verification failed: %v", err)
-		t.Logf("  Hint: check kid/alg match, token expiry, issuer, and audience")
-		t.Fail()
-	} else {
+	if assert.NoError(t, err, "hint: check kid/alg match, token expiry, issuer, and audience") {
 		t.Logf("✓ Token signature and claims verified successfully")
 	}
 }

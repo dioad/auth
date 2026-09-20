@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestTimestampValidation_FutureTimestamps tests that future timestamps
@@ -136,9 +139,7 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			}
 
 			// Add auth which will set current timestamp
-			if err := clientAuth.AddAuth(req); err != nil {
-				t.Fatalf("failed to add auth: %v", err)
-			}
+			require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 			// Override the timestamp header with our test timestamp
 			req.Header.Set(DefaultTimestampHeader, timestampStr)
@@ -148,28 +149,18 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			signedHeaders := []string{}
 			verificationData := CanonicalData(req, principal, timestampStr, signedHeaders, bodyBytes)
 			signature, err := HMACKey([]byte(sharedKey), []byte(verificationData))
-			if err != nil {
-				t.Fatalf("failed to generate signature: %v", err)
-			}
+			require.NoError(t, err, "failed to generate signature")
 			req.Header.Set("Authorization", fmt.Sprintf("HMAC %s:%s", principal, signature))
 
 			// Test authentication
 			ctx, err := handler.AuthRequest(req)
 
 			if tt.wantAccepted {
-				if err != nil {
-					t.Errorf("expected request to be accepted, but got error: %v", err)
-				}
-				if ctx == nil {
-					t.Error("expected non-nil context")
-				}
+				assert.NoError(t, err, "expected request to be accepted")
+				assert.NotNil(t, ctx)
 			} else {
-				if err == nil {
-					t.Error("expected request to be rejected, but it was accepted")
-				} else if tt.wantErrorContains != "" {
-					if !strings.Contains(err.Error(), tt.wantErrorContains) {
-						t.Errorf("expected error containing %q, got %q", tt.wantErrorContains, err.Error())
-					}
+				if assert.Error(t, err, "expected request to be rejected, but it was accepted") && tt.wantErrorContains != "" {
+					assert.Contains(t, err.Error(), tt.wantErrorContains)
 				}
 			}
 		})
@@ -187,12 +178,8 @@ func TestTimestampValidation_DefaultConfig(t *testing.T) {
 	})
 
 	// Verify defaults were set
-	if handler.cfg.MaxTimestampDiff != 5*time.Minute {
-		t.Errorf("expected default MaxTimestampDiff=5m, got %v", handler.cfg.MaxTimestampDiff)
-	}
-	if handler.cfg.MaxFutureTimestampDiff != 30*time.Second {
-		t.Errorf("expected default MaxFutureTimestampDiff=30s, got %v", handler.cfg.MaxFutureTimestampDiff)
-	}
+	assert.Equal(t, 5*time.Minute, handler.cfg.MaxTimestampDiff)
+	assert.Equal(t, 30*time.Second, handler.cfg.MaxFutureTimestampDiff)
 }
 
 // TestTimestampValidation_PreSignedReplayAttackPrevention tests that the fix
@@ -223,9 +210,7 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 		},
 	}
 
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 	// Override with future timestamp and regenerate signature
 	req.Header.Set(DefaultTimestampHeader, timestampStr)
@@ -233,18 +218,13 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	signedHeaders := []string{}
 	verificationData := CanonicalData(req, principal, timestampStr, signedHeaders, bodyBytes)
 	signature, err := HMACKey([]byte(sharedKey), []byte(verificationData))
-	if err != nil {
-		t.Fatalf("failed to generate signature: %v", err)
-	}
+	require.NoError(t, err, "failed to generate signature")
 	req.Header.Set("Authorization", fmt.Sprintf("HMAC %s:%s", principal, signature))
 
 	// This request should be rejected because the timestamp is too far in the future
 	_, err = handler.AuthRequest(req)
-	if err == nil {
-		t.Error("expected pre-signed request with far-future timestamp to be rejected")
-	}
-	if !strings.Contains(err.Error(), "too far in the future") {
-		t.Errorf("expected error about future timestamp, got: %v", err)
+	if assert.Error(t, err, "expected pre-signed request with far-future timestamp to be rejected") {
+		assert.Contains(t, err.Error(), "too far in the future")
 	}
 }
 
@@ -267,9 +247,7 @@ func createAuthenticatedRequest(t *testing.T, sharedKey, principal string, bodyS
 		},
 	}
 
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 	return req
 }
@@ -292,12 +270,8 @@ func TestMaxRequestSize_UnderLimit(t *testing.T) {
 
 	// Request should be accepted
 	ctx, err := handler.AuthRequest(req)
-	if err != nil {
-		t.Errorf("expected request under size limit to be accepted, got error: %v", err)
-	}
-	if ctx == nil {
-		t.Error("expected non-nil context")
-	}
+	assert.NoError(t, err, "expected request under size limit to be accepted")
+	assert.NotNil(t, ctx)
 }
 
 // TestMaxRequestSize_ExceedsLimit tests that requests exceeding the size limit are rejected.
@@ -318,11 +292,8 @@ func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
 
 	// Request should be rejected
 	_, err := handler.AuthRequest(req)
-	if err == nil {
-		t.Error("expected request exceeding size limit to be rejected")
-	}
-	if !strings.Contains(err.Error(), expectedMaxSizeErrorMessage) {
-		t.Errorf("expected error about size limit, got: %v", err)
+	if assert.Error(t, err, "expected request exceeding size limit to be rejected") {
+		assert.Contains(t, err.Error(), expectedMaxSizeErrorMessage)
 	}
 }
 
@@ -339,11 +310,7 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 	})
 
 	// Verify the default limit is applied
-	expectedDefault := DefaultMaxRequestSizeBytes
-	actualLimit := handler.maxRequestSizeBytes()
-	if actualLimit != expectedDefault {
-		t.Errorf("expected default limit %d bytes, got %d bytes", expectedDefault, actualLimit)
-	}
+	assert.Equal(t, DefaultMaxRequestSizeBytes, handler.maxRequestSizeBytes())
 
 	// Create a request with body under the default limit (9MB - close to the 10MB default)
 	bodySize := 9 * 1024 * 1024 // 9MB
@@ -351,12 +318,8 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 
 	// Request should be accepted with default limit
 	ctx, err := handler.AuthRequest(req)
-	if err != nil {
-		t.Errorf("expected request under default limit to be accepted, got error: %v", err)
-	}
-	if ctx == nil {
-		t.Error("expected non-nil context")
-	}
+	assert.NoError(t, err, "expected request under default limit to be accepted")
+	assert.NotNil(t, ctx)
 }
 
 // TestMaxRequestSize_AtExactLimit tests behavior at the exact size limit.
@@ -377,12 +340,8 @@ func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 
 	// Request at exact limit should be accepted
 	ctx, err := handler.AuthRequest(req)
-	if err != nil {
-		t.Errorf("expected request at exact limit to be accepted, got error: %v", err)
-	}
-	if ctx == nil {
-		t.Error("expected non-nil context")
-	}
+	assert.NoError(t, err, "expected request at exact limit to be accepted")
+	assert.NotNil(t, ctx)
 }
 
 // TestMaxRequestSize_OneBytePastLimit tests behavior one byte past the limit.
@@ -403,10 +362,7 @@ func TestMaxRequestSize_OneBytePastLimit(t *testing.T) {
 
 	// Request should be rejected
 	_, err := handler.AuthRequest(req)
-	if err == nil {
-		t.Error("expected request one byte over limit to be rejected")
-	}
-	if !strings.Contains(err.Error(), expectedMaxSizeErrorMessage) {
-		t.Errorf("expected error about size limit, got: %v", err)
+	if assert.Error(t, err, "expected request one byte over limit to be rejected") {
+		assert.Contains(t, err.Error(), expectedMaxSizeErrorMessage)
 	}
 }

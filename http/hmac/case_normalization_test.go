@@ -107,9 +107,7 @@ func TestHeaderCaseNormalization(t *testing.T) {
 
 			// Create request and set headers
 			req, err := http.NewRequest("POST", testServer.URL+"/api", bytes.NewBufferString(`{"test": true}`))
-			if err != nil {
-				t.Fatalf("failed to create request: %v", err)
-			}
+			require.NoError(t, err, "failed to create request")
 
 			// Set header values using client's header names and distinct values
 			for _, headerName := range tc.clientHeaders {
@@ -119,26 +117,18 @@ func TestHeaderCaseNormalization(t *testing.T) {
 			}
 
 			// Add authentication
-			if err := clientAuth.AddAuth(req); err != nil {
-				t.Fatalf("failed to add auth: %v", err)
-			}
+			require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 			// Make request
 			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				t.Fatalf("request failed: %v", err)
-			}
+			require.NoError(t, err, "request failed")
 			defer func() { _ = resp.Body.Close() }()
 
 			// Verify authentication result
 			if tc.shouldAuthenticate {
-				if resp.StatusCode != http.StatusOK {
-					t.Errorf("expected authentication to succeed (200), got %d", resp.StatusCode)
-				}
+				assert.Equal(t, http.StatusOK, resp.StatusCode, "expected authentication to succeed")
 			} else {
-				if resp.StatusCode != http.StatusUnauthorized {
-					t.Errorf("expected authentication to fail (401), got %d", resp.StatusCode)
-				}
+				assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "expected authentication to fail")
 			}
 		})
 	}
@@ -149,16 +139,12 @@ func TestHeaderCaseNormalization(t *testing.T) {
 func TestCanonicalDataCaseNormalization(t *testing.T) {
 	// Create two requests with identical data but different header casing
 	req1, err := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
-	if err != nil {
-		t.Fatalf("failed to create request req1: %v", err)
-	}
+	require.NoError(t, err, "failed to create request req1")
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("X-Api-Key", "secret123")
 
 	req2, err := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
-	if err != nil {
-		t.Fatalf("failed to create request req2: %v", err)
-	}
+	require.NoError(t, err, "failed to create request req2")
 	req2.Header.Set("content-type", "application/json")
 	req2.Header.Set("x-api-key", "secret123")
 
@@ -172,9 +158,7 @@ func TestCanonicalDataCaseNormalization(t *testing.T) {
 	canonical2 := CanonicalData(req2, principal, timestamp, []string{"content-type", "x-api-key"}, []byte(`{"data": true}`))
 
 	// The canonical data should be identical
-	if canonical1 != canonical2 {
-		t.Errorf("Canonical data mismatch:\n%q\nvs\n%q", canonical1, canonical2)
-	}
+	assert.Equal(t, canonical1, canonical2, "canonical data mismatch")
 }
 
 // TestCanonicalData_ProducesExpectedFormat pins the exact byte layout of the

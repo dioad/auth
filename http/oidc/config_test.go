@@ -3,6 +3,8 @@ package oidc
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	authoidc "github.com/dioad/auth/oidc"
 )
 
@@ -24,10 +26,6 @@ func TestConfigAliases_CompatibleWithCanonicalOIDCConfig(t *testing.T) {
 	canonicalCfg := authoidc.Config(httpCfg)
 	provider := canonicalCfg.ProviderMap["oidc"]
 
-	if provider.ClientID != "client-id" {
-		t.Fatalf("expected client id to round-trip, got %q", provider.ClientID)
-	}
-	if provider.DiscoveryURL != "https://issuer.example/.well-known/openid-configuration" {
-		t.Fatalf("expected discovery URL to round-trip, got %q", provider.DiscoveryURL)
-	}
+	require.Equal(t, "client-id", provider.ClientID, "expected client id to round-trip")
+	require.Equal(t, "https://issuer.example/.well-known/openid-configuration", provider.DiscoveryURL, "expected discovery URL to round-trip")
 }
