@@ -11,7 +11,7 @@ require (
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/cli/oauth v1.2.2
 	github.com/dioad/generics v0.0.9
-	github.com/dioad/net v0.67.2
+	github.com/dioad/net v0.67.3
 	github.com/dioad/util v0.7.0
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -51,7 +51,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/dioad/filter v0.6.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
-	github.com/go-acme/lego/v5 v5.4.1 // indirect
+	github.com/go-acme/lego/v5 v5.5.1 // indirect
 	github.com/go-chi/chi/v5 v5.3.2 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
