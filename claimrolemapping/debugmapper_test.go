@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // newTestLogger returns a zerolog.Logger that writes JSON to buf at Debug level.
@@ -39,17 +41,11 @@ func TestDebugAwareMapper_MatchedRuleEmitsDebugEvent(t *testing.T) {
 		"app_name": "my-app",
 	})
 
-	if len(roles) != 1 || roles[0] != "role.publisher" {
-		t.Fatalf("expected [role.publisher], got %v", roles)
-	}
+	require.Equal(t, []string{"role.publisher"}, roles)
 
 	output := buf.String()
-	if !strings.Contains(output, "rule matched") {
-		t.Errorf("expected 'rule matched' in debug output, got:\n%s", output)
-	}
-	if !strings.Contains(output, "evaluation complete") {
-		t.Errorf("expected 'evaluation complete' in debug output, got:\n%s", output)
-	}
+	assert.Contains(t, output, "rule matched")
+	assert.Contains(t, output, "evaluation complete")
 }
 
 func TestDebugAwareMapper_UnmatchedRuleLogsFailedClaim(t *testing.T) {
@@ -76,17 +72,11 @@ func TestDebugAwareMapper_UnmatchedRuleLogsFailedClaim(t *testing.T) {
 		"org_name": "other-org",
 	})
 
-	if len(roles) != 0 {
-		t.Fatalf("expected no roles, got %v", roles)
-	}
+	require.Empty(t, roles)
 
 	output := buf.String()
-	if !strings.Contains(output, "rule did not match") {
-		t.Errorf("expected 'rule did not match' in debug output, got:\n%s", output)
-	}
-	if !strings.Contains(output, "failed_claim") {
-		t.Errorf("expected 'failed_claim' field in debug output, got:\n%s", output)
-	}
+	assert.Contains(t, output, "rule did not match")
+	assert.Contains(t, output, "failed_claim")
 }
 
 func TestDebugAwareMapper_NonDebugRuleOmitsPerRuleEvents(t *testing.T) {
@@ -121,9 +111,7 @@ func TestDebugAwareMapper_NonDebugRuleOmitsPerRuleEvents(t *testing.T) {
 			continue
 		}
 		var evt map[string]any
-		if err := json.Unmarshal([]byte(line), &evt); err != nil {
-			t.Fatalf("non-JSON log line: %s", line)
-		}
+		require.NoError(t, json.Unmarshal([]byte(line), &evt), "non-JSON log line: %s", line)
 		msg, _ := evt["message"].(string)
 		switch msg {
 		case "claim-role-mapping: evaluating claims", "claim-role-mapping: evaluation complete":
@@ -135,14 +123,8 @@ func TestDebugAwareMapper_NonDebugRuleOmitsPerRuleEvents(t *testing.T) {
 		}
 	}
 
-	if len(overviewMsgs) != 2 {
-		t.Errorf("expected 2 overview events, got %d: %v", len(overviewMsgs), overviewMsgs)
-	}
-	for _, role := range perRuleRoles {
-		if role == "role.reader" {
-			t.Errorf("per-rule event emitted for non-debug rule 'role.reader'")
-		}
-	}
+	assert.Len(t, overviewMsgs, 2)
+	assert.NotContains(t, perRuleRoles, "role.reader", "per-rule event emitted for non-debug rule 'role.reader'")
 }
 
 func TestDebugAwareMapper_GrantedRolesAppearsInFinalEvent(t *testing.T) {
@@ -159,9 +141,7 @@ func TestDebugAwareMapper_GrantedRolesAppearsInFinalEvent(t *testing.T) {
 	}
 
 	roles := m.MapRoles(map[string]any{"env": "prod", "team": "platform"})
-	if len(roles) != 2 {
-		t.Fatalf("expected 2 roles, got %v", roles)
-	}
+	require.Len(t, roles, 2)
 
 	var found bool
 	for line := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
@@ -172,17 +152,12 @@ func TestDebugAwareMapper_GrantedRolesAppearsInFinalEvent(t *testing.T) {
 		if evt["message"] == "claim-role-mapping: evaluation complete" {
 			found = true
 			rolesField, ok := evt["roles_granted"].([]any)
-			if !ok {
-				t.Errorf("roles_granted field missing or wrong type in: %s", line)
-			}
-			if len(rolesField) != 2 {
-				t.Errorf("expected 2 roles_granted, got %d in: %s", len(rolesField), line)
+			if assert.True(t, ok, "roles_granted field missing or wrong type in: %s", line) {
+				assert.Len(t, rolesField, 2, "in: %s", line)
 			}
 		}
 	}
-	if !found {
-		t.Errorf("evaluation complete event not found in output:\n%s", buf.String())
-	}
+	assert.True(t, found, "evaluation complete event not found in output:\n%s", buf.String())
 }
 
 func TestEvalMapping_MissingClaim(t *testing.T) {
@@ -190,18 +165,10 @@ func TestEvalMapping_MissingClaim(t *testing.T) {
 		map[string]any{"other": "val"},
 		map[string]string{"missing_key": "expected"},
 	)
-	if matched {
-		t.Fatal("expected mismatch for missing claim")
-	}
-	if failedClaim != "missing_key" {
-		t.Errorf("failedClaim = %q, want %q", failedClaim, "missing_key")
-	}
-	if want != "expected" {
-		t.Errorf("want = %q, expected %q", want, "expected")
-	}
-	if got != "<missing>" {
-		t.Errorf("got = %q, want %q", got, "<missing>")
-	}
+	require.False(t, matched, "expected mismatch for missing claim")
+	assert.Equal(t, "missing_key", failedClaim)
+	assert.Equal(t, "expected", want)
+	assert.Equal(t, "<missing>", got)
 }
 
 func TestEvalMapping_TypeMismatch(t *testing.T) {
@@ -209,15 +176,9 @@ func TestEvalMapping_TypeMismatch(t *testing.T) {
 		map[string]any{"count": 42},
 		map[string]string{"count": "42"},
 	)
-	if matched {
-		t.Fatal("expected mismatch for non-string claim value")
-	}
-	if failedClaim != "count" {
-		t.Errorf("failedClaim = %q, want %q", failedClaim, "count")
-	}
-	if !strings.HasPrefix(got, "<type:") {
-		t.Errorf("got = %q, expected <type:...> prefix", got)
-	}
+	require.False(t, matched, "expected mismatch for non-string claim value")
+	assert.Equal(t, "count", failedClaim)
+	assert.True(t, strings.HasPrefix(got, "<type:"), "got = %q, expected <type:...> prefix", got)
 }
 
 func TestEvalMapping_WildcardEmptyString(t *testing.T) {
@@ -225,18 +186,10 @@ func TestEvalMapping_WildcardEmptyString(t *testing.T) {
 		map[string]any{"app_name": ""},
 		map[string]string{"app_name": "*"},
 	)
-	if matched {
-		t.Fatal("expected mismatch for empty wildcard value")
-	}
-	if failedClaim != "app_name" {
-		t.Errorf("failedClaim = %q, want %q", failedClaim, "app_name")
-	}
-	if want != "*" {
-		t.Errorf("want = %q, expected %q", want, "*")
-	}
-	if got != "<empty>" {
-		t.Errorf("got = %q, want %q", got, "<empty>")
-	}
+	require.False(t, matched, "expected mismatch for empty wildcard value")
+	assert.Equal(t, "app_name", failedClaim)
+	assert.Equal(t, "*", want)
+	assert.Equal(t, "<empty>", got)
 }
 
 func TestEvalMapping_WildcardNonEmptyMatches(t *testing.T) {
@@ -244,9 +197,7 @@ func TestEvalMapping_WildcardNonEmptyMatches(t *testing.T) {
 		map[string]any{"app_name": "my-app"},
 		map[string]string{"app_name": "*"},
 	)
-	if !matched {
-		t.Fatal("expected wildcard to match non-empty string")
-	}
+	assert.True(t, matched, "expected wildcard to match non-empty string")
 }
 
 func TestEvalMapping_ValueMismatch(t *testing.T) {
@@ -254,18 +205,10 @@ func TestEvalMapping_ValueMismatch(t *testing.T) {
 		map[string]any{"env": "staging"},
 		map[string]string{"env": "prod"},
 	)
-	if matched {
-		t.Fatal("expected mismatch for wrong claim value")
-	}
-	if failedClaim != "env" {
-		t.Errorf("failedClaim = %q, want %q", failedClaim, "env")
-	}
-	if want != "prod" {
-		t.Errorf("want = %q, expected %q", want, "prod")
-	}
-	if got != "staging" {
-		t.Errorf("got = %q, expected %q", got, "staging")
-	}
+	require.False(t, matched, "expected mismatch for wrong claim value")
+	assert.Equal(t, "env", failedClaim)
+	assert.Equal(t, "prod", want)
+	assert.Equal(t, "staging", got)
 }
 
 // TestEvalMapping_ArrayClaimContainsMatch is the regression test for the
@@ -277,9 +220,7 @@ func TestEvalMapping_ArrayClaimContainsMatch(t *testing.T) {
 		map[string]any{"groups": []any{"plan:pro", "other-group"}},
 		map[string]string{"groups": "plan:pro"},
 	)
-	if !matched {
-		t.Fatal("expected array claim containing want to match")
-	}
+	assert.True(t, matched, "expected array claim containing want to match")
 }
 
 func TestEvalMapping_ArrayClaimNoMatchReportsElements(t *testing.T) {
@@ -287,18 +228,10 @@ func TestEvalMapping_ArrayClaimNoMatchReportsElements(t *testing.T) {
 		map[string]any{"groups": []any{"plan:free"}},
 		map[string]string{"groups": "plan:pro"},
 	)
-	if matched {
-		t.Fatal("expected mismatch when array does not contain want")
-	}
-	if failedClaim != "groups" {
-		t.Errorf("failedClaim = %q, want %q", failedClaim, "groups")
-	}
-	if want != "plan:pro" {
-		t.Errorf("want = %q, expected %q", want, "plan:pro")
-	}
-	if got != "[plan:free]" {
-		t.Errorf("got = %q, expected the array's contents", got)
-	}
+	require.False(t, matched, "expected mismatch when array does not contain want")
+	assert.Equal(t, "groups", failedClaim)
+	assert.Equal(t, "plan:pro", want)
+	assert.Equal(t, "[plan:free]", got, "expected the array's contents")
 }
 
 func TestEvalMapping_ArrayClaimWildcardMatchesNonEmpty(t *testing.T) {
@@ -306,9 +239,7 @@ func TestEvalMapping_ArrayClaimWildcardMatchesNonEmpty(t *testing.T) {
 		map[string]any{"groups": []any{"plan:free"}},
 		map[string]string{"groups": "*"},
 	)
-	if !matched {
-		t.Fatal("expected wildcard to match a non-empty array")
-	}
+	assert.True(t, matched, "expected wildcard to match a non-empty array")
 }
 
 // TestDebugAwareMapper_ArrayClaimMatchesLikeStandardMapper is the end-to-end
@@ -328,7 +259,5 @@ func TestDebugAwareMapper_ArrayClaimMatchesLikeStandardMapper(t *testing.T) {
 	}
 
 	roles := m.MapRoles(map[string]any{"groups": []any{"plan:pro", "other-group"}})
-	if len(roles) != 1 || roles[0] != "pro-tier" {
-		t.Fatalf("expected [pro-tier], got %v", roles)
-	}
+	require.Equal(t, []string{"pro-tier"}, roles)
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func FuzzCanonicalData(f *testing.F) {
@@ -17,9 +19,7 @@ func FuzzCanonicalData(f *testing.F) {
 		req.Header.Set(headerName, "some-value")
 
 		got := CanonicalData(req, principal, timestamp, []string{headerName}, body)
-		if got == "" {
-			t.Errorf("CanonicalData returned empty string")
-		}
+		assert.NotEmpty(t, got, "CanonicalData returned empty string")
 	})
 }
 

@@ -75,7 +75,7 @@ func TestResolveAuthHandlerByType_OIDC_RegistersLoginRoutesAndRedirects(t *testi
 	rr := httptest.NewRecorder()
 
 	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("next handler must not run for an unauthenticated request")
+		require.Fail(t, "next handler must not run for an unauthenticated request")
 	})).ServeHTTP(rr, req)
 
 	require.Equal(t, http.StatusSeeOther, rr.Code)

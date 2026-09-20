@@ -5,8 +5,9 @@
 package basic
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var testNetrc = `
@@ -52,7 +53,5 @@ func TestParseNetrc(t *testing.T) {
 		{"hasmacro.too", "user4", "pwd4"},
 	}
 
-	if !reflect.DeepEqual(lines, want) {
-		t.Errorf("parseNetrc:\nhave %q\nwant %q", lines, want)
-	}
+	assert.Equal(t, want, lines)
 }

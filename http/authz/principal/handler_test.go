@@ -5,6 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	authhttp "github.com/dioad/auth/authctx"
 
 	"github.com/dioad/net/authz"
@@ -29,12 +32,8 @@ func TestHandlerFunc(t *testing.T) {
 
 	handlerFunc(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
-	}
-	if w.Body.String() != "success" {
-		t.Errorf("Expected body %q, got %q", "success", w.Body.String())
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "success", w.Body.String())
 }
 
 func TestNewHandler(t *testing.T) {
@@ -45,15 +44,9 @@ func TestNewHandler(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	if handler == nil {
-		t.Fatal("Expected handler to be created, got nil")
-	}
-	if len(handler.Config.AllowList) != 1 {
-		t.Errorf("Expected 1 item in AllowList, got %d", len(handler.Config.AllowList))
-	}
-	if len(handler.Config.DenyList) != 1 {
-		t.Errorf("Expected 1 item in DenyList, got %d", len(handler.Config.DenyList))
-	}
+	require.NotNil(t, handler)
+	assert.Len(t, handler.Config.AllowList, 1)
+	assert.Len(t, handler.Config.DenyList, 1)
 }
 
 func TestAuthRequest_Authorized(t *testing.T) {
@@ -69,12 +62,8 @@ func TestAuthRequest_Authorized(t *testing.T) {
 
 	resultCtx, err := handler.AuthRequest(req)
 
-	if err != nil {
-		t.Errorf("Expected no error for authorised principal, got: %v", err)
-	}
-	if resultCtx == nil {
-		t.Error("Expected context to be returned")
-	}
+	assert.NoError(t, err, "expected no error for authorised principal")
+	assert.NotNil(t, resultCtx, "expected context to be returned")
 }
 
 func TestAuthRequest_Unauthorised(t *testing.T) {
@@ -90,9 +79,7 @@ func TestAuthRequest_Unauthorised(t *testing.T) {
 
 	_, err := handler.AuthRequest(req)
 
-	if err == nil {
-		t.Error("Expected error for unauthorised principal, got nil")
-	}
+	assert.Error(t, err, "expected error for unauthorised principal")
 }
 
 func TestAuthRequest_NoPrincipal(t *testing.T) {
@@ -106,9 +93,7 @@ func TestAuthRequest_NoPrincipal(t *testing.T) {
 
 	_, err := handler.AuthRequest(req)
 
-	if err == nil {
-		t.Error("Expected error for missing principal, got nil")
-	}
+	assert.Error(t, err, "expected error for missing principal")
 }
 
 func TestAuthRequest_DenyList(t *testing.T) {
@@ -125,9 +110,7 @@ func TestAuthRequest_DenyList(t *testing.T) {
 
 	_, err := handler.AuthRequest(req)
 
-	if err == nil {
-		t.Error("Expected error for denied principal, got nil")
-	}
+	assert.Error(t, err, "expected error for denied principal")
 }
 
 func TestWrap_Authorised(t *testing.T) {
@@ -151,12 +134,8 @@ func TestWrap_Authorised(t *testing.T) {
 
 	wrappedHandler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
-	}
-	if w.Body.String() != "authorized" {
-		t.Errorf("Expected body %q, got %q", "authorized", w.Body.String())
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "authorized", w.Body.String())
 }
 
 func TestWrap_Forbidden(t *testing.T) {
@@ -167,7 +146,7 @@ func TestWrap_Forbidden(t *testing.T) {
 	handler := NewHandler(cfg)
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("Next handler should not be called for forbidden request")
+		assert.Fail(t, "next handler should not be called for forbidden request")
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -180,9 +159,7 @@ func TestWrap_Forbidden(t *testing.T) {
 
 	wrappedHandler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Errorf("Expected status code %d, got %d", http.StatusForbidden, w.Code)
-	}
+	assert.Equal(t, http.StatusForbidden, w.Code)
 }
 
 func TestWrap_NoPrincipal(t *testing.T) {
@@ -193,7 +170,7 @@ func TestWrap_NoPrincipal(t *testing.T) {
 	handler := NewHandler(cfg)
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("Next handler should not be called when no principal is present")
+		assert.Fail(t, "next handler should not be called when no principal is present")
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -205,7 +182,5 @@ func TestWrap_NoPrincipal(t *testing.T) {
 	wrappedHandler.ServeHTTP(w, req)
 
 	// No principal in context → 401 Unauthorized (not 403 Forbidden)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("Expected status code %d, got %d", http.StatusUnauthorized, w.Code)
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

@@ -184,9 +184,7 @@ func FuzzDecodeTokenData(f *testing.F) {
 		if err != nil {
 			return
 		}
-		if got == nil {
-			t.Errorf("decodeTokenData(%q) returned nil with no error", token)
-		}
+		assert.NotNil(t, got, "decodeTokenData(%q) returned nil with no error", token)
 	})
 }
 

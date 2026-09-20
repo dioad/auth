@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	authhttp "github.com/dioad/auth/authctx"
 )
 
@@ -26,9 +29,7 @@ func TestClientHandlerIntegration(t *testing.T) {
 	testServer := httptest.NewServer(
 		serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			principal, _ := authhttp.AuthenticatedPrincipalFromContext(r.Context())
-			if principal != principalID {
-				t.Errorf("expected principal %q, got %q", principalID, principal)
-			}
+			assert.Equal(t, principalID, principal)
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("authenticated"))
 		})),
@@ -45,24 +46,16 @@ func TestClientHandlerIntegration(t *testing.T) {
 	}
 
 	req, err := http.NewRequest("POST", testServer.URL+"/action", bytes.NewBufferString(requestBody))
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("failed to make request: %v", err)
-	}
+	require.NoError(t, err, "failed to make request")
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected status 200, got %d", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestClientHandlerWithSignedHeaders(t *testing.T) {
@@ -96,29 +89,19 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	}
 
 	req, err := http.NewRequest("GET", testServer.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 	req.Header.Set(customHeader, customValue)
 
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("AddAuth failed: %v", err)
-	}
+	require.NoError(t, clientAuth.AddAuth(req), "AddAuth failed")
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("failed to make request: %v", err)
-	}
+	require.NoError(t, err, "failed to make request")
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Now try with modified header value
 	req2, err := http.NewRequest("GET", testServer.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create tampered request: %v", err)
-	}
+	require.NoError(t, err, "failed to create tampered request")
 	req2.Header.Set(customHeader, "WRONG")
 	// Manually copy the auth headers from previous request to simulate tampering
 	req2.Header.Set("Authorization", req.Header.Get("Authorization"))
@@ -126,13 +109,9 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	req2.Header.Set(DefaultSignedHeadersHeader, req.Header.Get(DefaultSignedHeadersHeader))
 
 	resp2, err := http.DefaultClient.Do(req2)
-	if err != nil {
-		t.Fatalf("failed to make tampered request: %v", err)
-	}
+	require.NoError(t, err, "failed to make tampered request")
 	defer func() { _ = resp2.Body.Close() }()
-	if resp2.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401 for tampered header, got %d", resp2.StatusCode)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp2.StatusCode, "expected 401 for tampered header")
 }
 
 func TestTimestampExpiry(t *testing.T) {
@@ -155,24 +134,16 @@ func TestTimestampExpiry(t *testing.T) {
 	}
 
 	req, err := http.NewRequest("GET", testServer.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
+	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 	// Wait for expiry
 	time.Sleep(2 * time.Second)
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401 for expired timestamp, got %d", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "expected 401 for expired timestamp")
 }
 
 func TestWrongPathOrMethod(t *testing.T) {
@@ -192,24 +163,16 @@ func TestWrongPathOrMethod(t *testing.T) {
 	}
 
 	req, err := http.NewRequest("GET", testServer.URL+"/valid", nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
+	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 	// Change path manually
 	req.URL.Path = "/invalid"
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401 for wrong path, got %d", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "expected 401 for wrong path")
 }
 
 func TestPrincipalSpoofing(t *testing.T) {
@@ -230,12 +193,8 @@ func TestPrincipalSpoofing(t *testing.T) {
 	}}
 
 	req1, err := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req1); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
+	require.NoError(t, clientAuth.AddAuth(req1), "failed to add auth")
 
 	// Capture the valid token for userPrincipal
 	authHeader := req1.Header.Get("Authorization")
@@ -248,20 +207,14 @@ func TestPrincipalSpoofing(t *testing.T) {
 	spoofedAuthHeader := fmt.Sprintf("HMAC %s:%s", adminPrincipal, signature)
 
 	req2, err := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
-	if err != nil {
-		t.Fatalf("failed to create spoofed request: %v", err)
-	}
+	require.NoError(t, err, "failed to create spoofed request")
 	req2.Header.Set("Authorization", spoofedAuthHeader)
 	req2.Header.Set(DefaultTimestampHeader, req1.Header.Get(DefaultTimestampHeader))
 
 	resp2, err := http.DefaultClient.Do(req2)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp2.Body.Close() }()
-	if resp2.StatusCode != http.StatusUnauthorized {
-		t.Errorf("Expected status 401 for spoofed principal, got %d", resp2.StatusCode)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp2.StatusCode, "expected status 401 for spoofed principal")
 }
 
 func TestHMACRoundTripper(t *testing.T) {
@@ -287,14 +240,10 @@ func TestHMACRoundTripper(t *testing.T) {
 	}
 
 	resp, err := client.Get(testServer.URL)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestHeaderWhitespaceHandling(t *testing.T) {
@@ -330,49 +279,33 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 
 	// Test 1: Client sets header with leading/trailing whitespace
 	req1, err := http.NewRequest("GET", testServer.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 	// Manually set header with whitespace before calling AddAuth
 	req1.Header.Set(customHeader, "  "+customValue+"  ")
 
-	if err := clientAuth.AddAuth(req1); err != nil {
-		t.Fatalf("AddAuth failed: %v", err)
-	}
+	require.NoError(t, clientAuth.AddAuth(req1), "AddAuth failed")
 
 	resp1, err := http.DefaultClient.Do(req1)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp1.Body.Close() }()
-	if resp1.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for header with whitespace, got %d", resp1.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp1.StatusCode, "expected 200 for header with whitespace")
 
 	// Test 2: Verify that server normalizes whitespace for signature verification
 	// Create a request with the same header value but different whitespace
 	req2, err := http.NewRequest("GET", testServer.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 	req2.Header.Set(customHeader, customValue) // No whitespace
 
-	if err := clientAuth.AddAuth(req2); err != nil {
-		t.Fatalf("AddAuth failed: %v", err)
-	}
+	require.NoError(t, clientAuth.AddAuth(req2), "AddAuth failed")
 
 	// Manually add trailing whitespace to the header after signing
 	req2.Header.Set(customHeader, customValue+"   ")
 
 	resp2, err := http.DefaultClient.Do(req2)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp2.Body.Close() }()
 	// This should succeed because the server trims whitespace
-	if resp2.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for header with added whitespace, got %d", resp2.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp2.StatusCode, "expected 200 for header with added whitespace")
 }
 
 func TestQueryParametersInSignature(t *testing.T) {
@@ -399,65 +332,40 @@ func TestQueryParametersInSignature(t *testing.T) {
 
 	// Test 1: Valid request with query parameters
 	req1, err := http.NewRequest("GET", testServer.URL+"/api/users?id=123&name=alice", nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req1); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-
-	}
+	require.NoError(t, err, "failed to create request")
+	require.NoError(t, clientAuth.AddAuth(req1), "failed to add auth")
 
 	resp1, err := http.DefaultClient.Do(req1)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp1.Body.Close() }()
-	if resp1.StatusCode != http.StatusOK {
-
-		t.Errorf("expected 200 for valid query params, got %d", resp1.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp1.StatusCode, "expected 200 for valid query params")
 
 	// Test 2: Different query parameters should produce different signatures
 	req2, err := http.NewRequest("GET", testServer.URL+"/api/users?id=456&name=bob", nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req2); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
+	require.NoError(t, clientAuth.AddAuth(req2), "failed to add auth")
 
 	// Verify signatures are different
 	authParts1 := strings.Split(req1.Header.Get("Authorization"), ":")
 	authParts2 := strings.Split(req2.Header.Get("Authorization"), ":")
-	if len(authParts1) < 2 || len(authParts2) < 2 {
-		t.Fatal("invalid Authorization header format")
-	}
+	require.GreaterOrEqual(t, len(authParts1), 2, "invalid Authorization header format")
+	require.GreaterOrEqual(t, len(authParts2), 2, "invalid Authorization header format")
 	sig1 := authParts1[1]
 	sig2 := authParts2[1]
-	if sig1 == sig2 {
-		t.Error("different query parameters should produce different signatures")
-	}
+	assert.NotEqual(t, sig2, sig1, "different query parameters should produce different signatures")
 
 	// Test 3: Tampering with query parameters should fail verification
 	req3, err := http.NewRequest("GET", testServer.URL+"/api/users?id=123&name=alice", nil)
-	if err != nil {
-		t.Fatalf("failed to create tampered request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req3); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, err, "failed to create tampered request")
+	require.NoError(t, clientAuth.AddAuth(req3), "failed to add auth")
 
 	// Change query parameters after signing
 	req3.URL.RawQuery = "id=999&name=eve"
 
 	resp3, err := http.DefaultClient.Do(req3)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp3.Body.Close() }()
-	if resp3.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401 for tampered query params, got %d", resp3.StatusCode)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp3.StatusCode, "expected 401 for tampered query params")
 }
 
 func TestNoQueryParameters(t *testing.T) {
@@ -482,21 +390,13 @@ func TestNoQueryParameters(t *testing.T) {
 
 	// Test request without query parameters still works
 	req, err := http.NewRequest("GET", testServer.URL+"/api/users", nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	if err := clientAuth.AddAuth(req); err != nil {
-		t.Fatalf("failed to add auth: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
+	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 for request without query params, got %d", resp.StatusCode)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "expected 200 for request without query params")
 }
 
 func BenchmarkClientAddAuth(b *testing.B) {

@@ -2,6 +2,9 @@ package claimrolemapping
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateRoleMappings_NoWarningsWhenAllKnown(t *testing.T) {
@@ -10,9 +13,7 @@ func TestValidateRoleMappings_NoWarningsWhenAllKnown(t *testing.T) {
 		{Role: "viewer"},
 	}
 	warnings := ValidateRoleMappings(mappings, []string{"admin", "viewer", "editor"})
-	if len(warnings) != 0 {
-		t.Errorf("expected no warnings, got %v", warnings)
-	}
+	assert.Empty(t, warnings)
 }
 
 func TestValidateRoleMappings_WarnsForUnknownRole(t *testing.T) {
@@ -21,12 +22,8 @@ func TestValidateRoleMappings_WarnsForUnknownRole(t *testing.T) {
 		{Role: "superadmin"},
 	}
 	warnings := ValidateRoleMappings(mappings, []string{"admin", "viewer"})
-	if len(warnings) != 1 {
-		t.Fatalf("expected 1 warning, got %d: %v", len(warnings), warnings)
-	}
-	if warnings[0] == "" {
-		t.Error("expected non-empty warning message")
-	}
+	require.Len(t, warnings, 1)
+	assert.NotEmpty(t, warnings[0], "expected non-empty warning message")
 }
 
 func TestValidateRoleMappings_WarnsForEachUnknownRole(t *testing.T) {
@@ -36,16 +33,12 @@ func TestValidateRoleMappings_WarnsForEachUnknownRole(t *testing.T) {
 		{Role: "unknown2"},
 	}
 	warnings := ValidateRoleMappings(mappings, []string{"known"})
-	if len(warnings) != 2 {
-		t.Fatalf("expected 2 warnings, got %d: %v", len(warnings), warnings)
-	}
+	require.Len(t, warnings, 2)
 }
 
 func TestValidateRoleMappings_EmptyMappings(t *testing.T) {
 	warnings := ValidateRoleMappings(nil, []string{"admin"})
-	if len(warnings) != 0 {
-		t.Errorf("expected no warnings for empty mappings, got %v", warnings)
-	}
+	assert.Empty(t, warnings, "expected no warnings for empty mappings")
 }
 
 func TestValidateRoleMappings_EmptyKnownRoles(t *testing.T) {
@@ -53,7 +46,5 @@ func TestValidateRoleMappings_EmptyKnownRoles(t *testing.T) {
 		{Role: "admin"},
 	}
 	warnings := ValidateRoleMappings(mappings, nil)
-	if len(warnings) != 1 {
-		t.Fatalf("expected 1 warning, got %d: %v", len(warnings), warnings)
-	}
+	require.Len(t, warnings, 1)
 }

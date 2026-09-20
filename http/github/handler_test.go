@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	authhttp "github.com/dioad/auth/authctx"
 )
 
@@ -74,21 +77,18 @@ func TestHandler_AuthRequest(t *testing.T) {
 
 			ctx, err := handler.AuthRequest(req)
 
-			if (err != nil) != tt.wantError {
-				t.Errorf("AuthRequest() error = %v, wantError %v", err, tt.wantError)
+			if tt.wantError {
+				require.Error(t, err)
 				return
 			}
+			require.NoError(t, err)
 
-			if !tt.wantError {
-				principal, _ := authhttp.AuthenticatedPrincipalFromContext(ctx)
-				if principal != tt.wantPrincipal {
-					t.Errorf("expected principal %s, got %s", tt.wantPrincipal, principal)
-				}
+			principal, _ := authhttp.AuthenticatedPrincipalFromContext(ctx)
+			assert.Equal(t, tt.wantPrincipal, principal)
 
-				user := authhttp.GitHubUserInfoFromContext(ctx)
-				if user == nil || user.Login != tt.wantPrincipal {
-					t.Errorf("expected user info in context, got %v", user)
-				}
+			user := authhttp.GitHubUserInfoFromContext(ctx)
+			if assert.NotNil(t, user, "expected user info in context") {
+				assert.Equal(t, tt.wantPrincipal, user.Login)
 			}
 		})
 	}
@@ -100,9 +100,7 @@ func TestHandler_Wrap(t *testing.T) {
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		principal, _ := authhttp.AuthenticatedPrincipalFromContext(r.Context())
-		if principal != "test-user" {
-			t.Errorf("expected principal test-user, got %s", principal)
-		}
+		assert.Equal(t, "test-user", principal)
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -113,9 +111,7 @@ func TestHandler_Wrap(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer valid-token")
 	rr := httptest.NewRecorder()
 	wrapped.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Errorf("expected status 200, got %d", rr.Code)
-	}
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Invalid request
 	req = httptest.NewRequest("GET", "/", nil)
@@ -123,7 +119,5 @@ func TestHandler_Wrap(t *testing.T) {
 	authenticator.err = fmt.Errorf("auth failed")
 	rr = httptest.NewRecorder()
 	wrapped.ServeHTTP(rr, req)
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("expected status 401, got %d", rr.Code)
-	}
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
 }

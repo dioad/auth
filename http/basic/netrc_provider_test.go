@@ -3,6 +3,9 @@ package basic
 import (
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNetrcProviderIsolation(t *testing.T) {
@@ -22,34 +25,24 @@ password pass2`
 
 	// Create test requests
 	req1, err := http.NewRequest("GET", "http://example.com", nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	req2, err := http.NewRequest("GET", "http://example.com", nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	_ = AddCredentialsWithProvider(req1, provider1)
 	_ = AddCredentialsWithProvider(req2, provider2)
 
 	// Verify that each request has the correct credentials
 	user1, pass1, ok1 := req1.BasicAuth()
-	if !ok1 {
-		t.Fatal("Expected credentials on req1")
-	}
-	if user1 != "user1" || pass1 != "pass1" {
-		t.Errorf("Expected user1/pass1, got %s/%s", user1, pass1)
-	}
+	require.True(t, ok1, "expected credentials on req1")
+	assert.Equal(t, "user1", user1)
+	assert.Equal(t, "pass1", pass1)
 
 	user2, pass2, ok2 := req2.BasicAuth()
-	if !ok2 {
-		t.Fatal("Expected credentials on req2")
-	}
-	if user2 != "user2" || pass2 != "pass2" {
-		t.Errorf("Expected user2/pass2, got %s/%s", user2, pass2)
-	}
+	require.True(t, ok2, "expected credentials on req2")
+	assert.Equal(t, "user2", user2)
+	assert.Equal(t, "pass2", pass2)
 }
 
 func TestNetrcProviderWithClientAuth(t *testing.T) {
@@ -66,23 +59,16 @@ password testpass`
 
 	// Create a request
 	req, err := http.NewRequest("GET", "http://test.example.com", nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	// Add auth
-	if err := auth.AddAuth(req); err != nil {
-		t.Fatalf("AddAuth failed: %v", err)
-	}
+	require.NoError(t, auth.AddAuth(req), "AddAuth failed")
 
 	// Verify credentials
 	user, pass, ok := req.BasicAuth()
-	if !ok {
-		t.Fatal("Expected credentials on request")
-	}
-	if user != "testuser" || pass != "testpass" {
-		t.Errorf("Expected testuser/testpass, got %s/%s", user, pass)
-	}
+	require.True(t, ok, "expected credentials on request")
+	assert.Equal(t, "testuser", user)
+	assert.Equal(t, "testpass", pass)
 }
 
 func TestAddCredentialsBackwardCompatibility(t *testing.T) {
@@ -90,17 +76,13 @@ func TestAddCredentialsBackwardCompatibility(t *testing.T) {
 	// This is a basic smoke test to ensure backward compatibility
 
 	req, err := http.NewRequest("GET", "http://nonexistent.example.com", nil)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	// This should not panic and should return false (no credentials found)
 	added := AddCredentials(req)
 
 	// We expect false since there's no .netrc file with this host
-	if added {
-		t.Error("Expected AddCredentials to return false for nonexistent host")
-	}
+	assert.False(t, added, "expected AddCredentials to return false for nonexistent host")
 }
 
 func TestClientAuthMultipleInstances(t *testing.T) {
@@ -123,23 +105,17 @@ password pass2`
 	req2, _ := http.NewRequest("GET", "http://example2.com", nil)
 
 	// Add auth from different instances
-	if err := auth1.AddAuth(req1); err != nil {
-		t.Fatalf("auth1.AddAuth(req1) returned error: %v", err)
-	}
-	if err := auth2.AddAuth(req2); err != nil {
-		t.Fatalf("auth2.AddAuth(req2) returned error: %v", err)
-	}
+	require.NoError(t, auth1.AddAuth(req1), "auth1.AddAuth(req1) returned error")
+	require.NoError(t, auth2.AddAuth(req2), "auth2.AddAuth(req2) returned error")
 
 	// Verify each got the right credentials
 	user1, pass1, _ := req1.BasicAuth()
-	if user1 != "user1" || pass1 != "pass1" {
-		t.Errorf("Auth1: expected user1/pass1, got %s/%s", user1, pass1)
-	}
+	assert.Equal(t, "user1", user1, "auth1")
+	assert.Equal(t, "pass1", pass1, "auth1")
 
 	user2, pass2, _ := req2.BasicAuth()
-	if user2 != "user2" || pass2 != "pass2" {
-		t.Errorf("Auth2: expected user2/pass2, got %s/%s", user2, pass2)
-	}
+	assert.Equal(t, "user2", user2, "auth2")
+	assert.Equal(t, "pass2", pass2, "auth2")
 }
 
 func TestNetrcProviderParseError(t *testing.T) {
@@ -179,17 +155,12 @@ func TestClientAuthWithConfiguredCredentials(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
-	if err := auth.AddAuth(req); err != nil {
-		t.Fatalf("AddAuth returned error: %v", err)
-	}
+	require.NoError(t, auth.AddAuth(req), "AddAuth returned error")
 
 	user, pass, ok := req.BasicAuth()
-	if !ok {
-		t.Fatal("Expected credentials")
-	}
-	if user != "configuser" || pass != "configpass" {
-		t.Errorf("Expected configuser/configpass, got %s/%s", user, pass)
-	}
+	require.True(t, ok, "expected credentials")
+	assert.Equal(t, "configuser", user)
+	assert.Equal(t, "configpass", pass)
 }
 
 func TestNetrcProviderConcurrency(t *testing.T) {
@@ -226,17 +197,10 @@ password pass2`
 
 	lines := parseNetrc(testData)
 
-	if len(lines) != 2 {
-		t.Errorf("Expected 2 lines, got %d", len(lines))
-	}
+	require.Len(t, lines, 2)
 
-	if lines[0].machine != "api.github.com" || lines[0].login != "testuser" || lines[0].password != "testpass" {
-		t.Errorf("First line incorrect: %+v", lines[0])
-	}
-
-	if lines[1].machine != "example.com" || lines[1].login != "user2" || lines[1].password != "pass2" {
-		t.Errorf("Second line incorrect: %+v", lines[1])
-	}
+	assert.Equal(t, netrcLine{"api.github.com", "testuser", "testpass"}, lines[0])
+	assert.Equal(t, netrcLine{"example.com", "user2", "pass2"}, lines[1])
 }
 
 func TestNetrcProviderFirstMatchWins(t *testing.T) {
@@ -255,17 +219,12 @@ password pass2`
 
 	added := AddCredentialsWithProvider(req, provider)
 
-	if !added {
-		t.Fatal("Expected credentials to be added")
-	}
+	require.True(t, added, "expected credentials to be added")
 
 	user, pass, ok := req.BasicAuth()
-	if !ok {
-		t.Fatal("Expected credentials on request")
-	}
+	require.True(t, ok, "expected credentials on request")
 
 	// Should use the first entry
-	if user != "user1" || pass != "pass1" {
-		t.Errorf("Expected first entry (user1/pass1), got %s/%s", user, pass)
-	}
+	assert.Equal(t, "user1", user, "expected first entry")
+	assert.Equal(t, "pass1", pass, "expected first entry")
 }
