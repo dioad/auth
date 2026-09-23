@@ -15,7 +15,7 @@ jobs:
     steps:
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v5
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v5
@@ -134,7 +134,7 @@ jobs:
 
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set commit date
         run: echo "COMMIT_DATE=$(git show -s --format=%ci ${{ github.sha }})" >> "$GITHUB_ENV"
