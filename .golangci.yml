@@ -41,6 +41,12 @@ linters:
     # oauth2.TokenSource, whose Token() method takes no context — storing ctx
     # at construction is the only way to thread one through, not an oversight.
     - containedctx
+    # nonamedreturns flags every named return, but none of this codebase's
+    # occurrences rely on a naked `return` (the actual bug risk named
+    # returns can introduce) — they're all explicit `return values...`, and
+    # the names document what each position in a multi-value return (e.g.
+    # bool, string, string, string) means.
+    - nonamedreturns
     # contextcheck's remaining findings here are either the same
     # oauth2.TokenSource constraint as containedctx above, an optional ctx
     # parameter that legitimately defaults to context.Background() when the
