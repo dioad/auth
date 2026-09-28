@@ -25,7 +25,7 @@ func TestDecodeToken(t *testing.T) {
 	tokenString := fmt.Sprintf("header.%s.signature", payloadEncoded)
 
 	token, err := decodeToken(tokenString)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, tokenString, token.AccessToken)
 	assert.Equal(t, time.Unix(now+3600, 0).Unix(), token.Expiry.Unix())
 	assert.Equal(t, "bearer", token.TokenType)
@@ -33,7 +33,7 @@ func TestDecodeToken(t *testing.T) {
 
 func TestDecodeToken_Invalid(t *testing.T) {
 	_, err := decodeToken("invalid-token")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_, err = decodeToken("a.b")
 	assert.Error(t, err)

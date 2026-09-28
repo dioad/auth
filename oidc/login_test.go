@@ -67,13 +67,13 @@ func TestOIDCLoginFlow(t *testing.T) {
 	// Simulate authorization code flow
 	ctx := context.Background()
 	authURL, err := client.AuthorizationCodeRedirectFlow(ctx, "state", []string{"openid"}, "http://localhost/callback")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, authURL, idp.Issuer)
 	assert.Contains(t, authURL, "state")
 
 	// Token exchange (simulated with the mock)
 	token, err := client.AuthorizationCodeToken(ctx, "mock-code", "http://localhost/callback")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, token.AccessToken)
 	assert.NotEmpty(t, token.Extra("id_token"))
 

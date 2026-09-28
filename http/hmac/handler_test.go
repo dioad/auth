@@ -157,7 +157,7 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			ctx, err := handler.AuthRequest(req)
 
 			if tt.wantAccepted {
-				assert.NoError(t, err, "expected request to be accepted")
+				require.NoError(t, err, "expected request to be accepted")
 				assert.NotNil(t, ctx)
 			} else if assert.Error(t, err, "expected request to be rejected, but it was accepted") && tt.wantErrorContains != "" {
 				assert.Contains(t, err.Error(), tt.wantErrorContains)
@@ -271,7 +271,7 @@ func TestMaxRequestSize_UnderLimit(t *testing.T) {
 
 	// Request should be accepted
 	ctx, err := handler.AuthRequest(req)
-	assert.NoError(t, err, "expected request under size limit to be accepted")
+	require.NoError(t, err, "expected request under size limit to be accepted")
 	assert.NotNil(t, ctx)
 }
 
@@ -317,7 +317,7 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 
 	// Request should be accepted with default limit
 	ctx, err := handler.AuthRequest(req)
-	assert.NoError(t, err, "expected request under default limit to be accepted")
+	require.NoError(t, err, "expected request under default limit to be accepted")
 	assert.NotNil(t, ctx)
 }
 
@@ -338,7 +338,7 @@ func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 
 	// Request at exact limit should be accepted
 	ctx, err := handler.AuthRequest(req)
-	assert.NoError(t, err, "expected request at exact limit to be accepted")
+	require.NoError(t, err, "expected request at exact limit to be accepted")
 	assert.NotNil(t, ctx)
 }
 

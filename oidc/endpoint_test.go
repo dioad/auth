@@ -29,7 +29,7 @@ func TestOIDCEndpoint_Discovery(t *testing.T) {
 	require.NoError(t, err)
 
 	config, err := endpoint.DiscoveredConfiguration(t.Context())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "http://example.com", config.Issuer)
 	assert.Equal(t, "http://example.com/auth", config.AuthorizationEndpoint)
 }

@@ -33,7 +33,7 @@ func TestHandler_SetAuthMap_ReplacesCredentialsLive(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	req.SetBasicAuth("alice", "old-pass")
 	_, err = h.AuthRequest(req)
-	assert.Error(t, err, "old credentials must stop working once SetAuthMap replaces the map")
+	assert.Error(t, err, "old credentials must stop working once SetAuthMap replaces the map") //nolint:testifylint // deliberately non-fatal: the next phase (new creds still work) is independently diagnostic even if this fails
 
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	req.SetBasicAuth("alice", "new-pass")

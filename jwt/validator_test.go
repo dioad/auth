@@ -252,7 +252,7 @@ func TestPredicateValidator(t *testing.T) {
 	tokenString, _ := token.SignedString([]byte("secret"))
 
 	got, err := validator.ValidateToken(context.Background(), tokenString)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, mockParent.claims, got)
 
 	// Valid token with non-matching claim
@@ -261,7 +261,7 @@ func TestPredicateValidator(t *testing.T) {
 	tokenString2, _ := token2.SignedString([]byte("secret"))
 
 	_, err = validator.ValidateToken(context.Background(), tokenString2)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "predicate validation failed")
 }
 
@@ -281,7 +281,7 @@ func TestPredicateValidatorWithValidatedClaimsFallback(t *testing.T) {
 
 	// Use an invalid token string so that extractClaimsMap fails, forcing the fallback.
 	got, err := validator.ValidateToken(context.Background(), "not.a.valid.jwt")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, vc, got)
 
 	// Predicate that does not match should still fail.
@@ -289,7 +289,7 @@ func TestPredicateValidatorWithValidatedClaimsFallback(t *testing.T) {
 	validator2 := &PredicateValidator{ParentValidator: mockParent, Predicate: predicate2}
 
 	_, err = validator2.ValidateToken(context.Background(), "not.a.valid.jwt")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "predicate validation failed")
 }
 
@@ -300,13 +300,13 @@ func TestMultiValidator(t *testing.T) {
 	mv := NewMultiValidator(v1, v2)
 
 	claims, err := mv.ValidateToken(context.Background(), "some-token")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "success 2", claims)
 
 	v3 := &mockValidator{err: errors.New("fail 3")}
 	mv2 := NewMultiValidator(v1, v3)
 	_, err = mv2.ValidateToken(context.Background(), "some-token")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "token validation failed")
 }
 
@@ -343,7 +343,7 @@ func TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionErro
 		return "unused", nil
 	}))
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "resolving signature algorithms")
+	require.ErrorContains(t, err, "resolving signature algorithms")
 
 	inner := errors.Unwrap(err)
 	require.Error(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
@@ -385,7 +385,7 @@ func TestResolveKeyFunc_ReusesExplicitProvider(t *testing.T) {
 func TestResolveKeyFunc_WrapsInvalidIssuerURLError(t *testing.T) {
 	_, _, err := ResolveKeyFunc("https://issuer.example/\x7f", time.Minute, nil)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "invalid issuer URL")
+	require.ErrorContains(t, err, "invalid issuer URL")
 
 	inner := errors.Unwrap(err)
 	require.Error(t, inner, "the underlying url.Parse error must be unwrappable, not just interpolated")

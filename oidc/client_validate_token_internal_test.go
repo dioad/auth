@@ -85,6 +85,6 @@ func TestValidateToken_PropagatesUnderlyingValidationError(t *testing.T) {
 
 	claimsResult, err := client.ValidateToken(t.Context(), tokenString, []string{"test-audience"})
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "error validating token")
+	require.ErrorContains(t, err, "error validating token")
 	assert.Nil(t, claimsResult)
 }

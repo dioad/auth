@@ -527,7 +527,7 @@ func TestDecision_NilOnInfrastructureError(t *testing.T) {
 	// Pass a Capability without ':' directly (bypassing constructors).
 	d, err := a.Can(context.Background(), principal("p1", "ext.r"), authz.Capability("no-colon"))
 	require.Error(t, err)
-	assert.NotErrorIs(t, err, authz.ErrForbidden, "infrastructure error must not be ErrForbidden")
+	require.NotErrorIs(t, err, authz.ErrForbidden, "infrastructure error must not be ErrForbidden")
 	assert.Nil(t, d, "Decision must be nil for infrastructure errors")
 }
 

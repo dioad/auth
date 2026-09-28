@@ -580,7 +580,7 @@ func TestNewValidatorFromConfigWithOptions_ExplicitIssuerTakesPrecedenceOverURL(
 	}
 
 	_, err = v.ValidateToken(context.Background(), newToken(explicitIssuer))
-	assert.NoError(t, err, "validator must accept the explicitly configured issuer")
+	assert.NoError(t, err, "validator must accept the explicitly configured issuer") //nolint:testifylint // deliberately non-fatal: the complementary fallbackURL-rejected check below is independently diagnostic even if this fails
 
 	_, err = v.ValidateToken(context.Background(), newToken(fallbackURL))
 	assert.Error(t, err, "validator must not accept the URL as issuer when Issuer is explicitly set")
@@ -646,7 +646,7 @@ func TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionErro
 
 	_, err := oidc.NewValidatorFromConfigWithOptions(cfg)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "resolving signature algorithms")
+	require.ErrorContains(t, err, "resolving signature algorithms")
 
 	inner := errors.Unwrap(err)
 	require.Error(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
