@@ -29,7 +29,7 @@ func TestResolveAuthHandlerByType_JWT_RejectsRequestWithNoCredential(t *testing.
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		called = true
 	})).ServeHTTP(rr, req)
 
@@ -75,7 +75,7 @@ func TestResolveAuthHandlerByType_OIDC_RegistersLoginRoutesAndRedirects(t *testi
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
 	rr := httptest.NewRecorder()
 
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		assert.Fail(t, "next handler must not run for an unauthenticated request")
 	})).ServeHTTP(rr, req)
 

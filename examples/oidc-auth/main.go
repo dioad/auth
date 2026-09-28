@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if _, err := fmt.Fprintf(w, "Hello, authenticated user!\n"); err != nil {
 			log.Printf("error writing response: %v\n", err)
 		}

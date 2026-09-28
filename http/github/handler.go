@@ -73,7 +73,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 }
 
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
-	return authmw.Wrap(h.AuthRequest, handler, func(w http.ResponseWriter, r *http.Request, err error) {
+	return authmw.Wrap(h.AuthRequest, handler, func(w http.ResponseWriter, _ *http.Request, _ error) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }

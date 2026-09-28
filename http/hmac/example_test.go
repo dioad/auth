@@ -86,7 +86,7 @@ func ExampleClientAuth_AddAuth() {
 		},
 	})
 
-	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, "ok")
 	})))
 	defer server.Close()
@@ -133,7 +133,7 @@ func ExampleClientAuth_AddAuth_requestBinding() {
 		},
 	})
 
-	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, "verified binding")
 	})))
 	defer server.Close()

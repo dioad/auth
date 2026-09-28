@@ -359,7 +359,7 @@ func NewValidatorDebugger(v jwt.TokenValidator, opts ...DebuggerOpt) jwt.TokenVa
 }
 
 // NewMultiValidatorFromConfig creates a MultiValidator from multiple configs.
-func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...validator.Option) (jwt.TokenValidator, error) {
+func NewMultiValidatorFromConfig(configs []ValidatorConfig, _ ...validator.Option) (jwt.TokenValidator, error) {
 	var validators []jwt.TokenValidator
 	for _, cfg := range configs {
 		v, err := NewValidatorFromConfig(&cfg)

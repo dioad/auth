@@ -17,7 +17,7 @@ type mockAuthenticator struct {
 	err  error
 }
 
-func (m *mockAuthenticator) AuthenticateToken(accessToken string) (*authhttp.GitHubUserInfo, error) {
+func (m *mockAuthenticator) AuthenticateToken(_ string) (*authhttp.GitHubUserInfo, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

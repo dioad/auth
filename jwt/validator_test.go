@@ -66,7 +66,7 @@ func TestNewValidatorFromConfigWithKeyFunc(t *testing.T) {
 		SignatureAlgorithm: "RS256",
 	}
 
-	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(ctx context.Context) (any, error) {
+	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(_ context.Context) (any, error) {
 		return &key.PublicKey, nil
 	}))
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestValidatorClaimPredicate(t *testing.T) {
 		ClaimPredicate:     map[string]any{"role": "admin"},
 	}
 
-	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(ctx context.Context) (any, error) {
+	v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(_ context.Context) (any, error) {
 		return &key.PublicKey, nil
 	}))
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestValidatorClaimPredicate(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg.ClaimPredicate = map[string]any{"role": "user"}
-	v, err = NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(ctx context.Context) (any, error) {
+	v, err = NewValidatorFromConfigWithOptions(&cfg, WithValidatorKeyFunc(func(_ context.Context) (any, error) {
 		return &key.PublicKey, nil
 	}))
 	require.NoError(t, err)
@@ -159,13 +159,13 @@ func TestMultiValidatorFallsBack(t *testing.T) {
 
 	badValidator, err := NewValidatorFromConfigWithOptions(
 		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}, SignatureAlgorithm: "RS256"},
-		WithValidatorKeyFunc(func(ctx context.Context) (any, error) { return &key1.PublicKey, nil }),
+		WithValidatorKeyFunc(func(_ context.Context) (any, error) { return &key1.PublicKey, nil }),
 	)
 	require.NoError(t, err)
 
 	goodValidator, err := NewValidatorFromConfigWithOptions(
 		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}, SignatureAlgorithm: "RS256"},
-		WithValidatorKeyFunc(func(ctx context.Context) (any, error) { return &key2.PublicKey, nil }),
+		WithValidatorKeyFunc(func(_ context.Context) (any, error) { return &key2.PublicKey, nil }),
 	)
 	require.NoError(t, err)
 
@@ -465,7 +465,7 @@ type mockValidator struct {
 	err    error
 }
 
-func (m *mockValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
+func (m *mockValidator) ValidateToken(_ context.Context, _ string) (any, error) {
 	return m.claims, m.err
 }
 

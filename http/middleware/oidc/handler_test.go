@@ -88,7 +88,7 @@ func TestHandler_Wrap_RedirectsUnauthenticatedRequestToLoginPath(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		called = true
 	})).ServeHTTP(rr, req)
 
@@ -111,7 +111,7 @@ func TestHandler_Wrap_ExemptsOwnRoutesFromTheGate(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			called := false
-			h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				called = true
 				w.WriteHeader(http.StatusOK)
 			})).ServeHTTP(rr, req)
@@ -136,7 +136,7 @@ func TestHandler_Wrap_ForgedAuthorizationHeaderDoesNotBypassSessionCheck(t *test
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		called = true
 	})).ServeHTTP(rr, req)
 
@@ -156,7 +156,7 @@ func TestHandler_WithBearerPassthrough_ForwardsAuthorizationHeader(t *testing.T)
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)
@@ -221,7 +221,7 @@ func TestHandler_Wrap_RedirectsWhenOneSessionCookieMissing(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			called := false
-			h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				called = true
 				w.WriteHeader(http.StatusOK)
 			})).ServeHTTP(rr, req)
@@ -245,7 +245,7 @@ func TestHandler_Wrap_RedirectsWhenExpiryCookieIsUnparsable(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)

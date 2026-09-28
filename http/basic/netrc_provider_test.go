@@ -134,7 +134,7 @@ func TestNetrcProviderParseError(t *testing.T) {
 	}
 }
 
-func TestAddCredentialsWithNilProvider(t *testing.T) {
+func TestAddCredentialsWithNilProvider(_ *testing.T) {
 	// Ensure we handle edge cases gracefully
 	req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 
@@ -163,7 +163,7 @@ func TestClientAuthWithConfiguredCredentials(t *testing.T) {
 	assert.Equal(t, "configpass", pass)
 }
 
-func TestNetrcProviderConcurrency(t *testing.T) {
+func TestNetrcProviderConcurrency(_ *testing.T) {
 	// Test that NetrcProvider is safe for concurrent use
 	provider := &NetrcProvider{}
 

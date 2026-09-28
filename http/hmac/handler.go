@@ -196,7 +196,7 @@ func verifyTimestamp(r *http.Request, timestampHeader string, maxTimestampDiff, 
 }
 
 func (a *Handler) Wrap(handler http.Handler) http.Handler {
-	return authmw.Wrap(a.AuthRequest, handler, func(w http.ResponseWriter, r *http.Request, err error) {
+	return authmw.Wrap(a.AuthRequest, handler, func(w http.ResponseWriter, _ *http.Request, _ error) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }
