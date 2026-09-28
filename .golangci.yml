@@ -78,6 +78,16 @@ linters:
       - path: '_test\.go'
         linters:
           - noctx
+      # gosec's G101 (hardcoded credentials) false-positives on fake JWTs
+      # and struct field names like TokenEndpoint; G124 flags a cookie built
+      # to send as part of a test *request*, not a response Set-Cookie; G306
+      # fires on a file permission test deliberately writing 0644 to verify
+      # the code under test rejects it. The standalone `gosec ./...` step in
+      # the Makefile already excludes test files by default and passes
+      # clean; this mirrors that for golangci-lint's bundled gosec.
+      - path: '_test\.go'
+        linters:
+          - gosec
 
 issues:
   max-issues-per-linter: 0
