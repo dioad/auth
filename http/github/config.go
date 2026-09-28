@@ -18,7 +18,8 @@ type CommonConfig struct {
 
 // ClientConfig contains configuration for a GitHub authentication client.
 type ClientConfig struct {
-	CommonConfig                     `mapstructure:",squash"`
+	CommonConfig `mapstructure:",squash"`
+
 	AccessToken                      string `mapstructure:"access-token"`
 	AccessTokenFile                  string `mapstructure:"access-token-file"`
 	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment"`

@@ -321,6 +321,7 @@ func introspectionFromClaimsMap(rawClaims map[string]any) (IntrospectionResponse
 
 type validatorDebugger struct {
 	jwt.TokenValidator
+
 	logger zerolog.Logger
 }
 
