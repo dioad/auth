@@ -16,7 +16,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// CustomClaims represents the custom claims in a GitHub Actions OIDC token
+// CustomClaims represents the custom claims in a GitHub Actions OIDC token.
 type CustomClaims struct {
 	// GitHub actions specific
 	Actor             string `json:"actor"`
@@ -46,7 +46,7 @@ type Claims struct {
 	CustomClaims
 }
 
-// Validate implements the CustomClaims interface
+// Validate implements the CustomClaims interface.
 func (c *Claims) Validate(_ context.Context) error {
 	return nil
 }
@@ -57,10 +57,10 @@ type tokenSource struct {
 	getenv   func(string) string
 }
 
-// Opt is a function option for configuring the token source
+// Opt is a function option for configuring the token source.
 type Opt func(*tokenSource)
 
-// WithAudience sets the audience for the OIDC token
+// WithAudience sets the audience for the OIDC token.
 func WithAudience(aud string) Opt {
 	return func(ts *tokenSource) {
 		if aud != "" {
@@ -69,7 +69,7 @@ func WithAudience(aud string) Opt {
 	}
 }
 
-// WithHTTPClient sets a custom HTTP client for the token source
+// WithHTTPClient sets a custom HTTP client for the token source.
 func WithHTTPClient(client *http.Client) Opt {
 	return func(ts *tokenSource) {
 		if client != nil {
@@ -102,7 +102,7 @@ func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 	return source
 }
 
-// Token retrieves an OIDC token from GitHub Actions
+// Token retrieves an OIDC token from GitHub Actions.
 func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	getenv := ts.getenv
 	if getenv == nil {
@@ -170,7 +170,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	return decodeToken(tokenResponse.Value)
 }
 
-// decodeToken parses a JWT token and extracts expiry information
+// decodeToken parses a JWT token and extracts expiry information.
 func decodeToken(accessToken string) (*oauth2.Token, error) {
 	tokenParts := strings.Split(accessToken, ".")
 	if len(tokenParts) != 3 {

@@ -423,7 +423,7 @@ func validatedClaimsToMapClaims(vc *jwtvalidator.ValidatedClaims) (jwt.MapClaims
 	return m, nil
 }
 
-// Internal helper (simplified from net/oidc/util.go)
+// Internal helper (simplified from net/oidc/util.go).
 func extractClaimsMap(tokenString string) (jwt.MapClaims, error) {
 	parts := strings.Split(tokenString, ".")
 	if len(parts) < 2 {

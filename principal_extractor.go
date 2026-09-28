@@ -134,7 +134,7 @@ type PrincipalSource interface {
 	IsService(ctx context.Context) bool
 }
 
-// jwtPrincipalSource extracts principal from JWT token claims via auth/http/context package
+// jwtPrincipalSource extracts principal from JWT token claims via auth/http/context package.
 type jwtPrincipalSource struct {
 	// RoleMapper maps generic JWT claims to internal roles.
 	// When nil, provider-supplied roles from claim maps are still returned.
@@ -304,7 +304,7 @@ func (s *oidcPrincipalSource) IsService(ctx context.Context) bool {
 	return false
 }
 
-// githubPrincipalSource extracts principal from GitHub user info
+// githubPrincipalSource extracts principal from GitHub user info.
 type githubPrincipalSource struct{}
 
 func (s *githubPrincipalSource) Extract(ctx context.Context) (string, error) {
@@ -341,7 +341,7 @@ func (s *githubPrincipalSource) Roles(_ context.Context) []string { return nil }
 
 func (s *githubPrincipalSource) IsService(_ context.Context) bool { return false }
 
-// defaultPrincipalExtractor implements PrincipalExtractor with a fallback chain
+// defaultPrincipalExtractor implements PrincipalExtractor with a fallback chain.
 type defaultPrincipalExtractor struct {
 	sources []PrincipalSource
 }
@@ -511,7 +511,7 @@ func toStringSlice(value any) []string {
 	}
 }
 
-// NewPrincipalExtractor creates a PrincipalExtractor with the provided sources, in order
+// NewPrincipalExtractor creates a PrincipalExtractor with the provided sources, in order.
 func NewPrincipalExtractor(sources ...PrincipalSource) PrincipalExtractor {
 	return &defaultPrincipalExtractor{
 		sources: sources,

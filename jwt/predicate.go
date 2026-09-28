@@ -15,12 +15,12 @@ type ClaimPredicate interface {
 	String() string
 }
 
-// And combines the children with an AND
+// And combines the children with an AND.
 func And(children ...ClaimPredicate) ClaimPredicate {
 	return &andPredicate{Children: children}
 }
 
-// Or combines the children with an OR
+// Or combines the children with an OR.
 func Or(children ...ClaimPredicate) ClaimPredicate {
 	return &orPredicate{Children: children}
 }
@@ -73,7 +73,7 @@ func (o *orPredicate) String() string {
 	return strings.Join(childrenStrings, " OR ")
 }
 
-// ClaimKey is a claim key predicate
+// ClaimKey is a claim key predicate.
 type ClaimKey struct {
 	Key   string
 	Value any
@@ -107,7 +107,7 @@ func (p *staticPredicate) String() string {
 	return strconv.FormatBool(p.result)
 }
 
-// ParseClaimPredicates parses the input into a claim predicate
+// ParseClaimPredicates parses the input into a claim predicate.
 func ParseClaimPredicates(input any) ClaimPredicate {
 	switch v := input.(type) {
 	case map[string]any:

@@ -228,7 +228,7 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 }
 
 const (
-	// expectedMaxSizeErrorMessage is the expected error message when request size limit is exceeded
+	// expectedMaxSizeErrorMessage is the expected error message when request size limit is exceeded.
 	expectedMaxSizeErrorMessage = "exceeds maximum size limit"
 )
 

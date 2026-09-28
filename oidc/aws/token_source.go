@@ -54,7 +54,7 @@ type Claims struct {
 // Validate implements the jwtvalidator.Claims interface. It can be used to perform custom validation on the claims if needed.
 func (c *Claims) Validate(_ context.Context) error { return nil }
 
-// tokenSource implements oauth2.TokenSource to retrieve OIDC tokens from AWS STS
+// tokenSource implements oauth2.TokenSource to retrieve OIDC tokens from AWS STS.
 type tokenSource struct {
 	audience         string
 	signingAlgorithm string
@@ -72,7 +72,7 @@ type stsClient interface {
 	GetWebIdentityToken(ctx context.Context, params *sts.GetWebIdentityTokenInput, optFns ...func(*sts.Options)) (*sts.GetWebIdentityTokenOutput, error)
 }
 
-// Token retrieves a new OIDC token from the AWS STS GetWebIdentityToken API
+// Token retrieves a new OIDC token from the AWS STS GetWebIdentityToken API.
 func (c *tokenSource) Token() (*oauth2.Token, error) {
 	c.initOnce.Do(func() {
 		if c.initSTSOnce == nil {
@@ -114,7 +114,7 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
-// WithAudience sets the audience for the OIDC token
+// WithAudience sets the audience for the OIDC token.
 func WithAudience(aud string) Opt {
 	return func(ts *tokenSource) {
 		if aud != "" {
@@ -123,7 +123,7 @@ func WithAudience(aud string) Opt {
 	}
 }
 
-// WithSigningAlgorithm sets the signing algorithm for the OIDC token
+// WithSigningAlgorithm sets the signing algorithm for the OIDC token.
 func WithSigningAlgorithm(alg string) Opt {
 	return func(ts *tokenSource) {
 		if alg != "" {
@@ -132,7 +132,7 @@ func WithSigningAlgorithm(alg string) Opt {
 	}
 }
 
-// WithAWSConfig sets the AWS configuration for the token source
+// WithAWSConfig sets the AWS configuration for the token source.
 func WithAWSConfig(cfg aws.Config) Opt {
 	return func(ts *tokenSource) {
 		ts.awsConfig = &cfg

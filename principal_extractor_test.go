@@ -14,8 +14,7 @@ import (
 	"github.com/dioad/auth/oidc"
 )
 
-// TestDefaultPrincipalExtractor_FallbackChain tests that sources are tried in order
-// and the first successful extraction is returned
+// TestDefaultPrincipalExtractor_FallbackChain tests that sources are tried in order and the first successful extraction is returned.
 func TestDefaultPrincipalExtractor_FallbackChain(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -130,7 +129,7 @@ func TestDefaultPrincipalExtractor_FallbackChain(t *testing.T) {
 	}
 }
 
-// TestDefaultPrincipalExtractor_Claims tests that claims are captured correctly
+// TestDefaultPrincipalExtractor_Claims tests that claims are captured correctly.
 func TestDefaultPrincipalExtractor_Claims(t *testing.T) {
 	testClaims := map[string]any{
 		"email": "user@example.com",
@@ -158,7 +157,7 @@ func TestDefaultPrincipalExtractor_Claims(t *testing.T) {
 	assert.Equal(t, "admin", principalCtx.Attributes["role"])
 }
 
-// TestDefaultPrincipalExtractor_SourcePriority tests that sources are tried in the exact order provided
+// TestDefaultPrincipalExtractor_SourcePriority tests that sources are tried in the exact order provided.
 func TestDefaultPrincipalExtractor_SourcePriority(t *testing.T) {
 	// All sources return a principal, but we should get the first one
 	extractor := &defaultPrincipalExtractor{
@@ -185,8 +184,8 @@ type testValidatedCustomClaims struct {
 
 func (c *testValidatedCustomClaims) Validate(_ context.Context) error { return nil }
 
-// TestOIDCPrincipalSource_NilClaims tests that Extract doesn't panic when claims are nil
-// This is a regression test for a bug where claims.Subject was accessed without nil check
+// TestOIDCPrincipalSource_NilClaims tests that Extract doesn't panic when claims are nil.
+// This is a regression test for a bug where claims.Subject was accessed without nil check.
 func TestOIDCPrincipalSource_NilClaims(t *testing.T) {
 	source := &oidcPrincipalSource{}
 
@@ -201,7 +200,7 @@ func TestOIDCPrincipalSource_NilClaims(t *testing.T) {
 	assert.Empty(t, principal)
 }
 
-// TestOIDCPrincipalSource_WithValidClaims tests that Extract works with valid claims
+// TestOIDCPrincipalSource_WithValidClaims tests that Extract works with valid claims.
 func TestOIDCPrincipalSource_WithValidClaims(t *testing.T) {
 	source := &oidcPrincipalSource{}
 

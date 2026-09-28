@@ -33,13 +33,13 @@ const (
 
 // CanonicalData generates the string to be signed based on the request.
 // It follows a strict format to ensure both client and server produce the same string:
-// 1. HTTP Method (e.g., POST)
-// 2. HTTP Path with query parameters (e.g., /api/data?id=123)
-// 3. Timestamp (decimal string)
-// 4. Principal ID
-// 5. Comma-separated list of signed header names
-// 6. Each signed header as "name:value" (header values are trimmed of leading/trailing whitespace)
-// 7. Request body
+// 1. HTTP Method (e.g., POST).
+// 2. HTTP Path with query parameters (e.g., /api/data?id=123).
+// 3. Timestamp (decimal string).
+// 4. Principal ID.
+// 5. Comma-separated list of signed header names.
+// 6. Each signed header as "name:value" (header values are trimmed of leading/trailing whitespace).
+// 7. Request body.
 func CanonicalData(r *http.Request, principal string, timestamp string, signedHeaders []string, body []byte) string {
 	var b strings.Builder
 
