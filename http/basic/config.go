@@ -1,5 +1,7 @@
 package basic
 
+// ClientConfig configures HTTP Basic credentials for an outgoing client,
+// either directly (User/Password) or via a netrc file.
 type ClientConfig struct {
 	// https://everything.curl.dev/usingcurl/netrc
 	//
@@ -11,6 +13,7 @@ type ClientConfig struct {
 	Password  string `mapstructure:"password"`
 }
 
+// ServerConfig configures HTTP Basic authentication for a server.
 type ServerConfig struct {
 	AllowInsecureHTTP bool     `mapstructure:"allow-insecure-http"`
 	HTPasswdFile      string   `mapstructure:"htpasswd-file"`

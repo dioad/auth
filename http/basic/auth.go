@@ -15,11 +15,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// BasicAuthPair holds a username and its bcrypt-hashed password.
+//
+//nolint:revive // stutters, but is used externally (e.g. dioad/connect) as basic.BasicAuthPair; renaming is a breaking change
 type BasicAuthPair struct {
 	User           string
 	HashedPassword string
 }
 
+// NewBasicAuthPairWithPlainPassword hashes password and returns a BasicAuthPair for user.
 func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, error) {
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
@@ -29,6 +33,7 @@ func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, er
 	return BasicAuthPair{User: user, HashedPassword: hashedPassword}, nil
 }
 
+// VerifyPassword reports whether password matches p's stored hash.
 func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	byteHash := []byte(p.HashedPassword)
 	err := bcrypt.CompareHashAndPassword(byteHash, []byte(password))
@@ -39,6 +44,8 @@ func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	return true, nil
 }
 
+// ClientAuth adds HTTP Basic credentials to outgoing requests, resolving
+// them from Config or, failing that, a netrc file.
 type ClientAuth struct {
 	Config        ClientConfig
 	user          string
@@ -46,6 +53,7 @@ type ClientAuth struct {
 	netrcProvider *NetrcProvider
 }
 
+// HTTPClient returns an *http.Client that authenticates every request with a's credentials.
 func (a *ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &RoundTripper{
@@ -55,6 +63,8 @@ func (a *ClientAuth) HTTPClient() *http.Client {
 	}
 }
 
+// AddAuth sets the Basic auth header on req, resolving credentials from
+// a.Config.User/Password or, if unset, the matching netrc entry for req's host.
 func (a *ClientAuth) AddAuth(req *http.Request) error {
 	// Initialize netrcProvider if not set
 	if a.netrcProvider == nil {
@@ -90,6 +100,8 @@ func hashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
+// LoadBasicAuthFromFile reads an htpasswd-style file at filePath into an
+// AuthMap. The file must be readable only by its owner (mode 0600 or 0400).
 func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	expFilePath, err := homedir.Expand(filePath)
 	if err != nil {
@@ -130,12 +142,14 @@ func LoadBasicAuthFromFileOrEmpty(filePath string) (AuthMap, error) {
 	return authMap, err
 }
 
+// LoadBasicAuthFromReader reads htpasswd-style "user:hash" lines from reader into an AuthMap.
 func LoadBasicAuthFromReader(reader io.Reader) AuthMap {
 	scanner := bufio.NewScanner(reader)
 
 	return LoadBasicAuthFromScanner(scanner)
 }
 
+// LoadBasicAuthFromScanner reads htpasswd-style "user:hash" lines from scanner into an AuthMap.
 func LoadBasicAuthFromScanner(scanner *bufio.Scanner) AuthMap {
 	userMap := make(AuthMap)
 	for scanner.Scan() {

@@ -30,6 +30,7 @@ type ResourceAuthoriser struct {
 	DefaultAction string
 }
 
+// Scope identifies a service/resource/action permission grant or requirement.
 type Scope struct {
 	Service  string
 	Resource string
@@ -40,6 +41,8 @@ func (s *Scope) String() string {
 	return strings.Join([]string{s.Service, s.Resource, s.Action}, ":")
 }
 
+// RequireScope returns middleware that rejects requests whose context scopes
+// (see ScopesFromContext) don't grant resource/action on a's Service.
 func (a *ResourceAuthoriser) RequireScope(resource, action string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +68,7 @@ func (a *ResourceAuthoriser) RequireScope(resource, action string) func(http.Han
 	}
 }
 
+// ScopesMatch reports whether any of subjects grants target (see ScopeMatch).
 func ScopesMatch(subjects []*Scope, target *Scope) bool {
 	for _, subject := range subjects {
 		if ScopeMatch(subject, target) {
@@ -74,6 +78,8 @@ func ScopesMatch(subjects []*Scope, target *Scope) bool {
 	return false
 }
 
+// ScopeMatch reports whether subject grants target, treating "*" in any
+// field of subject as a wildcard for that field.
 func ScopeMatch(subject, target *Scope) bool {
 	if subject.Service != "*" && subject.Service != target.Service {
 		return false
@@ -90,11 +96,14 @@ func ScopeMatch(subject, target *Scope) bool {
 // Helper types/functions for context management.
 type contextServiceScopesKey struct{}
 
+// ScopesFromContext returns the scopes previously attached to ctx via
+// NewContextWithScopes, and whether any were found.
 func ScopesFromContext(ctx context.Context) ([]*Scope, bool) {
 	s, ok := ctx.Value(contextServiceScopesKey{}).([]*Scope)
 	return s, ok
 }
 
+// NewContextWithScopes returns a new context carrying scopes, retrievable via ScopesFromContext.
 func NewContextWithScopes(ctx context.Context, scopes []*Scope) context.Context {
 	return context.WithValue(ctx, contextServiceScopesKey{}, scopes)
 }

@@ -44,6 +44,7 @@ func (h *Handler) WithRequireToken(v bool) *Handler {
 	return h
 }
 
+// Wrap wraps next with bearer JWT authentication middleware.
 func (h *Handler) Wrap(next http.Handler) http.Handler {
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
 		jsr := json.NewResponseFromRequest(w, r)

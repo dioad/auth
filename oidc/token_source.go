@@ -18,6 +18,9 @@ import (
 // TokenSourceFactory creates a token source from config.
 type TokenSourceFactory func(cfg ClientConfig) (oauth2.TokenSource, error)
 
+// ErrNoIdentity is returned when ClientConfig has neither a recognised
+// platform type, a token file, nor client credentials to build a token
+// source from.
 var (
 	ErrNoIdentity = errors.New("no identity information found in config")
 )

@@ -14,6 +14,8 @@ import (
 	"github.com/dioad/auth/http/authmw"
 )
 
+// TokenAuthenticator verifies a GitHub access token and returns the
+// associated user info.
 type TokenAuthenticator interface {
 	AuthenticateToken(accessToken string) (*authhttp.GitHubUserInfo, error)
 }
@@ -30,6 +32,7 @@ func NewHandler(cfg ServerConfig) *Handler {
 	}
 }
 
+// NewHandlerWithAuthenticator creates a new GitHub authentication handler using the provided authenticator.
 func NewHandlerWithAuthenticator(authenticator TokenAuthenticator) *Handler {
 	return &Handler{
 		Authenticator: authenticator,
@@ -72,6 +75,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	return ctx, nil
 }
 
+// Wrap wraps handler with GitHub token authentication middleware.
 func (h *Handler) Wrap(handler http.Handler) http.Handler {
 	return authmw.Wrap(h.AuthRequest, handler, func(w http.ResponseWriter, _ *http.Request, _ error) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)

@@ -79,6 +79,8 @@ type ClaimKey struct {
 	Value any
 }
 
+// Validate reports whether claims[c.Key] equals c.Value, or (for an array
+// claim) contains c.Value.
 func (c *ClaimKey) Validate(claims jwt.MapClaims) bool {
 	if v, ok := claims[c.Key]; ok {
 		switch v := v.(type) {

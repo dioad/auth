@@ -11,6 +11,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// NewUnixSocketClient returns an *http.Client that dials the Unix socket at
+// path regardless of the request's network or address.
 func NewUnixSocketClient(path string) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
@@ -22,6 +24,8 @@ func NewUnixSocketClient(path string) *http.Client {
 	}
 }
 
+// NewHTTPClient creates an *http.Client that authenticates with a Fly.io
+// OIDC token, fetching one immediately to fail fast on misconfiguration.
 func NewHTTPClient(ctx context.Context, opts ...Opt) (*http.Client, error) {
 	ts := NewTokenSource(opts...)
 	_, err := ts.Token()

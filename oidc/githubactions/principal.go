@@ -80,6 +80,7 @@ func (s *PrincipalSource) Extract(ctx context.Context) (string, error) {
 	return oidcutil.GenericExtract[Claims](ctx, HasValidClaims)
 }
 
+// Name returns "githubactions".
 func (s *PrincipalSource) Name() string {
 	return "githubactions"
 }
