@@ -166,7 +166,7 @@ func (s *jwtPrincipalSource) Claims(ctx context.Context) map[string]any {
 			result["iss"] = registered.Issuer
 		}
 		if len(registered.Audience) > 0 {
-			result["aud"] = []string(registered.Audience)
+			result["aud"] = registered.Audience
 		}
 	}
 
@@ -460,7 +460,7 @@ func genericClaimsFromValidatedContext(ctx context.Context) map[string]any {
 		result["iss"] = vc.RegisteredClaims.Issuer
 	}
 	if len(vc.RegisteredClaims.Audience) > 0 {
-		result["aud"] = []string(vc.RegisteredClaims.Audience)
+		result["aud"] = vc.RegisteredClaims.Audience
 	}
 
 	if vc.CustomClaims == nil {

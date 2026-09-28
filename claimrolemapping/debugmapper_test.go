@@ -193,7 +193,7 @@ func TestEvalMapping_WildcardEmptyString(t *testing.T) {
 }
 
 func TestEvalMapping_WildcardNonEmptyMatches(t *testing.T) {
-	matched, _, _, _ := evalMapping(
+	matched, _, _, _ := evalMapping( //nolint:dogsled // only the match result matters here; other returns covered by TestEvalMapping_ValueMismatch
 		map[string]any{"app_name": "my-app"},
 		map[string]string{"app_name": "*"},
 	)
@@ -216,7 +216,7 @@ func TestEvalMapping_ValueMismatch(t *testing.T) {
 // must accept an array claim (e.g. Keycloak's "groups"/"roles" list, decoded
 // as []any) the same way mapper.MatchesValue does, not just a scalar string.
 func TestEvalMapping_ArrayClaimContainsMatch(t *testing.T) {
-	matched, _, _, _ := evalMapping(
+	matched, _, _, _ := evalMapping( //nolint:dogsled // only the match result matters here; other returns covered by TestEvalMapping_ArrayClaimNoMatchReportsElements
 		map[string]any{"groups": []any{"plan:pro", "other-group"}},
 		map[string]string{"groups": "plan:pro"},
 	)
@@ -235,7 +235,7 @@ func TestEvalMapping_ArrayClaimNoMatchReportsElements(t *testing.T) {
 }
 
 func TestEvalMapping_ArrayClaimWildcardMatchesNonEmpty(t *testing.T) {
-	matched, _, _, _ := evalMapping(
+	matched, _, _, _ := evalMapping( //nolint:dogsled // only the match result matters here; other returns covered by TestEvalMapping_ArrayClaimNoMatchReportsElements
 		map[string]any{"groups": []any{"plan:free"}},
 		map[string]string{"groups": "*"},
 	)

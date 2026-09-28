@@ -23,7 +23,7 @@ func TestConfigAliases_CompatibleWithCanonicalOIDCConfig(t *testing.T) {
 		},
 	}
 
-	canonicalCfg := authoidc.Config(httpCfg)
+	canonicalCfg := httpCfg
 	provider := canonicalCfg.ProviderMap["oidc"]
 
 	require.Equal(t, "client-id", provider.ClientID, "expected client id to round-trip")
