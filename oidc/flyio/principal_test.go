@@ -18,7 +18,7 @@ func TestExtract_WithFlyioClaims(t *testing.T) {
 		CustomClaims: CustomClaims{
 			AppName:   "my-app",
 			OrgName:   "my-org",
-			MachineId: "machine-123",
+			MachineID: "machine-123",
 		},
 	}
 
@@ -82,7 +82,7 @@ func TestIsService(t *testing.T) {
 		{
 			name: "with flyio claims",
 			claims: &Claims{
-				CustomClaims: CustomClaims{MachineId: "machine-123"},
+				CustomClaims: CustomClaims{MachineID: "machine-123"},
 			},
 			wantTrue: true,
 		},
@@ -110,11 +110,11 @@ func TestIsService(t *testing.T) {
 func TestClaims(t *testing.T) {
 	claims := &Claims{
 		CustomClaims: CustomClaims{
-			AppId:          "app-123",
+			AppID:          "app-123",
 			AppName:        "my-app",
-			OrgId:          "org-456",
+			OrgID:          "org-456",
 			OrgName:        "my-org",
-			MachineId:      "machine-789",
+			MachineID:      "machine-789",
 			MachineName:    "prod-vm-1",
 			MachineVersion: "v1.0",
 			Image:          "image-digest-123",

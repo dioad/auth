@@ -14,7 +14,7 @@ import (
 	"github.com/dioad/auth/testutil"
 )
 
-// These tests use a mock OIDC identity provider (testutil.MockIdP) that serves
+// These tests use a mock OIDC identity provider (testutil.MockIDP) that serves
 // a discovery document and JWKS endpoint locally. Each test creates a signed
 // JWT with specific characteristics so that you can set breakpoints and step
 // through the verification logic in GoLand.
@@ -30,7 +30,7 @@ import (
 // TestVerifyDebug_ValidToken verifies end-to-end that a correctly signed token
 // passes verification against the mock IdP's JWKS endpoint.
 func TestVerifyDebug_ValidToken(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -68,7 +68,7 @@ func TestVerifyDebug_ValidToken(t *testing.T) {
 // TestVerifyDebug_ExpiredToken creates a token that expired in the past so you
 // can debug how the validator reports expiry errors.
 func TestVerifyDebug_ExpiredToken(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -89,7 +89,7 @@ func TestVerifyDebug_ExpiredToken(t *testing.T) {
 // TestVerifyDebug_WrongAudience creates a token with one audience but validates
 // against a different audience, so you can debug audience mismatch errors.
 func TestVerifyDebug_WrongAudience(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -109,7 +109,7 @@ func TestVerifyDebug_WrongAudience(t *testing.T) {
 // TestVerifyDebug_WrongIssuer creates a valid token but verifies it against a
 // different issuer URL, so you can debug issuer mismatch errors.
 func TestVerifyDebug_WrongIssuer(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -130,7 +130,7 @@ func TestVerifyDebug_WrongIssuer(t *testing.T) {
 // TestVerifyDebug_HeaderAndKeyDetails verifies that the token header details
 // and JWKS key details can be decoded and compared for debugging key mismatches.
 func TestVerifyDebug_HeaderAndKeyDetails(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -183,7 +183,7 @@ func TestVerifyDebug_HeaderAndKeyDetails(t *testing.T) {
 // TestVerifyDebug_VerifyTokenFullFlow exercises the top-level verifyToken
 // function that auto-extracts issuer and audience from claims.
 func TestVerifyDebug_VerifyTokenFullFlow(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -290,7 +290,7 @@ func TestVerifyDebug_RawToken(t *testing.T) {
 // signToken creates a signed JWT using the mock IdP's private key with the
 // given claims. The token header includes kid "test-key" matching the mock
 // IdP's JWKS.
-func signToken(t *testing.T, idp *testutil.MockIdP, claims jwt.MapClaims) string {
+func signToken(t *testing.T, idp *testutil.MockIDP, claims jwt.MapClaims) string {
 	t.Helper()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

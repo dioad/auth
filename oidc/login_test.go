@@ -29,7 +29,7 @@ func (d *countingDoer) Do(req *http.Request) (*http.Response, error) {
 // actually applied to the constructed Client, not silently dropped - the gap
 // that motivated widening its signature.
 func TestNewClientFromConfig_AppliesAdditionalOpts(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	defer idp.Close()
 
@@ -50,7 +50,7 @@ func TestNewClientFromConfig_AppliesAdditionalOpts(t *testing.T) {
 }
 
 func TestOIDCLoginFlow(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	defer idp.Close()
 

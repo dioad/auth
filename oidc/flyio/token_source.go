@@ -19,14 +19,14 @@ import (
 // CustomClaims represents the custom claims in a Fly.io OIDC token
 type CustomClaims struct {
 	// Fly.io specific claims
-	AppId          string `json:"app_id"`
+	AppID          string `json:"app_id"`
 	AppName        string `json:"app_name"`
 	Image          string `json:"image"`
 	ImageDigest    string `json:"image_digest"`
-	MachineId      string `json:"machine_id"`
+	MachineID      string `json:"machine_id"`
 	MachineName    string `json:"machine_name"`
 	MachineVersion string `json:"machine_version"`
-	OrgId          string `json:"org_id"`
+	OrgID          string `json:"org_id"`
 	OrgName        string `json:"org_name"`
 	Region         string `json:"region"`
 }

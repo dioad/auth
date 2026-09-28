@@ -328,7 +328,7 @@ func TestHandler_Callback_RejectsEmptyStateCookieValue(t *testing.T) {
 // undetected, since no test ever exercises the success path through those
 // guards.
 func TestHandler_Callback_SucceedsWithMatchingStateAndValidCode(t *testing.T) {
-	idp, err := testutil.NewMockIdP()
+	idp, err := testutil.NewMockIDP()
 	require.NoError(t, err)
 	defer idp.Close()
 
