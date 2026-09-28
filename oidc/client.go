@@ -244,7 +244,7 @@ func (c *Client) ClientID() string {
 func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
 	ge, ok := c.endpoint.(GothEndpoint)
 	if !ok {
-		return nil, fmt.Errorf("endpoint does not support goth provider")
+		return nil, errors.New("endpoint does not support goth provider")
 	}
 
 	return ge.GothProvider(c.clientID, c.clientSecret, callbackURL, scopes...)
@@ -278,7 +278,7 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 		c.keyFunc = c.jwksProvider.KeyFunc
 	}
 	if c.keyFunc == nil {
-		return nil, fmt.Errorf("key function not configured")
+		return nil, errors.New("key function not configured")
 	}
 	algorithms, err := c.effectiveValidatingSignatureAlgorithms()
 	if err != nil {
@@ -351,7 +351,7 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...
 	}
 	tokenURL := discoveredConfiguration.TokenEndpoint
 	if tokenURL == "" {
-		return nil, fmt.Errorf("token endpoint not available")
+		return nil, errors.New("token endpoint not available")
 	}
 
 	data := url.Values{}
@@ -381,7 +381,7 @@ func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string
 	}
 	authURL := discoveredConfiguration.AuthorizationEndpoint
 	if authURL == "" {
-		return "", fmt.Errorf("authorization endpoint not available")
+		return "", errors.New("authorization endpoint not available")
 	}
 
 	data := url.Values{}
@@ -408,7 +408,7 @@ func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redire
 	}
 	tokenURL := discoveredConfiguration.TokenEndpoint
 	if tokenURL == "" {
-		return nil, fmt.Errorf("token endpoint not available")
+		return nil, errors.New("token endpoint not available")
 	}
 
 	data := url.Values{}
@@ -507,7 +507,7 @@ func (c *Client) ClientCredentialsToken(ctx context.Context, opts ...RequestOpt)
 	}
 	tokenURL := discoveredConfiguration.TokenEndpoint
 	if tokenURL == "" {
-		return nil, fmt.Errorf("token endpoint not available")
+		return nil, errors.New("token endpoint not available")
 	}
 
 	data := url.Values{}
@@ -537,7 +537,7 @@ func (c *Client) IntrospectToken(ctx context.Context, token string) (*Introspect
 	}
 	introspectionURL := discoveredConfiguration.IntrospectionEndpoint
 	if introspectionURL == "" {
-		return nil, fmt.Errorf("introspection endpoint not available")
+		return nil, errors.New("introspection endpoint not available")
 	}
 
 	data := url.Values{}
@@ -605,7 +605,7 @@ func ExtractClaims[T jwtvalidator.CustomClaims](claims any) (jwtvalidator.Regist
 	validatedClaims, ok := claims.(*jwtvalidator.ValidatedClaims)
 	if !ok {
 		return zeroRegisteredClaims, zeroCustomClaims,
-			fmt.Errorf("error extracting claims")
+			errors.New("error extracting claims")
 	}
 
 	if validatedClaims.CustomClaims == nil {

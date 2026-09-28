@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -112,10 +113,10 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	requestURL := getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
 
 	if requestToken == "" {
-		return nil, fmt.Errorf("ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable not set")
+		return nil, errors.New("ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable not set")
 	}
 	if requestURL == "" {
-		return nil, fmt.Errorf("ACTIONS_ID_TOKEN_REQUEST_URL environment variable not set")
+		return nil, errors.New("ACTIONS_ID_TOKEN_REQUEST_URL environment variable not set")
 	}
 
 	// Build the request URL with audience parameter if provided
@@ -131,7 +132,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	// Create the HTTP request
-	req, err := http.NewRequest("GET", tokenURL.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, tokenURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
@@ -163,7 +164,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	if tokenResponse.Value == "" {
-		return nil, fmt.Errorf("empty token received from GitHub Actions")
+		return nil, errors.New("empty token received from GitHub Actions")
 	}
 
 	return decodeToken(tokenResponse.Value)
@@ -173,7 +174,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 func decodeToken(accessToken string) (*oauth2.Token, error) {
 	tokenParts := strings.Split(accessToken, ".")
 	if len(tokenParts) != 3 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	payload, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
@@ -188,7 +189,7 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 
 	expiry, ok := tokenData["exp"].(float64)
 	if !ok {
-		return nil, fmt.Errorf("failed to extract expiry from token")
+		return nil, errors.New("failed to extract expiry from token")
 	}
 
 	// Trim any trailing whitespace from the token (including newlines)

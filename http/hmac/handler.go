@@ -78,7 +78,7 @@ func readAndValidateBody(r *http.Request, maxSize int) ([]byte, error) {
 	// Check if there is more data beyond the maximum allowed size.
 	extraBuf := make([]byte, 1)
 	n, err := r.Body.Read(extraBuf)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("failed to read request body: %w", err)
 	}
 	if n > 0 {

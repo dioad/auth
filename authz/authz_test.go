@@ -2,7 +2,6 @@ package authz_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -317,7 +316,7 @@ func TestCasbinAuthorizer_ErrForbiddenSentinel(t *testing.T) {
 		authz.Permission("tunnel", "write"))
 
 	// Must be inspectable with errors.Is — not just equality.
-	assert.True(t, errors.Is(err, authz.ErrForbidden))
+	assert.ErrorIs(t, err, authz.ErrForbidden)
 }
 
 func TestCasbinAuthorizer_MissingColonReturnsError(t *testing.T) {
@@ -528,7 +527,7 @@ func TestDecision_NilOnInfrastructureError(t *testing.T) {
 	// Pass a Capability without ':' directly (bypassing constructors).
 	d, err := a.Can(context.Background(), principal("p1", "ext.r"), authz.Capability("no-colon"))
 	require.Error(t, err)
-	assert.False(t, errors.Is(err, authz.ErrForbidden), "infrastructure error must not be ErrForbidden")
+	assert.NotErrorIs(t, err, authz.ErrForbidden, "infrastructure error must not be ErrForbidden")
 	assert.Nil(t, d, "Decision must be nil for infrastructure errors")
 }
 

@@ -4,7 +4,7 @@ package oidc
 import (
 	stdctx "context"
 	"encoding/gob"
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -51,7 +51,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 
 	data, ok := session.Values["data"].(SessionData)
 	if !ok {
-		return r.Context(), fmt.Errorf("missing session data")
+		return r.Context(), errors.New("missing session data")
 	}
 
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(r.Context(), data.Principal)
@@ -79,7 +79,7 @@ func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*Session
 
 	data, ok := session.Values["data"].(SessionData)
 	if !ok {
-		return nil, fmt.Errorf("missing session data")
+		return nil, errors.New("missing session data")
 	}
 	return &data, nil
 }
@@ -190,7 +190,7 @@ func (*Handler) handleLogout(w http.ResponseWriter, req *http.Request) error {
 	}
 	dataValue, ok := session.Values["data"]
 	if !ok {
-		return fmt.Errorf("no session data found")
+		return errors.New("no session data found")
 	}
 	data := dataValue.(SessionData)
 

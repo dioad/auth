@@ -1,7 +1,7 @@
 package oidc
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -53,19 +53,19 @@ type BrowserConfig struct {
 // flows and enforces secure-cookie sessions.
 func (c BrowserConfig) Validate() error {
 	if strings.TrimSpace(c.Issuer) == "" {
-		return fmt.Errorf("issuer is required")
+		return errors.New("issuer is required")
 	}
 	if strings.TrimSpace(c.ClientID) == "" {
-		return fmt.Errorf("client-id is required")
+		return errors.New("client-id is required")
 	}
 	if strings.TrimSpace(c.ClientSecret) == "" {
-		return fmt.Errorf("client-secret is required")
+		return errors.New("client-secret is required")
 	}
 	if strings.TrimSpace(c.RedirectURI) == "" {
-		return fmt.Errorf("redirect-uri is required")
+		return errors.New("redirect-uri is required")
 	}
 	if !c.CookieSecure {
-		return fmt.Errorf("cookie-secure must be true for authenticated browser OIDC")
+		return errors.New("cookie-secure must be true for authenticated browser OIDC")
 	}
 	return nil
 }

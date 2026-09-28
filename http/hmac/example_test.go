@@ -45,7 +45,7 @@ func Example() {
 		},
 	}
 
-	req, err := http.NewRequest("POST", server.URL+"/api", bytes.NewBufferString(requestBody))
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/api", bytes.NewBufferString(requestBody))
 	if err != nil {
 		fmt.Printf("Error creating request: %v\n", err)
 		return
@@ -91,7 +91,7 @@ func ExampleClientAuth_AddAuth() {
 	})))
 	defer server.Close()
 
-	req, _ := http.NewRequest("POST", server.URL, bytes.NewBufferString("data"))
+	req, _ := http.NewRequest(http.MethodPost, server.URL, bytes.NewBufferString("data"))
 	req.Header.Set("X-Custom-Header", "important-value")
 
 	clientAuth := hmac.ClientAuth{
@@ -138,9 +138,9 @@ func ExampleClientAuth_AddAuth_requestBinding() {
 	})))
 	defer server.Close()
 
-	req, _ := http.NewRequest("GET", server.URL, nil)
+	req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
 	// Add the token we want to bind
-	req.Header.Set("X-JWT-Token", jwtToken)
+	req.Header.Set("X-Jwt-Token", jwtToken)
 
 	clientAuth := hmac.ClientAuth{
 		Config: hmac.ClientConfig{

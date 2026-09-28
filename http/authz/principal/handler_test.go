@@ -25,7 +25,7 @@ func TestHandlerFunc(t *testing.T) {
 
 	handlerFunc := HandlerFunc(cfg, nextHandler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "user@example.com")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -56,7 +56,7 @@ func TestAuthRequest_Authorized(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "alice@example.com")
 	req = req.WithContext(ctx)
 
@@ -73,7 +73,7 @@ func TestAuthRequest_Unauthorised(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "eve@example.com")
 	req = req.WithContext(ctx)
 
@@ -89,7 +89,7 @@ func TestAuthRequest_NoPrincipal(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 
 	_, err := handler.AuthRequest(req)
 
@@ -104,7 +104,7 @@ func TestAuthRequest_DenyList(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "banned@example.com")
 	req = req.WithContext(ctx)
 
@@ -127,7 +127,7 @@ func TestWrap_Authorised(t *testing.T) {
 
 	wrappedHandler := handler.Wrap(nextHandler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "admin@example.com")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -152,7 +152,7 @@ func TestWrap_Forbidden(t *testing.T) {
 
 	wrappedHandler := handler.Wrap(nextHandler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	ctx := authhttp.ContextWithAuthenticatedPrincipal(req.Context(), "user@example.com")
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func TestWrap_NoPrincipal(t *testing.T) {
 
 	wrappedHandler := handler.Wrap(nextHandler)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	wrappedHandler.ServeHTTP(w, req)

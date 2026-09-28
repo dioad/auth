@@ -65,7 +65,7 @@ func TestMockIdPAuthorizeRedirect(t *testing.T) {
 	}
 
 	redirectURI := "https://example.com/callback"
-	req, err := http.NewRequest("GET", idp.Issuer+"/authorize", nil)
+	req, err := http.NewRequest(http.MethodGet, idp.Issuer+"/authorize", nil)
 	require.NoError(t, err)
 
 	query := req.URL.Query()

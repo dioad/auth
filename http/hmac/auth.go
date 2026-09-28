@@ -12,7 +12,7 @@ package hmac
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"fmt"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -107,5 +107,5 @@ func HMACKey(sharedKey, data []byte) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%x", keyBytes), nil
+	return hex.EncodeToString(keyBytes), nil
 }

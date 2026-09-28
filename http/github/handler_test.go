@@ -1,7 +1,7 @@
 package github
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -60,7 +60,7 @@ func TestHandler_AuthRequest(t *testing.T) {
 		{
 			name:       "authenticator error",
 			authHeader: "Bearer invalid-token",
-			mockErr:    fmt.Errorf("auth failed"),
+			mockErr:    errors.New("auth failed"),
 			wantError:  true,
 		},
 	}
@@ -70,7 +70,7 @@ func TestHandler_AuthRequest(t *testing.T) {
 			authenticator := &mockAuthenticator{user: tt.mockUser, err: tt.mockErr}
 			handler := NewHandlerWithAuthenticator(authenticator)
 
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			if tt.authHeader != "" {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
@@ -107,16 +107,16 @@ func TestHandler_Wrap(t *testing.T) {
 	wrapped := handler.Wrap(testHandler)
 
 	// Valid request
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer valid-token")
 	rr := httptest.NewRecorder()
 	wrapped.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Invalid request
-	req = httptest.NewRequest("GET", "/", nil)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer invalid-token")
-	authenticator.err = fmt.Errorf("auth failed")
+	authenticator.err = errors.New("auth failed")
 	rr = httptest.NewRecorder()
 	wrapped.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)

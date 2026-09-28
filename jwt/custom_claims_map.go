@@ -59,7 +59,7 @@ func ResolveCustomClaimsMap(vc *jwtvalidator.ValidatedClaims, tokenString string
 	fallbackClaims, fallbackErr := ClaimsMapFromToken(tokenString)
 	if fallbackErr != nil {
 		if err != nil {
-			return nil, fmt.Errorf("%v; fallback parse token claims: %w", err, fallbackErr)
+			return nil, fmt.Errorf("%w; fallback parse token claims: %w", err, fallbackErr)
 		}
 		return nil, fallbackErr
 	}

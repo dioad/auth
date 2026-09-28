@@ -106,7 +106,7 @@ func TestHeaderCaseNormalization(t *testing.T) {
 			}
 
 			// Create request and set headers
-			req, err := http.NewRequest("POST", testServer.URL+"/api", bytes.NewBufferString(`{"test": true}`))
+			req, err := http.NewRequest(http.MethodPost, testServer.URL+"/api", bytes.NewBufferString(`{"test": true}`))
 			require.NoError(t, err, "failed to create request")
 
 			// Set header values using client's header names and distinct values
@@ -138,15 +138,15 @@ func TestHeaderCaseNormalization(t *testing.T) {
 // produces the same output regardless of header name casing.
 func TestCanonicalDataCaseNormalization(t *testing.T) {
 	// Create two requests with identical data but different header casing
-	req1, err := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
+	req1, err := http.NewRequest(http.MethodPost, "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
 	require.NoError(t, err, "failed to create request req1")
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("X-Api-Key", "secret123")
 
-	req2, err := http.NewRequest("POST", "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
+	req2, err := http.NewRequest(http.MethodPost, "http://example.com/api?id=123", bytes.NewBufferString(`{"data": true}`))
 	require.NoError(t, err, "failed to create request req2")
-	req2.Header.Set("content-type", "application/json")
-	req2.Header.Set("x-api-key", "secret123")
+	req2.Header.Set("Content-Type", "application/json")
+	req2.Header.Set("X-Api-Key", "secret123")
 
 	const principal = "user123"
 	const timestamp = "1234567890"
@@ -168,7 +168,7 @@ func TestCanonicalDataCaseNormalization(t *testing.T) {
 // string so a dropped method, path, timestamp, principal, header, or body
 // segment is detected directly.
 func TestCanonicalData_ProducesExpectedFormat(t *testing.T) {
-	req, err := http.NewRequest("POST", "http://example.com/api/data?id=123", bytes.NewBufferString("body-content"))
+	req, err := http.NewRequest(http.MethodPost, "http://example.com/api/data?id=123", bytes.NewBufferString("body-content"))
 	require.NoError(t, err)
 	req.Header.Set("X-Api-Key", "  secret123  ")
 	req.Header.Set("Content-Type", "application/json")
@@ -189,7 +189,7 @@ func TestCanonicalData_ProducesExpectedFormat(t *testing.T) {
 // TestCanonicalData_DefaultsEmptyPathToSlash verifies the empty-path fallback
 // and the omission of the "?" segment when there are no query parameters.
 func TestCanonicalData_DefaultsEmptyPathToSlash(t *testing.T) {
-	req, err := http.NewRequest("GET", "http://example.com", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
 	require.NoError(t, err)
 
 	canonical := CanonicalData(req, "user123", "1700000000", nil, nil)

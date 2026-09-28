@@ -3,6 +3,7 @@ package jwt
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -103,7 +104,7 @@ func (p *staticPredicate) Validate(_ jwt.MapClaims) bool {
 }
 
 func (p *staticPredicate) String() string {
-	return fmt.Sprintf("%v", p.result)
+	return strconv.FormatBool(p.result)
 }
 
 // ParseClaimPredicates parses the input into a claim predicate

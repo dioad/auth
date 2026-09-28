@@ -45,7 +45,7 @@ func TestClientHandlerIntegration(t *testing.T) {
 		},
 	}
 
-	req, err := http.NewRequest("POST", testServer.URL+"/action", bytes.NewBufferString(requestBody))
+	req, err := http.NewRequest(http.MethodPost, testServer.URL+"/action", bytes.NewBufferString(requestBody))
 	require.NoError(t, err, "failed to create request")
 
 	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
@@ -88,7 +88,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 		},
 	}
 
-	req, err := http.NewRequest("GET", testServer.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 	require.NoError(t, err, "failed to create request")
 	req.Header.Set(customHeader, customValue)
 
@@ -100,7 +100,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Now try with modified header value
-	req2, err := http.NewRequest("GET", testServer.URL, nil)
+	req2, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 	require.NoError(t, err, "failed to create tampered request")
 	req2.Header.Set(customHeader, "WRONG")
 	// Manually copy the auth headers from previous request to simulate tampering
@@ -133,7 +133,7 @@ func TestTimestampExpiry(t *testing.T) {
 		},
 	}
 
-	req, err := http.NewRequest("GET", testServer.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 	require.NoError(t, err, "failed to create request")
 	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
@@ -162,7 +162,7 @@ func TestWrongPathOrMethod(t *testing.T) {
 		},
 	}
 
-	req, err := http.NewRequest("GET", testServer.URL+"/valid", nil)
+	req, err := http.NewRequest(http.MethodGet, testServer.URL+"/valid", nil)
 	require.NoError(t, err, "failed to create request")
 	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
@@ -192,7 +192,7 @@ func TestPrincipalSpoofing(t *testing.T) {
 		Principal:    userPrincipal,
 	}}
 
-	req1, err := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
+	req1, err := http.NewRequest(http.MethodPost, testServer.URL, bytes.NewBufferString("body"))
 	require.NoError(t, err, "failed to create request")
 	require.NoError(t, clientAuth.AddAuth(req1), "failed to add auth")
 
@@ -206,7 +206,7 @@ func TestPrincipalSpoofing(t *testing.T) {
 	signature := strings.Split(creds, ":")[1]
 	spoofedAuthHeader := fmt.Sprintf("HMAC %s:%s", adminPrincipal, signature)
 
-	req2, err := http.NewRequest("POST", testServer.URL, bytes.NewBufferString("body"))
+	req2, err := http.NewRequest(http.MethodPost, testServer.URL, bytes.NewBufferString("body"))
 	require.NoError(t, err, "failed to create spoofed request")
 	req2.Header.Set("Authorization", spoofedAuthHeader)
 	req2.Header.Set(DefaultTimestampHeader, req1.Header.Get(DefaultTimestampHeader))
@@ -278,7 +278,7 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 	}
 
 	// Test 1: Client sets header with leading/trailing whitespace
-	req1, err := http.NewRequest("GET", testServer.URL, nil)
+	req1, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 	require.NoError(t, err, "failed to create request")
 	// Manually set header with whitespace before calling AddAuth
 	req1.Header.Set(customHeader, "  "+customValue+"  ")
@@ -292,7 +292,7 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 
 	// Test 2: Verify that server normalizes whitespace for signature verification
 	// Create a request with the same header value but different whitespace
-	req2, err := http.NewRequest("GET", testServer.URL, nil)
+	req2, err := http.NewRequest(http.MethodGet, testServer.URL, nil)
 	require.NoError(t, err, "failed to create request")
 	req2.Header.Set(customHeader, customValue) // No whitespace
 
@@ -331,7 +331,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 	}
 
 	// Test 1: Valid request with query parameters
-	req1, err := http.NewRequest("GET", testServer.URL+"/api/users?id=123&name=alice", nil)
+	req1, err := http.NewRequest(http.MethodGet, testServer.URL+"/api/users?id=123&name=alice", nil)
 	require.NoError(t, err, "failed to create request")
 	require.NoError(t, clientAuth.AddAuth(req1), "failed to add auth")
 
@@ -341,7 +341,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp1.StatusCode, "expected 200 for valid query params")
 
 	// Test 2: Different query parameters should produce different signatures
-	req2, err := http.NewRequest("GET", testServer.URL+"/api/users?id=456&name=bob", nil)
+	req2, err := http.NewRequest(http.MethodGet, testServer.URL+"/api/users?id=456&name=bob", nil)
 	require.NoError(t, err, "failed to create request")
 	require.NoError(t, clientAuth.AddAuth(req2), "failed to add auth")
 
@@ -355,7 +355,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 	assert.NotEqual(t, sig2, sig1, "different query parameters should produce different signatures")
 
 	// Test 3: Tampering with query parameters should fail verification
-	req3, err := http.NewRequest("GET", testServer.URL+"/api/users?id=123&name=alice", nil)
+	req3, err := http.NewRequest(http.MethodGet, testServer.URL+"/api/users?id=123&name=alice", nil)
 	require.NoError(t, err, "failed to create tampered request")
 	require.NoError(t, clientAuth.AddAuth(req3), "failed to add auth")
 
@@ -389,7 +389,7 @@ func TestNoQueryParameters(t *testing.T) {
 	}
 
 	// Test request without query parameters still works
-	req, err := http.NewRequest("GET", testServer.URL+"/api/users", nil)
+	req, err := http.NewRequest(http.MethodGet, testServer.URL+"/api/users", nil)
 	require.NoError(t, err, "failed to create request")
 	require.NoError(t, clientAuth.AddAuth(req), "failed to add auth")
 
@@ -411,9 +411,9 @@ func BenchmarkClientAddAuth(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		b.StopTimer()
-		req, _ := http.NewRequest("POST", "http://example.com/api", bytes.NewBufferString(`{"data": true}`))
+		req, _ := http.NewRequest(http.MethodPost, "http://example.com/api", bytes.NewBufferString(`{"data": true}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Custom", "value")
 		b.StartTimer()
