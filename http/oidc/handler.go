@@ -218,7 +218,7 @@ func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*Session
 			return nil, err
 		}
 
-		return nil, nil
+		return nil, nil //nolint:nilnil // "new session, not authenticated yet" is distinct from an error; AuthWrapper redirects to login on nil data with no error
 	}
 
 	data, ok := session.Values["data"].(SessionData)
