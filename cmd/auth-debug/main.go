@@ -114,8 +114,12 @@ func main() {
 		return
 	}
 
-	prettyClaims, _ := json.MarshalIndent(claims, "", "  ")
-	_, _ = fmt.Println(string(prettyClaims))
+	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error formatting claims: %v\n", err)
+	} else {
+		_, _ = fmt.Println(string(prettyClaims))
+	}
 
 	if *verify {
 		issuer, _ := claims["iss"].(string)
@@ -171,8 +175,12 @@ func runValidate(args []string) {
 		os.Exit(1)
 	}
 
-	prettyClaims, _ := json.MarshalIndent(claims, "", "  ")
-	_, _ = fmt.Println(string(prettyClaims))
+	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error formatting claims: %v\n", err)
+	} else {
+		_, _ = fmt.Println(string(prettyClaims))
+	}
 
 	_, _ = fmt.Println("\nVerification:")
 

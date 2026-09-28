@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecodeToken(t *testing.T) {
@@ -18,7 +19,8 @@ func TestDecodeToken(t *testing.T) {
 		"app_id": "my-app",
 	}
 
-	payload, _ := json.Marshal(claims)
+	payload, err := json.Marshal(claims)
+	require.NoError(t, err)
 	payloadEncoded := base64.RawURLEncoding.EncodeToString(payload)
 	tokenString := fmt.Sprintf("header.%s.signature", payloadEncoded)
 

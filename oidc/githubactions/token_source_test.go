@@ -21,7 +21,8 @@ func TestDecodeToken(t *testing.T) {
 		"repository": "org/repo",
 	}
 
-	payload, _ := json.Marshal(claims)
+	payload, err := json.Marshal(claims)
+	require.NoError(t, err)
 	payloadEncoded := base64.RawURLEncoding.EncodeToString(payload)
 	tokenString := fmt.Sprintf("header.%s.signature", payloadEncoded)
 

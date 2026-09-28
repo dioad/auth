@@ -172,8 +172,10 @@ func TestVerifyDebug_HeaderAndKeyDetails(t *testing.T) {
 	claims, err := decodeClaims(tokenString)
 	require.NoError(t, err)
 
-	prettyHeader, _ := json.MarshalIndent(header, "", "  ")
-	prettyClaims, _ := json.MarshalIndent(claims, "", "  ")
+	prettyHeader, err := json.MarshalIndent(header, "", "  ")
+	require.NoError(t, err)
+	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
+	require.NoError(t, err)
 	t.Logf("Full header:\n%s", prettyHeader)
 	t.Logf("Full claims:\n%s", prettyClaims)
 }
@@ -226,7 +228,8 @@ func TestVerifyDebug_RawToken(t *testing.T) {
 	header, err := decodeHeader(rawToken)
 	require.NoError(t, err, "decoding JWT header")
 
-	prettyHeader, _ := json.MarshalIndent(header, "", "  ")
+	prettyHeader, err := json.MarshalIndent(header, "", "  ")
+	require.NoError(t, err)
 	t.Logf("JWT Header:\n%s", prettyHeader)
 
 	tokenAlg, _ := header["alg"].(string)
@@ -237,7 +240,8 @@ func TestVerifyDebug_RawToken(t *testing.T) {
 	claims, err := decodeClaims(rawToken)
 	require.NoError(t, err, "decoding JWT claims")
 
-	prettyClaims, _ := json.MarshalIndent(claims, "", "  ")
+	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
+	require.NoError(t, err)
 	t.Logf("JWT Claims:\n%s", prettyClaims)
 
 	// Determine issuer for JWKS discovery.
