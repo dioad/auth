@@ -55,7 +55,11 @@ func main() {
 	}
 
 	fmt.Printf("\nToken claims:\n")
-	claimsJSON, _ := json.MarshalIndent(claims, "  ", "  ")
+	claimsJSON, err := json.MarshalIndent(claims, "  ", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to format claims: %v\n", err)
+		os.Exit(1)
+	}
 	fmt.Printf("  %s\n", string(claimsJSON))
 
 	// Verify expected claims
