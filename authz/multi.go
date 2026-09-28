@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dioad/auth"
 )
@@ -38,15 +39,18 @@ func NewMultiAuthorizer(authorizers ...Authorizer) *MultiAuthorizer {
 }
 
 // Privileges iterates the backends in order and returns the first non-nil
-// Privilege. Returns nil when no backend recognises the principal.
+// Privilege. Returns ErrNoPrivileges when no backend recognises the principal.
 func (m *MultiAuthorizer) Privileges(ctx context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	for _, a := range m.authorizers {
 		privs, err := a.Privileges(ctx, principalCtx)
+		if errors.Is(err, ErrNoPrivileges) {
+			continue
+		}
 		if privs != nil || err != nil {
 			return privs, err
 		}
 	}
-	return nil, nil
+	return nil, ErrNoPrivileges
 }
 
 // Can checks whether the first backend that returns a non-nil Privilege grants

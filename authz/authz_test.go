@@ -221,7 +221,7 @@ func TestRoleAuthorizer_Privileges_ReturnsCapabilitySet(t *testing.T) {
 func TestRoleAuthorizer_Privileges_ReturnsNilForUnknownPrincipal(t *testing.T) {
 	a := authz.NewRoleAuthorizer(testMetadata())
 	privs, err := a.Privileges(context.Background(), principal("p1", "no-match"))
-	require.NoError(t, err)
+	require.ErrorIs(t, err, authz.ErrNoPrivileges)
 	assert.Nil(t, privs)
 }
 
