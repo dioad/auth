@@ -50,10 +50,10 @@ func (m *MultiAuthorizer) Privileges(ctx context.Context, principalCtx *auth.Pri
 }
 
 // Can checks whether the first backend that returns a non-nil Privilege grants
-// cap. If no backend recognises the principal, the request is denied.
-func (m *MultiAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
+// capability. If no backend recognises the principal, the request is denied.
+func (m *MultiAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) (*Decision, error) {
 	privs, err := m.Privileges(ctx, principalCtx)
-	return canFromPrivileges(principalCtx, cap, privs, err)
+	return canFromPrivileges(principalCtx, capability, privs, err)
 }
 
 // Metadata returns the metadata from the first backend, or an empty

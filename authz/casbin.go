@@ -88,22 +88,22 @@ func (a *CasbinAuthorizer) Privileges(ctx context.Context, principalCtx *auth.Pr
 	return NewWildcardPrivilege(privilegeSetForRoles(roles, a.metadata.RoleCapabilities)), nil
 }
 
-// Can checks whether the principal's roles grant cap using Casbin enforcement.
-// The returned Decision includes GrantedBy — the first role that grants the
-// capability — enabling fine-grained audit logging.
-func (a *CasbinAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
+// Can checks whether the principal's roles grant capability using Casbin
+// enforcement. The returned Decision includes GrantedBy — the first role
+// that grants the capability — enabling fine-grained audit logging.
+func (a *CasbinAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) (*Decision, error) {
 	if principalCtx == nil {
-		return deny(ReasonDeniedNilPrincipal, cap), ErrUnauthorized
+		return deny(ReasonDeniedNilPrincipal, capability), ErrUnauthorized
 	}
 
 	roles := principalRoles(ctx, principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
-		return deny(ReasonDeniedNoRoles, cap), ErrForbidden
+		return deny(ReasonDeniedNoRoles, capability), ErrForbidden
 	}
 
-	obj, act, ok := strings.Cut(string(cap), ":")
+	obj, act, ok := strings.Cut(string(capability), ":")
 	if !ok {
-		return nil, fmt.Errorf("capability %q missing ':' separator — use Permission() or FeatureCapability() constructors", cap)
+		return nil, fmt.Errorf("capability %q missing ':' separator — use Permission() or FeatureCapability() constructors", capability)
 	}
 
 	for _, role := range roles {
@@ -114,11 +114,11 @@ func (a *CasbinAuthorizer) Can(ctx context.Context, principalCtx *auth.Principal
 			return nil, fmt.Errorf("casbin enforce: %w", err)
 		}
 		if granted {
-			return allow(ReasonGranted, role, cap), nil
+			return allow(ReasonGranted, role, capability), nil
 		}
 	}
 
-	return deny(ReasonDeniedNoPermission, cap), ErrForbidden
+	return deny(ReasonDeniedNoPermission, capability), ErrForbidden
 }
 
 // Metadata returns the policy metadata.

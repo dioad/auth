@@ -33,10 +33,10 @@ func (a *RoleAuthorizer) Privileges(ctx context.Context, principalCtx *auth.Prin
 	return NewWildcardPrivilege(privilegeSetForRoles(roles, a.metadata.RoleCapabilities)), nil
 }
 
-// Can checks whether the principal's union of role capabilities includes cap.
-func (a *RoleAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
+// Can checks whether the principal's union of role capabilities includes capability.
+func (a *RoleAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) (*Decision, error) {
 	privs, err := a.Privileges(ctx, principalCtx)
-	return canFromPrivileges(principalCtx, cap, privs, err)
+	return canFromPrivileges(principalCtx, capability, privs, err)
 }
 
 // Metadata returns the policy metadata.

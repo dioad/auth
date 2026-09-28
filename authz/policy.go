@@ -91,18 +91,18 @@ func privilegeSetForRoles(roles []Role, roleCapabilities map[Role][]Capability) 
 
 // canFromPrivileges implements the default Can() logic for authorizers that
 // delegate to Privileges().Has(). It handles nil principal and nil Privilege.
-func canFromPrivileges(principalCtx *auth.PrincipalContext, cap Capability, privs Privilege, err error) (*Decision, error) {
+func canFromPrivileges(principalCtx *auth.PrincipalContext, capability Capability, privs Privilege, err error) (*Decision, error) {
 	if principalCtx == nil {
-		return deny(ReasonDeniedNilPrincipal, cap), ErrUnauthorized
+		return deny(ReasonDeniedNilPrincipal, capability), ErrUnauthorized
 	}
 	if err != nil {
 		return nil, err
 	}
 	if privs == nil {
-		return deny(ReasonDeniedNoRoles, cap), ErrForbidden
+		return deny(ReasonDeniedNoRoles, capability), ErrForbidden
 	}
-	if !privs.Has(cap) {
-		return deny(ReasonDeniedNoPermission, cap), ErrForbidden
+	if !privs.Has(capability) {
+		return deny(ReasonDeniedNoPermission, capability), ErrForbidden
 	}
-	return allow(ReasonGranted, "", cap), nil
+	return allow(ReasonGranted, "", capability), nil
 }
