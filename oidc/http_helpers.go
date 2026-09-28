@@ -41,7 +41,7 @@ func doRequestAndUnmarshallJSON[T any](ctx context.Context, doer HTTPDoer, req *
 }
 
 func doPostWithBasicAuth[T any](ctx context.Context, doer HTTPDoer, url string, data url.Values, username, password string) (*T, error) {
-	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func doPostWithBasicAuth[T any](ctx context.Context, doer HTTPDoer, url string, 
 }
 
 func doPost[T any](ctx context.Context, doer HTTPDoer, url string, data url.Values) (*T, error) {
-	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}

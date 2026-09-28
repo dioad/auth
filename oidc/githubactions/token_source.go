@@ -132,7 +132,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	// Create the HTTP request
-	req, err := http.NewRequest(http.MethodGet, tokenURL.String(), nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, tokenURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}

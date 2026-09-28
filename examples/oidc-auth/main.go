@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -40,7 +41,8 @@ func main() {
 	server.AddHandler("/secure", myHandler)
 
 	// Create listener
-	ln, err := net.Listen("tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces
+	var lc net.ListenConfig
+	ln, err := lc.Listen(context.Background(), "tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces
 	if err != nil {
 		log.Fatalf("Error creating listener: %v\n", err)
 	}
