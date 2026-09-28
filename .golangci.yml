@@ -62,6 +62,15 @@ linters:
       case:
         rules:
           json: snake
+    cyclop:
+      # Default is 10. The remaining functions at 11-13 here are all flat,
+      # single-level validation chains, type switches, or field-by-field
+      # builders (e.g. jwt.validatedClaimsToMapClaims's "if field != zero {
+      # set it }" sequence) — genuinely simple to read despite the branch
+      # count. Splitting them would fragment cohesive logic into
+      # disconnected helpers for no readability gain. 13 clears those while
+      # still catching functions with real nested complexity.
+      max-complexity: 13
   exclusions:
     rules:
       # authz/prefixlist mirrors third-party vendor JSON schemas (AWS
@@ -94,6 +103,13 @@ linters:
       - path: '_test\.go'
         linters:
           - gosec
+      # imported_netrc.go is verbatim vendored code from the Go toolchain
+      # (cmd/go/internal/auth/netrc.go, BSD-licensed, per its own file
+      # header). Refactoring parseNetrc to reduce complexity would only
+      # create drift from upstream for no benefit.
+      - path: 'http/basic/imported_netrc\.go'
+        linters:
+          - cyclop
 
 issues:
   max-issues-per-linter: 0
