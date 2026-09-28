@@ -252,8 +252,8 @@ func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Prov
 }
 
 // oAuth2Config returns an OAuth2 configuration for the OIDC client
-func (c *Client) oAuth2Config(opts ...oAuth2ConfigOpt) (*oauth2.Config, error) {
-	oauth2Endpoint, err := c.endpoint.OAuth2Endpoint()
+func (c *Client) oAuth2Config(ctx context.Context, opts ...oAuth2ConfigOpt) (*oauth2.Config, error) {
+	oauth2Endpoint, err := c.endpoint.OAuth2Endpoint(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OAuth2 endpoint: %w", err)
 	}
@@ -350,7 +350,7 @@ func WithAudience(audience string) RequestOpt {
 }
 
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...RequestOpt) (*oauth2.Token, error) {
-	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +380,7 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...
 // AuthorizationCodeRedirectFlow generates the authorization URL for the Authorization Code Flow
 // TODO: figure out a better name
 func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string, scopes []string, redirectURI string, opts ...RequestOpt) (string, error) {
-	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -407,7 +407,7 @@ func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string
 }
 
 func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirectUri string, opts ...RequestOpt) (*oauth2.Token, error) {
-	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +506,7 @@ func (c *Client) RefreshingClientCredentialsToken(ctx context.Context, opts ...R
 // It sends the client_id and client_secret to the token endpoint
 // and gets a token in response
 func (c *Client) ClientCredentialsToken(ctx context.Context, opts ...RequestOpt) (*oauth2.Token, error) {
-	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +536,7 @@ func (c *Client) ClientCredentialsToken(ctx context.Context, opts ...RequestOpt)
 // It sends the token to the introspection endpoint
 // and gets the response
 func (c *Client) IntrospectToken(ctx context.Context, token string) (*IntrospectionResponse, error) {
-	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration()
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +557,7 @@ func (c *Client) IntrospectToken(ctx context.Context, token string) (*Introspect
 }
 
 func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Token, error) {
-	config, err := c.oAuth2Config(withScopes(scopes...))
+	config, err := c.oAuth2Config(ctx, withScopes(scopes...))
 	if err != nil {
 		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
 	}
@@ -588,7 +588,7 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 }
 
 func (c *Client) HTTPClient(ctx context.Context, t *oauth2.Token) (*http.Client, error) {
-	oauth2Config, err := c.oAuth2Config()
+	oauth2Config, err := c.oAuth2Config(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
 	}
@@ -596,7 +596,7 @@ func (c *Client) HTTPClient(ctx context.Context, t *oauth2.Token) (*http.Client,
 }
 
 func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {
-	oauth2Config, err := c.oAuth2Config()
+	oauth2Config, err := c.oAuth2Config(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
 	}

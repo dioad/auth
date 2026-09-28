@@ -108,8 +108,8 @@ type OpenIDConfiguration struct {
 type Endpoint interface {
 	URL() *url.URL
 	DiscoveryEndpoint() (*url.URL, error)
-	DiscoveredConfiguration() (*OpenIDConfiguration, error)
-	OAuth2Endpoint() (oauth2.Endpoint, error)
+	DiscoveredConfiguration(ctx context.Context) (*OpenIDConfiguration, error)
+	OAuth2Endpoint(ctx context.Context) (oauth2.Endpoint, error)
 }
 
 // GothEndpoint defines the interface for endpoints that support Goth provider creation.
@@ -131,21 +131,21 @@ func (e *oidcEndpoint) DiscoveryEndpoint() (*url.URL, error) {
 	return e.url.JoinPath(".well-known", "openid-configuration"), nil
 }
 
-func (e *oidcEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
+func (e *oidcEndpoint) DiscoveredConfiguration(ctx context.Context) (*OpenIDConfiguration, error) {
 	discoveryEndpoint, err := e.DiscoveryEndpoint()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch discover endpoint: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodGet, discoveryEndpoint.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryEndpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build discovery request for %v: %w", discoveryEndpoint, err)
 	}
 
-	return doRequestAndUnmarshallJSON[OpenIDConfiguration](context.Background(), e.httpDoer, req)
+	return doRequestAndUnmarshallJSON[OpenIDConfiguration](ctx, e.httpDoer, req)
 }
 
-func (e *oidcEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
-	discoveredConfiguration, err := e.DiscoveredConfiguration()
+func (e *oidcEndpoint) OAuth2Endpoint(ctx context.Context) (oauth2.Endpoint, error) {
+	discoveredConfiguration, err := e.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return oauth2.Endpoint{}, err
 	}
@@ -270,7 +270,7 @@ func (e *GitHubEndpoint) DiscoveryEndpoint() (*url.URL, error) {
 	return nil, errors.New("GitHub does not support OpenID Connect discovery")
 }
 
-func (e *GitHubEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
+func (e *GitHubEndpoint) DiscoveredConfiguration(_ context.Context) (*OpenIDConfiguration, error) {
 	return &OpenIDConfiguration{
 		AuthorizationEndpoint:       e.url.JoinPath("/login/oauth/authorize").String(),
 		TokenEndpoint:               e.url.JoinPath("/login/oauth/access_token").String(),
@@ -278,7 +278,7 @@ func (e *GitHubEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error)
 	}, nil
 }
 
-func (e *GitHubEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
+func (e *GitHubEndpoint) OAuth2Endpoint(_ context.Context) (oauth2.Endpoint, error) {
 	return endpoints.GitHub, nil
 }
 
@@ -313,22 +313,22 @@ func (e *GitHubActionsEndpoint) DiscoveryEndpoint() (*url.URL, error) {
 }
 
 // DiscoveredConfiguration returns the OIDC configuration by fetching the discovery endpoint
-func (e *GitHubActionsEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
+func (e *GitHubActionsEndpoint) DiscoveredConfiguration(ctx context.Context) (*OpenIDConfiguration, error) {
 	discoveryEndpoint, err := e.DiscoveryEndpoint()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discovery endpoint: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodGet, discoveryEndpoint.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryEndpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build discovery request for %v: %w", discoveryEndpoint, err)
 	}
 
-	return doRequestAndUnmarshallJSON[OpenIDConfiguration](context.Background(), e.httpDoer, req)
+	return doRequestAndUnmarshallJSON[OpenIDConfiguration](ctx, e.httpDoer, req)
 }
 
 // OAuth2Endpoint returns the OAuth2 endpoint configuration
-func (e *GitHubActionsEndpoint) OAuth2Endpoint() (oauth2.Endpoint, error) {
-	discoveredConfiguration, err := e.DiscoveredConfiguration()
+func (e *GitHubActionsEndpoint) OAuth2Endpoint(ctx context.Context) (oauth2.Endpoint, error) {
+	discoveredConfiguration, err := e.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return oauth2.Endpoint{}, err
 	}

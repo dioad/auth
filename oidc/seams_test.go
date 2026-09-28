@@ -68,7 +68,7 @@ func TestEndpointDiscoveryUsesHTTPDoer(t *testing.T) {
 	endpoint, err := oidc.NewEndpoint("https://issuer.example", oidc.WithHTTPDoer(doer))
 	require.NoError(t, err)
 
-	config, err := endpoint.DiscoveredConfiguration()
+	config, err := endpoint.DiscoveredConfiguration(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "https://auth", config.AuthorizationEndpoint)
 	assert.Len(t, doer.requests, 1)

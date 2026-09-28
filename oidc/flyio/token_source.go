@@ -88,7 +88,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	tokenReq, err := http.NewRequest(http.MethodPost, tokenURL.String(), bytes.NewReader(payloadData))
+	tokenReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, tokenURL.String(), bytes.NewReader(payloadData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
