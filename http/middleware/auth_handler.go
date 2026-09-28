@@ -1,3 +1,6 @@
+// Package middleware provides HTTP middleware for extracting an
+// authenticated principal from the request context and attaching it for
+// downstream handlers.
 package middleware
 
 import (

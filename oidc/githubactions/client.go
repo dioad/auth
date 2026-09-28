@@ -1,3 +1,6 @@
+// Package githubactions provides an OIDC token source and principal
+// extraction for GitHub Actions workflows, using the workflow's
+// ACTIONS_ID_TOKEN_REQUEST_URL to fetch tokens.
 package githubactions
 
 import (
