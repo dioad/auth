@@ -31,6 +31,19 @@ func (t *TokenSource) Token() (*oauth2.Token, error) {
 	return token, nil
 }
 
+// NewGitHubAuthenticator creates a new GitHub Authenticator with the provided configuration.
+func NewGitHubAuthenticator(cfg ServerConfig) *Authenticator {
+	basicAuthTransport := github.BasicAuthTransport{
+		Username: cfg.ClientID,
+		Password: cfg.ClientSecret,
+	}
+
+	return &Authenticator{
+		Config: cfg,
+		Client: github.NewClient(basicAuthTransport.Client()),
+	}
+}
+
 // AuthenticateToken verifies the provided GitHub access token against the GitHub API.
 // It also fetches additional user information if the token is valid.
 func (a *Authenticator) AuthenticateToken(accessToken string) (*authctx.GitHubUserInfo, error) {
@@ -50,17 +63,4 @@ func (a *Authenticator) AuthenticateToken(accessToken string) (*authctx.GitHubUs
 	}
 
 	return u, nil
-}
-
-// NewGitHubAuthenticator creates a new GitHub Authenticator with the provided configuration.
-func NewGitHubAuthenticator(cfg ServerConfig) *Authenticator {
-	basicAuthTransport := github.BasicAuthTransport{
-		Username: cfg.ClientID,
-		Password: cfg.ClientSecret,
-	}
-
-	return &Authenticator{
-		Config: cfg,
-		Client: github.NewClient(basicAuthTransport.Client()),
-	}
 }

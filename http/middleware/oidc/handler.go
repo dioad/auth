@@ -107,6 +107,41 @@ type Handler struct {
 	bearerPassthrough bool
 }
 
+func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	if cfg.LoginPath == "" {
+		cfg.LoginPath = "/login"
+	}
+	if cfg.LogoutPath == "" {
+		cfg.LogoutPath = "/logout"
+	}
+
+	cfg.TokenCookie = applyCookieDefaults(cfg.TokenCookie, DefaultTokenCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.StateCookie = applyCookieDefaults(cfg.StateCookie, DefaultStateCookieName, DefaultStateCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.RefreshCookie = applyCookieDefaults(cfg.RefreshCookie, DefaultRefreshCookieName, DefaultRefreshCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.TokenExpiryCookie = applyCookieDefaults(cfg.TokenExpiryCookie, DefaultTokenExpiryCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
+	cfg.IDTokenCookie = applyCookieDefaults(cfg.IDTokenCookie, DefaultIDTokenCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
+
+	var callbackPath string
+	if u, err := url.Parse(cfg.RedirectURI); err == nil {
+		callbackPath = u.Path
+	}
+
+	var clientID string
+	if client != nil {
+		clientID = client.ClientID()
+	}
+
+	return &Handler{
+		Client:       client,
+		Config:       cfg,
+		callbackPath: callbackPath,
+		clientID:     clientID,
+	}
+}
+
 // WithBearerPassthrough configures whether Wrap forwards a request carrying a
 // non-empty Authorization header to next without checking the OIDC session
 // cookie, on the assumption a separately chained bearer-token validator
@@ -150,41 +185,6 @@ func applyCookieDefaults(c CookieConfig, name string, maxAge time.Duration, allo
 	return c
 }
 
-func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
-	if cfg.Now == nil {
-		cfg.Now = time.Now
-	}
-	if cfg.LoginPath == "" {
-		cfg.LoginPath = "/login"
-	}
-	if cfg.LogoutPath == "" {
-		cfg.LogoutPath = "/logout"
-	}
-
-	cfg.TokenCookie = applyCookieDefaults(cfg.TokenCookie, DefaultTokenCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
-	cfg.StateCookie = applyCookieDefaults(cfg.StateCookie, DefaultStateCookieName, DefaultStateCookieMaxAge, cfg.AllowInsecureCookies)
-	cfg.RefreshCookie = applyCookieDefaults(cfg.RefreshCookie, DefaultRefreshCookieName, DefaultRefreshCookieMaxAge, cfg.AllowInsecureCookies)
-	cfg.TokenExpiryCookie = applyCookieDefaults(cfg.TokenExpiryCookie, DefaultTokenExpiryCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
-	cfg.IDTokenCookie = applyCookieDefaults(cfg.IDTokenCookie, DefaultIDTokenCookieName, DefaultTokenCookieMaxAge, cfg.AllowInsecureCookies)
-
-	var callbackPath string
-	if u, err := url.Parse(cfg.RedirectURI); err == nil {
-		callbackPath = u.Path
-	}
-
-	var clientID string
-	if client != nil {
-		clientID = client.ClientID()
-	}
-
-	return &Handler{
-		Client:       client,
-		Config:       cfg,
-		callbackPath: callbackPath,
-		clientID:     clientID,
-	}
-}
-
 // LoginPath returns the path AuthStart should be registered at.
 func (h *Handler) LoginPath() string {
 	return h.Config.LoginPath
@@ -200,23 +200,6 @@ func (h *Handler) CallbackPath() string {
 // LogoutPath returns the path Logout should be registered at.
 func (h *Handler) LogoutPath() string {
 	return h.Config.LogoutPath
-}
-
-// isPublicPath reports whether path is one of this handler's own
-// login/callback/logout routes, which must never be gated by Wrap — otherwise
-// an unauthenticated request to them would be redirected right back to
-// LoginPath, looping forever and preventing login from ever completing.
-func (h *Handler) isPublicPath(path string) bool {
-	if path == h.Config.LoginPath {
-		return true
-	}
-	if h.callbackPath != "" && path == h.callbackPath {
-		return true
-	}
-	if h.Config.LogoutPath != "" && path == h.Config.LogoutPath {
-		return true
-	}
-	return false
 }
 
 func (h *Handler) Wrap(next http.Handler) http.Handler {
@@ -252,65 +235,6 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		ctx = h.populatePrincipal(ctx, r)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-// populatePrincipal reads the ID token cookie, verifies it against this
-// client's JWKS, and — on success — attaches the authenticated principal and
-// custom claims to ctx, mirroring what the jwt middleware does with a
-// validated bearer token. On any failure (cookie absent, ID token expired or
-// invalid) it logs at debug and returns ctx unchanged: the ID token is
-// enrichment for callers like X-Forwarded-User header forwarding, not the
-// session's auth gate, so a stale or missing ID token degrades that
-// enrichment rather than the request.
-func (h *Handler) populatePrincipal(ctx context.Context, r *http.Request) context.Context {
-	idToken, err := extractValueFromCookie(r, h.Config.IDTokenCookie.Name)
-	if err != nil || idToken == "" {
-		return ctx
-	}
-
-	claims, err := h.Client.ValidateToken(ctx, idToken, []string{h.clientID})
-	if err != nil {
-		zerolog.Ctx(ctx).Debug().Err(err).Msg("unable to validate oidc id token for principal extraction")
-		return ctx
-	}
-
-	if claims.RegisteredClaims.Subject != "" {
-		ctx = authctx.ContextWithAuthenticatedPrincipal(ctx, claims.RegisteredClaims.Subject)
-		ctx = authctx.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
-	}
-	if customClaims, err := authjwt.ResolveCustomClaimsMap(claims, idToken); err == nil && len(customClaims) > 0 {
-		ctx = authctx.ContextWithAuthenticatedCustomClaims(ctx, customClaims)
-	}
-
-	return ctx
-}
-
-// redirectToLogin clears any stale session cookies and sends the browser to
-// the configured login path.
-func (h *Handler) redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	h.clearAllCookies(w)
-	http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
-}
-
-// refreshIfNeeded refreshes token via the OIDC provider when it falls inside
-// the configured refresh window, persisting the refreshed token to cookies.
-// It returns token unchanged when no refresh is needed.
-func (h *Handler) refreshIfNeeded(w http.ResponseWriter, r *http.Request, token *oauth2.Token) (*oauth2.Token, error) {
-	if !shouldRefreshTokenBasedOnExpiry(token.Expiry, h.Config.RefreshWindow, h.Config.Now()) {
-		return token, nil
-	}
-
-	refreshedToken, err := h.Client.RefreshToken(r.Context(), token.RefreshToken)
-	if err != nil {
-		zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to refresh token")
-		return nil, err
-	}
-
-	h.saveTokenToCookies(w, refreshedToken)
-	zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Bool("token_refreshed", true)
-	})
-	return refreshedToken, nil
 }
 
 // AuthStart initiates the OIDC authentication flow.
@@ -378,6 +302,82 @@ func (h *Handler) Callback() http.HandlerFunc {
 		h.saveTokenToCookies(w, token)
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
+}
+
+// isPublicPath reports whether path is one of this handler's own
+// login/callback/logout routes, which must never be gated by Wrap — otherwise
+// an unauthenticated request to them would be redirected right back to
+// LoginPath, looping forever and preventing login from ever completing.
+func (h *Handler) isPublicPath(path string) bool {
+	if path == h.Config.LoginPath {
+		return true
+	}
+	if h.callbackPath != "" && path == h.callbackPath {
+		return true
+	}
+	if h.Config.LogoutPath != "" && path == h.Config.LogoutPath {
+		return true
+	}
+	return false
+}
+
+// populatePrincipal reads the ID token cookie, verifies it against this
+// client's JWKS, and — on success — attaches the authenticated principal and
+// custom claims to ctx, mirroring what the jwt middleware does with a
+// validated bearer token. On any failure (cookie absent, ID token expired or
+// invalid) it logs at debug and returns ctx unchanged: the ID token is
+// enrichment for callers like X-Forwarded-User header forwarding, not the
+// session's auth gate, so a stale or missing ID token degrades that
+// enrichment rather than the request.
+func (h *Handler) populatePrincipal(ctx context.Context, r *http.Request) context.Context {
+	idToken, err := extractValueFromCookie(r, h.Config.IDTokenCookie.Name)
+	if err != nil || idToken == "" {
+		return ctx
+	}
+
+	claims, err := h.Client.ValidateToken(ctx, idToken, []string{h.clientID})
+	if err != nil {
+		zerolog.Ctx(ctx).Debug().Err(err).Msg("unable to validate oidc id token for principal extraction")
+		return ctx
+	}
+
+	if claims.RegisteredClaims.Subject != "" {
+		ctx = authctx.ContextWithAuthenticatedPrincipal(ctx, claims.RegisteredClaims.Subject)
+		ctx = authctx.ContextWithAuthenticatedRegisteredClaims(ctx, claims.RegisteredClaims)
+	}
+	if customClaims, err := authjwt.ResolveCustomClaimsMap(claims, idToken); err == nil && len(customClaims) > 0 {
+		ctx = authctx.ContextWithAuthenticatedCustomClaims(ctx, customClaims)
+	}
+
+	return ctx
+}
+
+// redirectToLogin clears any stale session cookies and sends the browser to
+// the configured login path.
+func (h *Handler) redirectToLogin(w http.ResponseWriter, r *http.Request) {
+	h.clearAllCookies(w)
+	http.Redirect(w, r, h.Config.LoginPath, http.StatusSeeOther)
+}
+
+// refreshIfNeeded refreshes token via the OIDC provider when it falls inside
+// the configured refresh window, persisting the refreshed token to cookies.
+// It returns token unchanged when no refresh is needed.
+func (h *Handler) refreshIfNeeded(w http.ResponseWriter, r *http.Request, token *oauth2.Token) (*oauth2.Token, error) {
+	if !shouldRefreshTokenBasedOnExpiry(token.Expiry, h.Config.RefreshWindow, h.Config.Now()) {
+		return token, nil
+	}
+
+	refreshedToken, err := h.Client.RefreshToken(r.Context(), token.RefreshToken)
+	if err != nil {
+		zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to refresh token")
+		return nil, err
+	}
+
+	h.saveTokenToCookies(w, refreshedToken)
+	zerolog.Ctx(r.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Bool("token_refreshed", true)
+	})
+	return refreshedToken, nil
 }
 
 func (h *Handler) extractTokenFromCookies(r *http.Request) (*oauth2.Token, error) {

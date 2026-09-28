@@ -236,16 +236,16 @@ type KeycloakEndpoint struct {
 	url *url.URL
 }
 
-func (e *KeycloakEndpoint) RealmEndpoint(realm string, opts ...EndpointOption) (Endpoint, error) {
-	return NewEndpoint(e.url.JoinPath("realms", realm).String(), opts...)
-}
-
 func NewKeycloakEndpoint(baseURLStr string) (*KeycloakEndpoint, error) {
 	baseURL, err := url.Parse(baseURLStr)
 	if err != nil {
 		return nil, err
 	}
 	return &KeycloakEndpoint{url: baseURL}, nil
+}
+
+func (e *KeycloakEndpoint) RealmEndpoint(realm string, opts ...EndpointOption) (Endpoint, error) {
+	return NewEndpoint(e.url.JoinPath("realms", realm).String(), opts...)
 }
 
 func NewKeycloakRealmEndpoint(baseURLStr, realm string, opts ...EndpointOption) (Endpoint, error) {

@@ -20,6 +20,15 @@ type BasicAuthPair struct {
 	HashedPassword string
 }
 
+func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, error) {
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		return BasicAuthPair{}, err
+	}
+
+	return BasicAuthPair{User: user, HashedPassword: hashedPassword}, nil
+}
+
 func (p BasicAuthPair) VerifyPassword(password string) (bool, error) {
 	byteHash := []byte(p.HashedPassword)
 	err := bcrypt.CompareHashAndPassword(byteHash, []byte(password))
@@ -79,15 +88,6 @@ func hashPassword(password string) (string, error) {
 		return "", err
 	}
 	return string(hash), nil
-}
-
-func NewBasicAuthPairWithPlainPassword(user, password string) (BasicAuthPair, error) {
-	hashedPassword, err := hashPassword(password)
-	if err != nil {
-		return BasicAuthPair{}, err
-	}
-
-	return BasicAuthPair{User: user, HashedPassword: hashedPassword}, nil
 }
 
 func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {

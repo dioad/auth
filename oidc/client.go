@@ -251,26 +251,6 @@ func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Prov
 	return ge.GothProvider(c.clientID, c.clientSecret, callbackURL, scopes...)
 }
 
-// oAuth2Config returns an OAuth2 configuration for the OIDC client
-func (c *Client) oAuth2Config(ctx context.Context, opts ...oAuth2ConfigOpt) (*oauth2.Config, error) {
-	oauth2Endpoint, err := c.endpoint.OAuth2Endpoint(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get OAuth2 endpoint: %w", err)
-	}
-
-	config := &oauth2.Config{
-		ClientID:     c.clientID,
-		ClientSecret: c.clientSecret,
-		Endpoint:     oauth2Endpoint,
-	}
-
-	for _, opt := range opts {
-		opt(config)
-	}
-
-	return config, nil
-}
-
 // ValidateToken VerifyToke verifies the token and returns the claims
 // It fetches the verification keys from the OIDC server
 // and uses them to verify the token
@@ -313,30 +293,6 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 		return nil, fmt.Errorf("unexpected claims type %T returned by token validator", validatedClaims)
 	}
 	return claims, nil
-}
-
-func (c *Client) effectiveValidatingSignatureAlgorithms() ([]jwtvalidator.SignatureAlgorithm, error) {
-	if len(c.validatingSignatureAlgorithms) > 0 {
-		algorithms := make([]jwtvalidator.SignatureAlgorithm, 0, len(c.validatingSignatureAlgorithms))
-		seen := make(map[jwtvalidator.SignatureAlgorithm]struct{}, len(c.validatingSignatureAlgorithms))
-		for i, algorithm := range c.validatingSignatureAlgorithms {
-			if algorithm == "" {
-				return nil, fmt.Errorf("validating signature algorithms[%d] must not be empty", i)
-			}
-			if _, ok := seen[algorithm]; ok {
-				continue
-			}
-			seen[algorithm] = struct{}{}
-			algorithms = append(algorithms, algorithm)
-		}
-		return algorithms, nil
-	}
-
-	if c.validatingSignatureAlgorithm != "" {
-		return []jwtvalidator.SignatureAlgorithm{c.validatingSignatureAlgorithm}, nil
-	}
-
-	return authjwt.DefaultSignatureAlgorithms(), nil
 }
 
 type RequestOpt func(url.Values)
@@ -450,10 +406,6 @@ type RefreshingClientCredentialsTokenSource struct {
 	currentToken *oauth2.Token
 }
 
-func (ts *RefreshingClientCredentialsTokenSource) needsRefresh(clock Clock) bool {
-	return ts.currentToken == nil || ts.currentToken.Expiry.Before(clock.Now())
-}
-
 func (ts *RefreshingClientCredentialsTokenSource) Token() (*oauth2.Token, error) {
 	clock := ts.clock
 	if clock == nil {
@@ -476,6 +428,10 @@ func (ts *RefreshingClientCredentialsTokenSource) Token() (*oauth2.Token, error)
 	}
 
 	return ts.currentToken, nil
+}
+
+func (ts *RefreshingClientCredentialsTokenSource) needsRefresh(clock Clock) bool {
+	return ts.currentToken == nil || ts.currentToken.Expiry.Before(clock.Now())
 }
 
 func (c *Client) RefreshingClientCredentialsToken(ctx context.Context, opts ...RequestOpt) (oauth2.TokenSource, error) {
@@ -595,6 +551,50 @@ func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {
 		return nil, fmt.Errorf("error getting OAuth2 config: %w", err)
 	}
 	return oauth2Config.TokenSource(context.Background(), t), nil
+}
+
+// oAuth2Config returns an OAuth2 configuration for the OIDC client
+func (c *Client) oAuth2Config(ctx context.Context, opts ...oAuth2ConfigOpt) (*oauth2.Config, error) {
+	oauth2Endpoint, err := c.endpoint.OAuth2Endpoint(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OAuth2 endpoint: %w", err)
+	}
+
+	config := &oauth2.Config{
+		ClientID:     c.clientID,
+		ClientSecret: c.clientSecret,
+		Endpoint:     oauth2Endpoint,
+	}
+
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	return config, nil
+}
+
+func (c *Client) effectiveValidatingSignatureAlgorithms() ([]jwtvalidator.SignatureAlgorithm, error) {
+	if len(c.validatingSignatureAlgorithms) > 0 {
+		algorithms := make([]jwtvalidator.SignatureAlgorithm, 0, len(c.validatingSignatureAlgorithms))
+		seen := make(map[jwtvalidator.SignatureAlgorithm]struct{}, len(c.validatingSignatureAlgorithms))
+		for i, algorithm := range c.validatingSignatureAlgorithms {
+			if algorithm == "" {
+				return nil, fmt.Errorf("validating signature algorithms[%d] must not be empty", i)
+			}
+			if _, ok := seen[algorithm]; ok {
+				continue
+			}
+			seen[algorithm] = struct{}{}
+			algorithms = append(algorithms, algorithm)
+		}
+		return algorithms, nil
+	}
+
+	if c.validatingSignatureAlgorithm != "" {
+		return []jwtvalidator.SignatureAlgorithm{c.validatingSignatureAlgorithm}, nil
+	}
+
+	return authjwt.DefaultSignatureAlgorithms(), nil
 }
 
 func ExtractClaims[T jwtvalidator.CustomClaims](claims any) (jwtvalidator.RegisteredClaims, T, error) {
