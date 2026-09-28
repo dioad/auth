@@ -110,9 +110,8 @@ func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	}
 	authMap := LoadBasicAuthFromReader(f)
 
-	err = f.Close()
-	if err != nil {
-		return nil, nil
+	if err := f.Close(); err != nil {
+		return authMap, fmt.Errorf("failed to close basic auth file %s: %w", filePathClean, err)
 	}
 
 	return authMap, nil

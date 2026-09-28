@@ -83,8 +83,8 @@ func NewContextWithGitHubUserInfo(ctx context.Context, userInfo *GitHubUserInfo)
 // It returns nil if no user info is found.
 func GitHubUserInfoFromContext(ctx context.Context) *GitHubUserInfo {
 	val := ctx.Value(githubUserInfoContextKey{})
-	if val != nil {
-		return val.(*GitHubUserInfo)
+	if userInfo, ok := val.(*GitHubUserInfo); ok {
+		return userInfo
 	}
 	return nil
 }

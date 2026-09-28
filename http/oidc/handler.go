@@ -152,8 +152,8 @@ func (h *Handler) handleCallback(w http.ResponseWriter, req *http.Request) (stri
 
 	redirect := h.HomePath
 	r, _ := h.CookieStore.Get(req, PreAuthRefererCookieName)
-	if r.Values["referer"] != nil {
-		redirect = r.Values["referer"].(string)
+	if referer, ok := r.Values["referer"].(string); ok {
+		redirect = referer
 		r.Options.MaxAge = -1
 		if err = h.CookieStore.Save(req, w, r); err != nil {
 			return "", err
@@ -192,7 +192,10 @@ func (*Handler) handleLogout(w http.ResponseWriter, req *http.Request) error {
 	if !ok {
 		return errors.New("no session data found")
 	}
-	data := dataValue.(SessionData)
+	data, ok := dataValue.(SessionData)
+	if !ok {
+		return errors.New("session data has unexpected type")
+	}
 
 	session.Options.MaxAge = -1
 	if err = gothic.Store.Save(req, w, session); err != nil {

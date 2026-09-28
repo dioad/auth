@@ -434,5 +434,9 @@ func extractClaimsMap(tokenString string) (jwt.MapClaims, error) {
 	if err != nil {
 		return nil, err
 	}
-	return token.Claims.(jwt.MapClaims), nil
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("unexpected claims type returned by token parser")
+	}
+	return claims, nil
 }
