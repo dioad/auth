@@ -193,6 +193,7 @@ func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...ValidatorOpt
 	return &MultiValidator{Validators: validators}, nil
 }
 
+// NewMultiValidator creates a MultiValidator from already-constructed validators.
 func NewMultiValidator(validators ...TokenValidator) TokenValidator {
 	return &MultiValidator{Validators: validators}
 }
@@ -215,6 +216,9 @@ type MultiValidator struct {
 	Validators []TokenValidator
 }
 
+// ValidateToken tries each of v.Validators in order, returning the first
+// successful result. If all fail, it returns an error combining every
+// validator's failure.
 func (v *MultiValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	var lastErr error
 	var errs []string
@@ -243,6 +247,8 @@ type PredicateValidator struct {
 	Predicate       ClaimPredicate
 }
 
+// ValidateToken delegates to v.ParentValidator, then checks the result
+// against v.Predicate.
 func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	claims, err := v.ParentValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
@@ -328,6 +334,8 @@ func NewValidatorDebugger(validator TokenValidator, opts ...ValidatorDebugOpts) 
 	return v
 }
 
+// ValidateToken delegates to v's wrapped TokenValidator, logging decoded
+// token details and the validation outcome.
 func (v *ValidatorDebugger) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	tokenDetails, err := decodeTokenData(tokenString)
 	if err != nil {

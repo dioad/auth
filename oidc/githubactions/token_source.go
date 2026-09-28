@@ -42,6 +42,8 @@ type CustomClaims struct {
 	WorkflowSHA       string `json:"workflow_sha"`
 }
 
+// Claims is the JWT claims type for a GitHub Actions OIDC token, combining
+// CustomClaims with the auth0/go-jwt-middleware CustomClaims interface.
 type Claims struct {
 	CustomClaims
 }

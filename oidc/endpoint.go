@@ -171,6 +171,8 @@ func (e *oidcEndpoint) GothProvider(clientID, clientSecret string, callbackURL *
 		scopes...)
 }
 
+// NewEndpoint creates a generic OIDC Endpoint for baseURL, using standard
+// OIDC discovery (.well-known/openid-configuration).
 func NewEndpoint(baseURL string, opts ...EndpointOption) (Endpoint, error) {
 	u, _ := url.Parse(baseURL)
 
@@ -207,6 +209,9 @@ func WithHTTPDoer(doer HTTPDoer) EndpointOption {
 	}
 }
 
+// NewEndpointFromConfig creates the Endpoint implementation matching
+// config.Type (github, githubactions, keycloak, flyio, aws), or a generic
+// Endpoint if Type is unset but URL is provided.
 func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 	switch config.Type {
 	case ProviderTypeGitHub:
@@ -236,6 +241,7 @@ type KeycloakEndpoint struct {
 	url *url.URL
 }
 
+// NewKeycloakEndpoint creates a KeycloakEndpoint for the Keycloak server at baseURLStr.
 func NewKeycloakEndpoint(baseURLStr string) (*KeycloakEndpoint, error) {
 	baseURL, err := url.Parse(baseURLStr)
 	if err != nil {
@@ -244,10 +250,13 @@ func NewKeycloakEndpoint(baseURLStr string) (*KeycloakEndpoint, error) {
 	return &KeycloakEndpoint{url: baseURL}, nil
 }
 
+// RealmEndpoint returns the Endpoint for the given realm on this Keycloak server.
 func (e *KeycloakEndpoint) RealmEndpoint(realm string, opts ...EndpointOption) (Endpoint, error) {
 	return NewEndpoint(e.url.JoinPath("realms", realm).String(), opts...)
 }
 
+// NewKeycloakRealmEndpoint creates the Endpoint for realm on the Keycloak
+// server at baseURLStr in one call.
 func NewKeycloakRealmEndpoint(baseURLStr, realm string, opts ...EndpointOption) (Endpoint, error) {
 	keycloakEndpoint, err := NewKeycloakEndpoint(baseURLStr)
 	if err != nil {
@@ -262,14 +271,18 @@ type GitHubEndpoint struct {
 	url *url.URL
 }
 
+// URL returns the base URL of the GitHub OAuth endpoint.
 func (e *GitHubEndpoint) URL() *url.URL {
 	return e.url
 }
 
+// DiscoveryEndpoint always returns an error: GitHub does not support OpenID Connect discovery.
 func (e *GitHubEndpoint) DiscoveryEndpoint() (*url.URL, error) {
 	return nil, errors.New("GitHub does not support OpenID Connect discovery")
 }
 
+// DiscoveredConfiguration returns GitHub's OAuth endpoints, hardcoded since
+// GitHub does not support OIDC discovery.
 func (e *GitHubEndpoint) DiscoveredConfiguration(_ context.Context) (*OpenIDConfiguration, error) {
 	return &OpenIDConfiguration{
 		AuthorizationEndpoint:       e.url.JoinPath("/login/oauth/authorize").String(),
@@ -278,14 +291,17 @@ func (e *GitHubEndpoint) DiscoveredConfiguration(_ context.Context) (*OpenIDConf
 	}, nil
 }
 
+// OAuth2Endpoint returns golang.org/x/oauth2/endpoints.GitHub.
 func (e *GitHubEndpoint) OAuth2Endpoint(_ context.Context) (oauth2.Endpoint, error) {
 	return endpoints.GitHub, nil
 }
 
+// GothProvider returns a goth GitHub provider for this endpoint.
 func (e *GitHubEndpoint) GothProvider(clientID, clientSecret string, callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
 	return github.New(clientID, clientSecret, callbackURL.String(), scopes...), nil
 }
 
+// NewGitHubEndpoint creates a GitHubEndpoint for baseURL, defaulting to https://github.com if empty.
 func NewGitHubEndpoint(baseURL string) (Endpoint, error) {
 	if baseURL == "" {
 		baseURL = "https://github.com"

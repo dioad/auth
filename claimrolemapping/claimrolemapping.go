@@ -23,6 +23,8 @@ var knownSources = []string{SourceFlyio, SourceGithubActions, SourceAWS, SourceO
 // ClaimRoleMappingConfig maps a set of JWT claim predicates to an internal
 // role, optionally restricted to a specific PrincipalSource. An empty Source
 // matches any source.
+//
+//nolint:revive // stutters, but is used externally (e.g. dioad/connect) as claimrolemapping.ClaimRoleMappingConfig; renaming is a breaking change
 type ClaimRoleMappingConfig struct {
 	// Source restricts this mapping to a named PrincipalSource (e.g. "flyio",
 	// "aws"). Empty means match any source.

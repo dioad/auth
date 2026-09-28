@@ -46,6 +46,7 @@ func (a ClientAuth) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
+// HTTPClient returns an *http.Client that authenticates every request with a's GitHub access token.
 func (a ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &TokenRoundTripper{

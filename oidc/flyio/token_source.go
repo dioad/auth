@@ -31,10 +31,14 @@ type CustomClaims struct {
 	Region         string `json:"region"`
 }
 
+// Claims is the JWT claims type for a Fly.io OIDC token, combining
+// CustomClaims with the auth0/go-jwt-middleware CustomClaims interface.
 type Claims struct {
 	CustomClaims
 }
 
+// Validate implements the CustomClaims interface. Fly.io tokens carry no
+// additional claims to validate.
 func (c *Claims) Validate(_ context.Context) error {
 	return nil
 }
@@ -44,8 +48,10 @@ type tokenSource struct {
 	client   *http.Client
 }
 
+// Opt is a function option for configuring the token source.
 type Opt func(*tokenSource)
 
+// WithAudience sets the audience for the OIDC token.
 func WithAudience(aud string) Opt {
 	return func(ts *tokenSource) {
 		if aud != "" {
@@ -58,7 +64,8 @@ type tokenPayload struct {
 	Audience string `json:"aud,omitempty"`
 }
 
-// NewTokenSource: https://fly.io/docs/security/openid-connect/
+// NewTokenSource creates a new token source for Fly.io OIDC tokens, fetched
+// via the local metadata socket. See https://fly.io/docs/security/openid-connect/.
 func NewTokenSource(opts ...Opt) oauth2.TokenSource {
 	source := &tokenSource{
 		client: NewUnixSocketClient("/.fly/api"),

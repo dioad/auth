@@ -16,6 +16,8 @@ import (
 	"github.com/dioad/auth/oidc"
 )
 
+// Default cookie names, paths, and max-ages used when OIDCConfig or
+// CookieConfig leave the corresponding field unset.
 var (
 	DefaultCookiePath            = "/"
 	DefaultTokenCookieName       = "oidc_token"
@@ -28,6 +30,7 @@ var (
 	DefaultIDTokenCookieName     = "oidc_id_token"   // #nosec G101
 )
 
+// CookieConfig configures a single session cookie's name, scope, and lifetime.
 type CookieConfig struct {
 	Name   string        `json:"name"             mapstructure:"name"`
 	Domain string        `json:"domain,omitzero"  mapstructure:"domain,omitzero"`
@@ -36,6 +39,7 @@ type CookieConfig struct {
 	MaxAge time.Duration `json:"max_age,omitzero" mapstructure:"max-age,omitzero"`
 }
 
+// Cookie builds an *http.Cookie carrying value, using c's configured name, domain, path, and max-age.
 func (c CookieConfig) Cookie(value string) *http.Cookie {
 	// #nosec G124 -- Secure is deliberately configurable (CookieConfig.Secure) so
 	// deployments can run over plain HTTP in local development; HttpOnly and
@@ -52,16 +56,22 @@ func (c CookieConfig) Cookie(value string) *http.Cookie {
 	}
 }
 
+// Set writes value to w as a cookie configured by c.
 func (c CookieConfig) Set(w http.ResponseWriter, value string) {
 	http.SetCookie(w, c.Cookie(value))
 }
 
+// Delete expires c's cookie on w.
 func (c CookieConfig) Delete(w http.ResponseWriter) {
 	cookie := c.Cookie("") // #nosec G124 -- see justification in Cookie above
 	cookie.MaxAge = 0
 	http.SetCookie(w, cookie)
 }
 
+// OIDCConfig configures browser-based OIDC login: scopes, redirect URI,
+// session cookies, refresh behavior, and login/logout paths.
+//
+//nolint:revive // stutters, but is used externally (e.g. dioad/connect-control) as oidc.OIDCConfig; renaming is a breaking change
 type OIDCConfig struct {
 	Scopes      []string `json:"scopes,omitzero"       mapstructure:"scopes,omitzero"`
 	RedirectURI string   `json:"redirect_uri,omitzero" mapstructure:"redirect-uri,omitzero"`
@@ -86,6 +96,9 @@ type OIDCConfig struct {
 	AllowInsecureCookies bool `json:"allow_insecure_cookies,omitzero" mapstructure:"allow-insecure-cookies,omitzero"`
 }
 
+// Handler provides browser-based OIDC login middleware: the
+// login/callback/logout flow, session cookie management, and transparent
+// token refresh.
 type Handler struct {
 	Client *oidc.Client
 	Config OIDCConfig
@@ -105,6 +118,8 @@ type Handler struct {
 	bearerPassthrough bool
 }
 
+// NewHandler creates a new OIDC login Handler, filling in cfg's defaults
+// (login/logout paths, cookie names/paths/max-ages).
 func NewHandler(client *oidc.Client, cfg OIDCConfig) *Handler {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
@@ -200,6 +215,8 @@ func (h *Handler) LogoutPath() string {
 	return h.Config.LogoutPath
 }
 
+// Wrap wraps next with session-cookie-based OIDC authentication, redirecting
+// unauthenticated requests to login and refreshing the token when needed.
 func (h *Handler) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if h.isPublicPath(r.URL.Path) {

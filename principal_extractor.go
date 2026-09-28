@@ -57,6 +57,8 @@ import (
 	"github.com/dioad/auth/oidc/githubactions"
 )
 
+// ErrNoPrincipalFound is returned when none of a PrincipalExtractor's sources
+// could extract a principal from the request context.
 var (
 	ErrNoPrincipalFound = errors.New("no principal found")
 )
@@ -80,6 +82,7 @@ type PrincipalContext struct {
 	IsService bool
 }
 
+// HasRole reports whether c is non-nil and role is among c.Roles.
 func (c *PrincipalContext) HasRole(role string) bool {
 	if c == nil {
 		return false

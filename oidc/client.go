@@ -22,14 +22,20 @@ import (
 	"github.com/dioad/auth/oidc/githubactions"
 )
 
+// Sentinel errors returned by token handling and validation in this package.
 var (
 	ErrInvalidToken    = errors.New("invalid token")
 	ErrTokenValidation = errors.New("token validation failed")
 	ErrInvalidClaims   = errors.New("invalid claims format")
 )
 
+// GitHubActionsCustomClaims is an alias for githubactions.CustomClaims.
 type GitHubActionsCustomClaims = githubactions.CustomClaims
+
+// FlyIOCustomClaims is an alias for flyio.CustomClaims.
 type FlyIOCustomClaims = flyio.CustomClaims
+
+// AWSCustomClaims is an alias for aws.CustomClaims.
 type AWSCustomClaims = aws.CustomClaims
 
 // IntrospectionResponse represents the fields returned by an RFC 7662 token introspection response,
@@ -232,6 +238,7 @@ func NewClient(endpoint Endpoint, opts ...ClientOpt) *Client {
 	return client
 }
 
+// Endpoint returns the OIDC provider endpoint this Client was constructed with.
 func (c *Client) Endpoint() Endpoint {
 	return c.endpoint
 }
@@ -242,6 +249,8 @@ func (c *Client) ClientID() string {
 	return c.clientID
 }
 
+// GothProvider returns a goth.Provider for this Client's endpoint, or an
+// error if the endpoint doesn't support goth-based login flows.
 func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Provider, error) {
 	ge, ok := c.endpoint.(GothEndpoint)
 	if !ok {
@@ -295,8 +304,10 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 	return claims, nil
 }
 
+// RequestOpt mutates the form values of a token request before it is sent.
 type RequestOpt func(url.Values)
 
+// WithAudience sets the "audience" form parameter on a token request, when audience is non-empty.
 func WithAudience(audience string) RequestOpt {
 	return func(v url.Values) {
 		if audience != "" {
@@ -305,6 +316,7 @@ func WithAudience(audience string) RequestOpt {
 	}
 }
 
+// RefreshToken exchanges refreshToken for a new access token via the refresh_token grant.
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
@@ -361,6 +373,7 @@ func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string
 	return authURLWithParams, nil
 }
 
+// AuthorizationCodeToken exchanges an authorization code for a token via the authorization_code grant.
 func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirectURI string, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
@@ -395,6 +408,9 @@ func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redire
 	return tokenResponse.toToken(c.clock.Now()), nil
 }
 
+// RefreshingClientCredentialsTokenSource is an oauth2.TokenSource that
+// fetches a client_credentials token on first use and transparently
+// refreshes it once it expires.
 type RefreshingClientCredentialsTokenSource struct {
 	client *Client
 	ctx    context.Context
@@ -405,6 +421,8 @@ type RefreshingClientCredentialsTokenSource struct {
 	currentToken *oauth2.Token
 }
 
+// Token returns the current client_credentials token, fetching or
+// refreshing it first if needed.
 func (ts *RefreshingClientCredentialsTokenSource) Token() (*oauth2.Token, error) {
 	clock := ts.clock
 	if clock == nil {
@@ -433,6 +451,8 @@ func (ts *RefreshingClientCredentialsTokenSource) needsRefresh(clock Clock) bool
 	return ts.currentToken == nil || ts.currentToken.Expiry.Before(clock.Now())
 }
 
+// RefreshingClientCredentialsToken returns an oauth2.TokenSource that lazily
+// fetches and refreshes a client_credentials token using c.
 func (c *Client) RefreshingClientCredentialsToken(ctx context.Context, opts ...RequestOpt) (oauth2.TokenSource, error) {
 	// token, err := c.ClientCredentialsToken(ctx, opts...)
 	// if err != nil {
@@ -504,6 +524,9 @@ func (c *Client) IntrospectToken(ctx context.Context, token string) (*Introspect
 	return introspectionResponse, nil
 }
 
+// DeviceToken runs the OAuth2 Device Authorization Grant flow: it requests a
+// device code, displays it to the user via c.deviceUI (or a console default),
+// and polls until the token is issued.
 func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Token, error) {
 	config, err := c.oAuth2Config(ctx, withScopes(scopes...))
 	if err != nil {
@@ -535,6 +558,8 @@ func (c *Client) DeviceToken(ctx context.Context, scopes ...string) (*oauth2.Tok
 	return token, err
 }
 
+// HTTPClient returns an *http.Client that attaches t as a bearer token,
+// refreshing it via the OAuth2 flow when it expires.
 func (c *Client) HTTPClient(ctx context.Context, t *oauth2.Token) (*http.Client, error) {
 	oauth2Config, err := c.oAuth2Config(ctx)
 	if err != nil {
@@ -543,6 +568,8 @@ func (c *Client) HTTPClient(ctx context.Context, t *oauth2.Token) (*http.Client,
 	return oauth2Config.Client(ctx, t), nil
 }
 
+// TokenSource returns an oauth2.TokenSource seeded with t that transparently
+// refreshes the token via the OAuth2 flow when it expires.
 func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {
 	oauth2Config, err := c.oAuth2Config(context.Background())
 	if err != nil {
@@ -595,6 +622,10 @@ func (c *Client) effectiveValidatingSignatureAlgorithms() ([]jwtvalidator.Signat
 	return authjwt.DefaultSignatureAlgorithms(), nil
 }
 
+// ExtractClaims type-asserts claims to *jwtvalidator.ValidatedClaims and
+// splits out its registered and typed custom claims (of type T). It returns
+// an error if claims isn't a *jwtvalidator.ValidatedClaims, or if its
+// CustomClaims is set but isn't of type T.
 func ExtractClaims[T jwtvalidator.CustomClaims](claims any) (jwtvalidator.RegisteredClaims, T, error) {
 	var zeroCustomClaims T
 	var zeroRegisteredClaims jwtvalidator.RegisteredClaims
