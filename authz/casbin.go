@@ -76,14 +76,15 @@ func NewCasbinAuthorizer(metadata PolicyMetadata) (*CasbinAuthorizer, error) {
 
 // Privileges resolves the principal's roles from canonical role names or
 // RoleAliases and returns the union of all matching role capabilities as a
-// [PrivilegeSet].
+// [PrivilegeSet]. Returns ErrNoPrivileges when principalCtx is nil or the
+// principal has no recognised roles.
 func (a *CasbinAuthorizer) Privileges(ctx context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
-		return nil, nil
+		return nil, ErrNoPrivileges
 	}
 	roles := principalRoles(ctx, principalCtx, a.metadata.RoleAliases, a.metadata.RoleCapabilities)
 	if len(roles) == 0 {
-		return nil, nil
+		return nil, ErrNoPrivileges
 	}
 	return NewWildcardPrivilege(privilegeSetForRoles(roles, a.metadata.RoleCapabilities)), nil
 }

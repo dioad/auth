@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"slices"
 
@@ -90,16 +91,16 @@ func privilegeSetForRoles(roles []Role, roleCapabilities map[Role][]Capability) 
 }
 
 // canFromPrivileges implements the default Can() logic for authorizers that
-// delegate to Privileges().Has(). It handles nil principal and nil Privilege.
+// delegate to Privileges().Has(). It handles nil principal and ErrNoPrivileges.
 func canFromPrivileges(principalCtx *auth.PrincipalContext, capability Capability, privs Privilege, err error) (*Decision, error) {
 	if principalCtx == nil {
 		return deny(ReasonDeniedNilPrincipal, capability), ErrUnauthorized
 	}
+	if errors.Is(err, ErrNoPrivileges) {
+		return deny(ReasonDeniedNoRoles, capability), ErrForbidden
+	}
 	if err != nil {
 		return nil, err
-	}
-	if privs == nil {
-		return deny(ReasonDeniedNoRoles, capability), ErrForbidden
 	}
 	if !privs.Has(capability) {
 		return deny(ReasonDeniedNoPermission, capability), ErrForbidden

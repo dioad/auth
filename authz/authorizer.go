@@ -45,10 +45,12 @@ import (
 //	if privs.Has(authz.Permission("tunnel", "write")) { ... }
 type Authorizer interface {
 	// Privileges returns the full capability set for the principal. It returns
-	// nil when the principal has no recognised roles (not an error). Callers
-	// should treat a nil Privilege as "no capabilities". When principalCtx is
-	// nil, enforcing implementations return (nil, nil); callers that need to
-	// distinguish "unauthenticated" from "no roles" should use Can instead.
+	// (nil, ErrNoPrivileges) when the principal has no recognised roles — not
+	// an infrastructure failure. Callers that only check capabilities via
+	// [Privilege.Has] can ignore that error, since a nil Privilege reports
+	// every capability check as false. When principalCtx is nil, enforcing
+	// implementations also return (nil, ErrNoPrivileges); callers that need
+	// to distinguish "unauthenticated" from "no roles" should use Can instead.
 	Privileges(ctx context.Context, principalCtx *auth.PrincipalContext) (Privilege, error)
 
 	// Can checks whether the principal holds cap. A non-nil *Decision is

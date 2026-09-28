@@ -15,6 +15,15 @@ var ErrForbidden = errors.New("forbidden")
 // principal was evaluated and denied by policy.
 var ErrUnauthorized = errors.New("unauthorized")
 
+// ErrNoPrivileges is returned by [Authorizer.Privileges] when the principal
+// has no recognised roles or capabilities, or principalCtx is nil. It is not
+// an infrastructure failure: callers that only need to check individual
+// capabilities can treat it the same as a nil [Privilege] (every capability
+// check reports false) and ignore it via errors.Is(err, ErrNoPrivileges).
+// Privileges does not distinguish "unauthenticated" from "no roles" — use
+// [Authorizer.Can] for that distinction (ErrUnauthorized vs ErrForbidden).
+var ErrNoPrivileges = errors.New("no privileges")
+
 // DecisionReason is a stable string token that describes why an authorization
 // decision was made. It is intended for structured audit logging; callers
 // should still use errors.Is with ErrUnauthorized or ErrForbidden for flow control, depending on the failure mode.

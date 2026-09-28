@@ -40,14 +40,14 @@ func NewMapAuthorizer(privileges map[string]*PrivilegeSet, metadata PolicyMetada
 
 // Privileges looks up the principal's ID in the map and returns a wildcard-aware
 // view so [Privilege.Has] semantics stay consistent with other authorizers.
-// Returns nil when not found.
+// Returns ErrNoPrivileges when not found.
 func (a *MapAuthorizer) Privileges(_ context.Context, principalCtx *auth.PrincipalContext) (Privilege, error) {
 	if principalCtx == nil {
-		return nil, nil
+		return nil, ErrNoPrivileges
 	}
 	ps, ok := a.privileges[principalCtx.ID]
 	if !ok {
-		return nil, nil
+		return nil, ErrNoPrivileges
 	}
 	return NewWildcardPrivilege(ps), nil
 }
