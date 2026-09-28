@@ -107,7 +107,7 @@ func TestHandler_RequireToken_RejectsRequestWithNoCredential(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)
@@ -123,7 +123,7 @@ func TestHandler_RequireTokenUnset_PreservesPassThroughForNoCredential(t *testin
 	rr := httptest.NewRecorder()
 
 	called := false
-	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		called = true
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)

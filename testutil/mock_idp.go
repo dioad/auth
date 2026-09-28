@@ -68,7 +68,7 @@ func (i *MockIdP) Close() {
 	i.Server.Close()
 }
 
-func (i *MockIdP) handleDiscovery(w http.ResponseWriter, r *http.Request) {
+func (i *MockIdP) handleDiscovery(w http.ResponseWriter, _ *http.Request) {
 	config := map[string]any{
 		"issuer":                                i.Issuer,
 		"authorization_endpoint":                i.Issuer + "/authorize",
@@ -88,7 +88,7 @@ func (i *MockIdP) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (i *MockIdP) handleJWKS(w http.ResponseWriter, r *http.Request) {
+func (i *MockIdP) handleJWKS(w http.ResponseWriter, _ *http.Request) {
 	jwk := jose.JSONWebKey{
 		Key:       &i.Key.PublicKey,
 		KeyID:     "test-key",
@@ -114,7 +114,7 @@ func (i *MockIdP) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("%s?code=%s&state=%s", redirectURI, code, state), http.StatusFound)
 }
 
-func (i *MockIdP) handleToken(w http.ResponseWriter, r *http.Request) {
+func (i *MockIdP) handleToken(w http.ResponseWriter, _ *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"iss":      i.Issuer,
 		claimSub:   "test-user",
@@ -139,7 +139,7 @@ func (i *MockIdP) handleToken(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (i *MockIdP) handleUserInfo(w http.ResponseWriter, r *http.Request) {
+func (i *MockIdP) handleUserInfo(w http.ResponseWriter, _ *http.Request) {
 	user := map[string]any{
 		claimSub:   "test-user",
 		claimEmail: "test@example.com",

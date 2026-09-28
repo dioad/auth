@@ -72,7 +72,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	})
 
 	testServer := httptest.NewServer(
-		serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})),
 	)
@@ -123,7 +123,7 @@ func TestTimestampExpiry(t *testing.T) {
 		MaxTimestampDiff: 1 * time.Second,
 	})
 
-	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})))
 	defer testServer.Close()
 
 	clientAuth := ClientAuth{
@@ -152,7 +152,7 @@ func TestWrongPathOrMethod(t *testing.T) {
 		CommonConfig: CommonConfig{SharedKey: sharedKey},
 	})
 
-	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})))
 	defer testServer.Close()
 
 	clientAuth := ClientAuth{
@@ -184,7 +184,7 @@ func TestPrincipalSpoofing(t *testing.T) {
 		CommonConfig: CommonConfig{SharedKey: sharedKey},
 	})
 
-	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})))
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})))
 	defer testServer.Close()
 
 	clientAuth := ClientAuth{Config: ClientConfig{
@@ -225,7 +225,7 @@ func TestHMACRoundTripper(t *testing.T) {
 		CommonConfig: CommonConfig{SharedKey: sharedKey},
 	})
 
-	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})))
 	defer testServer.Close()
@@ -260,7 +260,7 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 	})
 
 	testServer := httptest.NewServer(
-		serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})),
 	)
@@ -316,7 +316,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 		CommonConfig: CommonConfig{SharedKey: sharedKey},
 	})
 
-	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})))
 
@@ -376,7 +376,7 @@ func TestNoQueryParameters(t *testing.T) {
 		CommonConfig: CommonConfig{SharedKey: sharedKey},
 	})
 
-	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})))
 	defer testServer.Close()

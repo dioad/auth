@@ -18,7 +18,7 @@ func TestHandlerFunc(t *testing.T) {
 		AllowList: []string{"user@example.com"},
 	}
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("success"))
 	})
@@ -120,7 +120,7 @@ func TestWrap_Authorised(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("authorized"))
 	})
@@ -145,7 +145,7 @@ func TestWrap_Forbidden(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		assert.Fail(t, "next handler should not be called for forbidden request")
 		w.WriteHeader(http.StatusOK)
 	})
@@ -169,7 +169,7 @@ func TestWrap_NoPrincipal(t *testing.T) {
 
 	handler := NewHandler(cfg)
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		assert.Fail(t, "next handler should not be called when no principal is present")
 		w.WriteHeader(http.StatusOK)
 	})

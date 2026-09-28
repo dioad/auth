@@ -59,7 +59,7 @@ func TestMockIdPAuthorizeRedirect(t *testing.T) {
 	t.Cleanup(idp.Close)
 
 	client := &http.Client{
-		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -102,7 +102,7 @@ func TestMockIdPTokenResponse(t *testing.T) {
 	require.True(t, ok)
 	require.NotEmpty(t, accessToken)
 
-	parsed, err := jwt.Parse(accessToken, func(t *jwt.Token) (any, error) {
+	parsed, err := jwt.Parse(accessToken, func(_ *jwt.Token) (any, error) {
 		return &idp.Key.PublicKey, nil
 	})
 	require.NoError(t, err)

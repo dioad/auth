@@ -88,7 +88,7 @@ func TestHeaderCaseNormalization(t *testing.T) {
 			})
 
 			testServer := httptest.NewServer(
-				serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					w.WriteHeader(http.StatusOK)
 				})),
 			)

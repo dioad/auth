@@ -97,7 +97,7 @@ func TestTokenSourceCustomFactory(t *testing.T) {
 	}
 
 	factories := map[string]TokenSourceFactory{
-		"custom": func(cfg ClientConfig) (oauth2.TokenSource, error) {
+		"custom": func(_ ClientConfig) (oauth2.TokenSource, error) {
 			return oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "custom"}), nil
 		},
 	}

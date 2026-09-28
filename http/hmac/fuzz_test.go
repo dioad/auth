@@ -32,7 +32,7 @@ func FuzzAuthRequest(f *testing.F) {
 	handler := NewHandler(cfg)
 
 	f.Add("HMAC user123:signature", "1234567890", "Content-Type", []byte("body"))
-	f.Fuzz(func(t *testing.T, authHeader, timestamp, signedHeaders string, body []byte) {
+	f.Fuzz(func(_ *testing.T, authHeader, timestamp, signedHeaders string, body []byte) {
 		req, err := http.NewRequest(http.MethodPost, "http://example.com/api", bytes.NewReader(body))
 		if err != nil {
 			return

@@ -110,7 +110,7 @@ func TestHMACValidatorRejectsEmptyStringIssuer(t *testing.T) {
 // the configured issuer is enforced (mismatched issuer claims are rejected).
 func TestNormalValidatorEnforcesIssuer(t *testing.T) {
 	// Use a deterministic keyFunc to test issuer enforcement directly
-	keyFunc := func(ctx context.Context) (any, error) {
+	keyFunc := func(_ context.Context) (any, error) {
 		return []byte("test-secret"), nil
 	}
 
@@ -321,7 +321,7 @@ func TestValidatorRejectsInvalidSignatureAlgorithms(t *testing.T) {
 // TestHMACValidatorWithCustomKeyFuncAndNoIssuer verifies that when HMACSecret is set
 // along with a custom keyFunc, the synthetic issuer is still established for HMAC mode.
 func TestHMACValidatorWithCustomKeyFuncAndNoIssuer(t *testing.T) {
-	customKeyFunc := func(ctx context.Context) (any, error) {
+	customKeyFunc := func(_ context.Context) (any, error) {
 		return []byte("test-secret"), nil
 	}
 
@@ -361,7 +361,7 @@ func TestHMACValidatorWithCustomKeyFuncAndNoIssuer(t *testing.T) {
 // enforces this as an explicit guard before constructing the underlying validator,
 // preventing accidental deployments without audience checking.
 func TestNormalValidatorRequiresAudiences(t *testing.T) {
-	keyFunc := func(ctx context.Context) (any, error) {
+	keyFunc := func(_ context.Context) (any, error) {
 		return []byte("test-secret"), nil
 	}
 
