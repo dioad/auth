@@ -66,9 +66,9 @@ func TestFlyioPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 
 	flyioClaims := &flyio.Claims{
 		CustomClaims: flyio.CustomClaims{
-			AppId:   "5148555",
+			AppID:   "5148555",
 			AppName: "dioad-dev-edgerouter",
-			OrgId:   "837952",
+			OrgID:   "837952",
 			OrgName: "dioad-dev",
 			Region:  "lhr",
 		},
@@ -107,9 +107,9 @@ func TestAWSPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 	})
 
 	awsClaims := &aws.Claims{}
-	awsClaims.HttpsStsAmazonawsCom.PrincipalId = "arn:aws:iam::481665101164:role/dev-dioad-public-dns"
-	awsClaims.HttpsStsAmazonawsCom.AwsAccount = "481665101164"
-	awsClaims.HttpsStsAmazonawsCom.SourceRegion = "eu-west-2"
+	awsClaims.HTTPSStsAmazonawsCom.PrincipalID = "arn:aws:iam::481665101164:role/dev-dioad-public-dns"
+	awsClaims.HTTPSStsAmazonawsCom.AwsAccount = "481665101164"
+	awsClaims.HTTPSStsAmazonawsCom.SourceRegion = "eu-west-2"
 
 	vc := &jwtvalidator.ValidatedClaims{
 		RegisteredClaims: jwtvalidator.RegisteredClaims{

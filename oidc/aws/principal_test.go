@@ -14,22 +14,22 @@ import (
 )
 
 // makeCustomClaims is a helper to create AWS CustomClaims with the nested STS struct.
-func makeCustomClaims(principalId, orgId, awsAccount, region string) CustomClaims {
+func makeCustomClaims(principalID, orgID, awsAccount, region string) CustomClaims {
 	return CustomClaims{
-		HttpsStsAmazonawsCom: struct {
+		HTTPSStsAmazonawsCom: struct {
 			Ec2InstanceSourceVpc         string    `json:"ec2_instance_source_vpc"`
 			Ec2RoleDelivery              string    `json:"ec2_role_delivery"`
-			OrgId                        string    `json:"org_id"`
+			OrgID                        string    `json:"org_id"`
 			AwsAccount                   string    `json:"aws_account"`
 			OuPath                       []string  `json:"ou_path"`
 			OriginalSessionExp           time.Time `json:"original_session_exp"`
 			SourceRegion                 string    `json:"source_region"`
 			Ec2SourceInstanceArn         string    `json:"ec2_source_instance_arn"`
-			PrincipalId                  string    `json:"principal_id"`
+			PrincipalID                  string    `json:"principal_id"`
 			Ec2InstanceSourcePrivateIpv4 string    `json:"ec2_instance_source_private_ipv4"`
 		}{
-			PrincipalId:                  principalId,
-			OrgId:                        orgId,
+			PrincipalID:                  principalID,
+			OrgID:                        orgID,
 			AwsAccount:                   awsAccount,
 			SourceRegion:                 region,
 			Ec2SourceInstanceArn:         "arn:aws:ec2:us-east-1:123456789012:instance/i-123456",

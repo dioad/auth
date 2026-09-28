@@ -12,7 +12,7 @@ import (
 )
 
 func TestMockIdPDiscovery(t *testing.T) {
-	idp, err := NewMockIdP()
+	idp, err := NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -33,7 +33,7 @@ func TestMockIdPDiscovery(t *testing.T) {
 }
 
 func TestMockIdPJWKS(t *testing.T) {
-	idp, err := NewMockIdP()
+	idp, err := NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -54,7 +54,7 @@ func TestMockIdPJWKS(t *testing.T) {
 }
 
 func TestMockIdPAuthorizeRedirect(t *testing.T) {
-	idp, err := NewMockIdP()
+	idp, err := NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -85,7 +85,7 @@ func TestMockIdPAuthorizeRedirect(t *testing.T) {
 }
 
 func TestMockIdPTokenResponse(t *testing.T) {
-	idp, err := NewMockIdP()
+	idp, err := NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 
@@ -116,7 +116,7 @@ func TestMockIdPTokenResponse(t *testing.T) {
 }
 
 func TestMockIdPUserInfo(t *testing.T) {
-	idp, err := NewMockIdP()
+	idp, err := NewMockIDP()
 	require.NoError(t, err)
 	t.Cleanup(idp.Close)
 

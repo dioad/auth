@@ -28,14 +28,14 @@ func (c *Claims) ClaimsMap(subject string) map[string]any {
 	if subject != "" {
 		result["username"] = subject
 	}
-	result["app_id"] = c.AppId
+	result["app_id"] = c.AppID
 	result["app_name"] = c.AppName
 	result["image"] = c.Image
 	result["image_digest"] = c.ImageDigest
-	result["machine_id"] = c.MachineId
+	result["machine_id"] = c.MachineID
 	result["machine_name"] = c.MachineName
 	result["machine_version"] = c.MachineVersion
-	result["org_id"] = c.OrgId
+	result["org_id"] = c.OrgID
 	result["org_name"] = c.OrgName
 	result["region"] = c.Region
 	return result

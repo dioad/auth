@@ -52,10 +52,10 @@ func NormalizeClaims(claims map[string]any) map[string]any {
 // claims into canonical aws_* prefixed keys. AWS tokens don't seed a
 // "username" key on the typed path, so subject is unused.
 func (c *Claims) ClaimsMap(_ string) map[string]any {
-	sts := c.HttpsStsAmazonawsCom
+	sts := c.HTTPSStsAmazonawsCom
 	return map[string]any{
-		"aws_principal_id":                     sts.PrincipalId,
-		"aws_org_id":                           sts.OrgId,
+		"aws_principal_id":                     sts.PrincipalID,
+		"aws_org_id":                           sts.OrgID,
 		"aws_source_region":                    sts.SourceRegion,
 		"aws_account":                          sts.AwsAccount,
 		"aws_ec2_source_instance_arn":          sts.Ec2SourceInstanceArn,

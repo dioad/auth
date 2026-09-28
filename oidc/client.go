@@ -68,7 +68,7 @@ type IntrospectionResponse struct {
 	GivenName         string   `json:"given_name"`
 	FamilyName        string   `json:"family_name"`
 	Email             string   `json:"email"`
-	ClientId          string   `json:"client_id"`
+	ClientID          string   `json:"client_id"`
 	Username          string   `json:"username"`
 	TokenType         string   `json:"token_type"`
 	Active            bool     `json:"active"`
@@ -362,7 +362,7 @@ func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string
 	return authURLWithParams, nil
 }
 
-func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirectUri string, opts ...RequestOpt) (*oauth2.Token, error) {
+func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redirectURI string, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
 		return nil, err
@@ -380,7 +380,7 @@ func (c *Client) AuthorizationCodeToken(ctx context.Context, code string, redire
 
 	// data.Set("grant_type", "authorization_code")
 	// data.Set("code", code)
-	data.Set("redirect_uri", redirectUri)
+	data.Set("redirect_uri", redirectURI)
 	// data.Set("client_id", h.Config.ClientID)
 	// data.Set("client_secret", h.Config.ClientSecret)
 

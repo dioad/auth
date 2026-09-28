@@ -31,16 +31,16 @@ type Opt func(*tokenSource)
 // CustomClaims represents the custom claims included in the JWT token returned by AWS STS GetWebIdentityToken API.
 // These claims provide additional information about the AWS environment and the context of the token issuance.
 type CustomClaims struct {
-	HttpsStsAmazonawsCom struct {
+	HTTPSStsAmazonawsCom struct {
 		Ec2InstanceSourceVpc         string    `json:"ec2_instance_source_vpc"`
 		Ec2RoleDelivery              string    `json:"ec2_role_delivery"`
-		OrgId                        string    `json:"org_id"`
+		OrgID                        string    `json:"org_id"`
 		AwsAccount                   string    `json:"aws_account"`
 		OuPath                       []string  `json:"ou_path"`
 		OriginalSessionExp           time.Time `json:"original_session_exp"`
 		SourceRegion                 string    `json:"source_region"`
 		Ec2SourceInstanceArn         string    `json:"ec2_source_instance_arn"`
-		PrincipalId                  string    `json:"principal_id"`
+		PrincipalID                  string    `json:"principal_id"`
 		Ec2InstanceSourcePrivateIpv4 string    `json:"ec2_instance_source_private_ipv4"`
 	} `json:"https://sts.amazonaws.com/"` //nolint:tagliatelle // AWS STS's literal claim namespace key, not ours to rename
 }

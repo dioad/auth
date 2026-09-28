@@ -143,8 +143,8 @@ func TestFlyioValidatorProducesTypedClaims(t *testing.T) {
 	require.Equal(t, "dioad-dev-edgerouter", flyioClaims.AppName)
 	require.Equal(t, "dioad-dev", flyioClaims.OrgName)
 	require.Equal(t, "lhr", flyioClaims.Region)
-	require.Equal(t, "5148555", flyioClaims.AppId)
-	require.Equal(t, "d8dd4edce23568", flyioClaims.MachineId)
+	require.Equal(t, "5148555", flyioClaims.AppID)
+	require.Equal(t, "d8dd4edce23568", flyioClaims.MachineID)
 }
 
 // TestAWSValidatorProducesTypedClaims verifies that a validator configured
@@ -171,10 +171,10 @@ func TestAWSValidatorProducesTypedClaims(t *testing.T) {
 	require.True(t, ok, "expected *aws.Claims, got %T", vc.CustomClaims)
 
 	require.Equal(t, "arn:aws:iam::481665101164:role/dev-dioad-public-dns",
-		awsClaims.HttpsStsAmazonawsCom.PrincipalId)
-	require.Equal(t, "481665101164", awsClaims.HttpsStsAmazonawsCom.AwsAccount)
-	require.Equal(t, "eu-west-2", awsClaims.HttpsStsAmazonawsCom.SourceRegion)
-	require.Equal(t, "o-abc123", awsClaims.HttpsStsAmazonawsCom.OrgId)
+		awsClaims.HTTPSStsAmazonawsCom.PrincipalID)
+	require.Equal(t, "481665101164", awsClaims.HTTPSStsAmazonawsCom.AwsAccount)
+	require.Equal(t, "eu-west-2", awsClaims.HTTPSStsAmazonawsCom.SourceRegion)
+	require.Equal(t, "o-abc123", awsClaims.HTTPSStsAmazonawsCom.OrgID)
 }
 
 // TestGitHubActionsValidatorProducesTypedClaims verifies that a validator
