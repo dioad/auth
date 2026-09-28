@@ -1,0 +1,75 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - inamedparam
+    - gochecknoinits
+    - wsl
+    - wsl_v5
+    - whitespace
+    - wrapcheck
+    - exhaustruct
+    - exhaustruct_v5
+    - err113
+    - testpackage
+    - depguard
+    - paralleltest
+    - varnamelen
+    - forbidigo
+    - funlen
+    - gochecknoglobals
+    - godox
+    - lll
+    - mnd
+    - noinlineerr
+    # nlreturn enforces a blank line before every return/branch statement.
+    # wsl, wsl_v5, and whitespace (the other blank-line-shape linters) are
+    # already disabled above; keeping nlreturn alone is inconsistent with
+    # that call and adds no defect coverage, just reformatting churn.
+    - nlreturn
+    # ireturn flags functions that return an interface. Returning
+    # Authorizer/Privilege from the authz package's factories is that
+    # package's deliberate design (pluggable authorization backends), not
+    # an oversight to fix.
+    - ireturn
+    # gomodguard is deprecated in favor of gomodguard_v2 (enabled below).
+    - gomodguard
+  enable:
+    - gomodguard_v2
+  settings:
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+  exclusions:
+    rules:
+      # authz/prefixlist mirrors third-party vendor JSON schemas (AWS
+      # ip-ranges.json, Google Cloud's published ranges, Fastly's IP
+      # list, etc.) verbatim. Renaming those tags to match our own
+      # convention wouldn't just be a style change, it would break
+      # parsing of upstream data we don't control.
+      - path: 'authz/prefixlist/'
+        linters:
+          - tagliatelle
+      # Test fixture literals ("sub", "admin", role names, etc.) are not
+      # a maintenance risk the way repeated strings in production code
+      # are; constant-izing them adds indirection without reducing risk.
+      - path: '_test\.go'
+        linters:
+          - goconst
+      # noctx flags httptest.NewRequest and similar test-only helpers for
+      # not carrying a context. No request built this way ever leaves the
+      # process, so there is no cancellation/deadline to propagate.
+      - path: '_test\.go'
+        linters:
+          - noctx
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
