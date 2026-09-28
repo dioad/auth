@@ -17,8 +17,9 @@ type EndpointConfig struct {
 type ClientConfig struct {
 	// Provider     EndpointConfig    `json:"provider"` // e.g. "github", "keycloak"
 	EndpointConfig `mapstructure:",squash"`
-	ClientID       string            `json:"client_id"       mapstructure:"client-id"`
-	ClientSecret   util.MaskedString `json:"client_secret"   mapstructure:"client-secret,omitempty"`
+
+	ClientID     string            `json:"client_id"     mapstructure:"client-id"`
+	ClientSecret util.MaskedString `json:"client_secret" mapstructure:"client-secret,omitempty"`
 
 	Audience string `json:"audience,omitempty" mapstructure:"audience,omitempty"`
 
@@ -30,7 +31,8 @@ type ClientConfig struct {
 
 // ValidatorConfig controls validation behavior for issued tokens.
 type ValidatorConfig struct {
-	EndpointConfig      `mapstructure:",squash"`
+	EndpointConfig `mapstructure:",squash"`
+
 	Audiences           []string       `json:"audiences"                  mapstructure:"audiences"`
 	Issuer              string         `json:"issuer"                     mapstructure:"issuer"`
 	CacheTTL            int            `json:"cache_ttl_seconds"          mapstructure:"cache_ttl_seconds"`

@@ -16,6 +16,7 @@ type CommonConfig struct {
 // ClientConfig contains configuration for an HMAC authentication client.
 type ClientConfig struct {
 	CommonConfig `mapstructure:",squash"`
+
 	// Principal ID to use for authentication
 	Principal string `mapstructure:"principal"`
 }
@@ -23,6 +24,7 @@ type ClientConfig struct {
 // ServerConfig contains configuration for an HMAC authentication server.
 type ServerConfig struct {
 	CommonConfig `mapstructure:",squash"`
+
 	// Maximum allowed time difference for the timestamp (default: 5m)
 	MaxTimestampDiff time.Duration `mapstructure:"max-timestamp-diff"`
 	// Maximum allowed time difference for future timestamps (default: 30s)

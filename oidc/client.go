@@ -35,6 +35,10 @@ type AWSCustomClaims = aws.CustomClaims
 // IntrospectionResponse represents the fields returned by an RFC 7662 token introspection response,
 // including some common provider extensions.
 type IntrospectionResponse struct {
+	FlyIOCustomClaims
+	GitHubActionsCustomClaims
+	AWSCustomClaims
+
 	ExpiresAt                           int      `json:"exp"`
 	IssuedAt                            int      `json:"iat"`
 	AuthTime                            int      `json:"auth_time"`
@@ -70,9 +74,6 @@ type IntrospectionResponse struct {
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
 	Organisations     []string `json:"org"`
-	FlyIOCustomClaims
-	GitHubActionsCustomClaims
-	AWSCustomClaims
 }
 
 // Validate satisfies the validator interface for IntrospectionResponse.
