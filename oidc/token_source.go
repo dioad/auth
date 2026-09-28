@@ -53,6 +53,8 @@ func NewTokenSourceFromConfig(cfg ClientConfig) (oauth2.TokenSource, error) {
 }
 
 // NewTokenSourceFromConfigWithFactories creates a token source using a custom registry and dependencies.
+//
+//nolint:revive // ctx is trailing for backward compatibility; this is an exported function and reordering would be a breaking change
 func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[string]TokenSourceFactory, store TokenStore, clock Clock, ctx context.Context) (oauth2.TokenSource, error) {
 	if factories == nil {
 		factories = DefaultTokenSourceFactories()
@@ -64,7 +66,7 @@ func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[strin
 		if store == nil {
 			store = NewFileTokenStore(cfg.TokenFile)
 		}
-		return newFileTokenSource(cfg, store, clock, ctx), nil
+		return newFileTokenSource(ctx, cfg, store, clock), nil
 	}
 	if cfg.ClientID != "" && cfg.ClientSecret.UnmaskedString() != "" {
 		client, err := NewClientFromConfig(&cfg)
@@ -86,7 +88,7 @@ type fileTokenSource struct {
 	config ClientConfig
 }
 
-func newFileTokenSource(cfg ClientConfig, store TokenStore, clock Clock, ctx context.Context) *fileTokenSource {
+func newFileTokenSource(ctx context.Context, cfg ClientConfig, store TokenStore, clock Clock) *fileTokenSource {
 	if ctx == nil {
 		ctx = context.Background()
 	}
