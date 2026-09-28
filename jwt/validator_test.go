@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func signTestToken(t *testing.T, key *rsa.PrivateKey, issuer string, audiences []string, claims map[string]any) string {
+func signTestToken(t *testing.T, key *rsa.PrivateKey, audiences []string, claims map[string]any) string {
 	t.Helper()
 
 	allClaims := jwt.MapClaims{
-		"iss": issuer,
+		"iss": "https://issuer.example",
 		"aud": audiences,
 		"exp": time.Now().Add(time.Hour).Unix(),
 		"iat": time.Now().Add(-time.Minute).Unix(),
@@ -58,7 +58,7 @@ func TestNewValidatorFromConfigWithKeyFunc(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	tokenString := signTestToken(t, key, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
+	tokenString := signTestToken(t, key, []string{"aud"}, map[string]any{"role": "admin"})
 
 	cfg := ValidatorConfig{
 		Issuer:             "https://issuer.example",
@@ -80,7 +80,7 @@ func TestValidatorClaimPredicate(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	tokenString := signTestToken(t, key, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
+	tokenString := signTestToken(t, key, []string{"aud"}, map[string]any{"role": "admin"})
 
 	cfg := ValidatorConfig{
 		Issuer:             "https://issuer.example",
@@ -111,7 +111,7 @@ func TestNewValidatorFromConfigWithMultipleSignatureAlgorithms(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	tokenString := signTestToken(t, key, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
+	tokenString := signTestToken(t, key, []string{"aud"}, map[string]any{"role": "admin"})
 
 	jwkKey, err := jwk.Import(&key.PublicKey)
 	require.NoError(t, err)
@@ -155,7 +155,7 @@ func TestMultiValidatorFallsBack(t *testing.T) {
 	key2, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
-	tokenString := signTestToken(t, key2, "https://issuer.example", []string{"aud"}, map[string]any{"role": "admin"})
+	tokenString := signTestToken(t, key2, []string{"aud"}, map[string]any{"role": "admin"})
 
 	badValidator, err := NewValidatorFromConfigWithOptions(
 		&ValidatorConfig{Issuer: "https://issuer.example", Audiences: []string{"aud"}, SignatureAlgorithm: "RS256"},

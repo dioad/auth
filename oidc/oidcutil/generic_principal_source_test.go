@@ -167,7 +167,7 @@ func TestGenericClaims_GenericFallbackPath(t *testing.T) {
 	var gotCtx context.Context
 	var gotCustom map[string]any
 	claims := oidcutil.GenericClaims[stubClaims](ctx, hasMarker, func(fbCtx context.Context, fbCustom map[string]any) map[string]any {
-		gotCtx = fbCtx
+		gotCtx = fbCtx //nolint:fatcontext // spying on the context passed to the fallback for assertion, not accumulating it in a loop
 		gotCustom = fbCustom
 		return map[string]any{"mapped": "result"}
 	})

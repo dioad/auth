@@ -50,7 +50,7 @@ type IntrospectionResponse struct {
 	AuthorizedParty                     string   `json:"azp"`
 	SessionID                           string   `json:"sid"`
 	AuthenticationContextClassReference string   `json:"acr"`
-	AllowedOrigins                      []string `json:"allowed-origins"`
+	AllowedOrigins                      []string `json:"allowed-origins"` //nolint:tagliatelle // Keycloak's actual claim key, not ours to rename
 	RealmAccess                         struct {
 		Roles []string `json:"roles"`
 	} `json:"realm_access"`
@@ -450,38 +450,32 @@ type RefreshingClientCredentialsTokenSource struct {
 	currentToken *oauth2.Token
 }
 
+func (ts *RefreshingClientCredentialsTokenSource) needsRefresh(clock Clock) bool {
+	return ts.currentToken == nil || ts.currentToken.Expiry.Before(clock.Now())
+}
+
 func (ts *RefreshingClientCredentialsTokenSource) Token() (*oauth2.Token, error) {
 	clock := ts.clock
 	if clock == nil {
 		clock = realClock{}
 	}
-	var err error
-	if ts.currentToken == nil {
-		ts.mu.Lock()
-		defer ts.mu.Unlock()
+	if !ts.needsRefresh(clock) {
+		return ts.currentToken, nil
+	}
 
-		ts.currentToken, err = ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	// Double-check if a refresh is still needed after acquiring the lock.
+	if ts.needsRefresh(clock) {
+		token, err := ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get client credentials token: %w", err)
+			return nil, fmt.Errorf("failed to refresh client credentials token: %w", err)
 		}
-	} else {
-		// If the token is expired, refresh it
-		if ts.currentToken.Expiry.Before(clock.Now()) {
-			ts.mu.Lock()
-			defer ts.mu.Unlock()
-
-			// Double-check if the token is still valid after acquiring the lock
-			if ts.currentToken.Expiry.Before(clock.Now()) {
-				ts.currentToken, err = ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
-				if err != nil {
-					return nil, fmt.Errorf("failed to refresh client credentials token: %w", err)
-				}
-			}
-		}
+		ts.currentToken = token
 	}
 
 	return ts.currentToken, nil
-	// return ts.client.ClientCredentialsToken(ts.ctx, ts.opts...)
 }
 
 func (c *Client) RefreshingClientCredentialsToken(ctx context.Context, opts ...RequestOpt) (oauth2.TokenSource, error) {

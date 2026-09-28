@@ -42,7 +42,7 @@ type CustomClaims struct {
 		Ec2SourceInstanceArn         string    `json:"ec2_source_instance_arn"`
 		PrincipalId                  string    `json:"principal_id"`
 		Ec2InstanceSourcePrivateIpv4 string    `json:"ec2_instance_source_private_ipv4"`
-	} `json:"https://sts.amazonaws.com/"`
+	} `json:"https://sts.amazonaws.com/"` //nolint:tagliatelle // AWS STS's literal claim namespace key, not ours to rename
 }
 
 // Claims represents the JWT claims returned by the AWS OIDC provider, including both standard registered claims and
@@ -197,13 +197,7 @@ func (c *tokenSource) prepareInitSTSOnce() func() (stsClient, error) {
 
 			region := c.region
 			if region == "" {
-				client := c.imdsClient
-				if client == nil {
-					client = imds.New(imds.Options{})
-				}
-				if out, err := client.GetRegion(ctx, &imds.GetRegionInput{}); err == nil {
-					region = out.Region
-				}
+				region = c.resolveRegionFromIMDS(ctx)
 			}
 
 			var optFns []func(*config.LoadOptions) error
@@ -225,4 +219,18 @@ func (c *tokenSource) prepareInitSTSOnce() func() (stsClient, error) {
 		}
 		return client, nil
 	})
+}
+
+// resolveRegionFromIMDS looks up the AWS region from the instance metadata
+// service, returning "" if it cannot be determined.
+func (c *tokenSource) resolveRegionFromIMDS(ctx context.Context) string {
+	client := c.imdsClient
+	if client == nil {
+		client = imds.New(imds.Options{})
+	}
+	out, err := client.GetRegion(ctx, &imds.GetRegionInput{})
+	if err != nil {
+		return ""
+	}
+	return out.Region
 }
