@@ -62,17 +62,21 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 	// Legacy: detect handler from whichever config sub-struct is non-zero.
 	if !generics.IsZeroValue(cfg.GitHubAuthConfig) {
 		return github.NewHandler(cfg.GitHubAuthConfig), nil
-	} else if !generics.IsZeroValue(cfg.BasicAuthConfig) {
+	}
+	if !generics.IsZeroValue(cfg.BasicAuthConfig) {
 		return basic.NewHandler(cfg.BasicAuthConfig)
-	} else if !generics.IsZeroValue(cfg.HMACAuthConfig) {
+	}
+	if !generics.IsZeroValue(cfg.HMACAuthConfig) {
 		return hmac.NewHandler(cfg.HMACAuthConfig), nil
-	} else if !generics.IsZeroValue(cfg.JWTAuthConfig) {
+	}
+	if !generics.IsZeroValue(cfg.JWTAuthConfig) {
 		validator, err := authjwt.NewValidatorFromConfig(&cfg.JWTAuthConfig)
 		if err != nil {
 			return nil, err
 		}
 		return jwt.NewHandler(validator, "auth_token").WithRequireToken(true), nil
-	} else if !generics.IsZeroValue(cfg.OIDCAuthConfig) {
+	}
+	if !generics.IsZeroValue(cfg.OIDCAuthConfig) {
 		return resolveOIDCHandler(&cfg.OIDCAuthConfig)
 	}
 	return nil, nil

@@ -16,6 +16,7 @@ userB:$2y$10$oLAH9Nt949RBaRQB5ThTd./kZFGfrvtVYgsaHnbgkkgHbSSYK9jMi`
 )
 
 func testCompare(t *testing.T, basicAuth BasicAuthPair, password string) {
+	t.Helper()
 	_, err := basicAuth.VerifyPassword(password)
 	assert.NoError(t, err, "password comparison failed")
 }

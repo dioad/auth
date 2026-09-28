@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestAuthMap(t *testing.T, user, password string) AuthMap {
+func newTestAuthMap(t *testing.T, password string) AuthMap {
 	t.Helper()
 	m := AuthMap{}
-	m.AddUserWithPlainPassword(user, password)
+	m.AddUserWithPlainPassword("alice", password)
 	return m
 }
 
 func TestHandler_SetAuthMap_ReplacesCredentialsLive(t *testing.T) {
-	h, err := NewHandlerWithMap(ServerConfig{}, newTestAuthMap(t, "alice", "old-pass"))
+	h, err := NewHandlerWithMap(ServerConfig{}, newTestAuthMap(t, "old-pass"))
 	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -28,7 +28,7 @@ func TestHandler_SetAuthMap_ReplacesCredentialsLive(t *testing.T) {
 	_, err = h.AuthRequest(req)
 	require.NoError(t, err, "original credentials should authenticate before any swap")
 
-	h.SetAuthMap(newTestAuthMap(t, "alice", "new-pass"))
+	h.SetAuthMap(newTestAuthMap(t, "new-pass"))
 
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
 	req.SetBasicAuth("alice", "old-pass")
@@ -42,12 +42,12 @@ func TestHandler_SetAuthMap_ReplacesCredentialsLive(t *testing.T) {
 }
 
 func TestHandler_SetAuthMap_ConcurrentWithAuthRequest(t *testing.T) {
-	h, err := NewHandlerWithMap(ServerConfig{}, newTestAuthMap(t, "alice", "pass"))
+	h, err := NewHandlerWithMap(ServerConfig{}, newTestAuthMap(t, "pass"))
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
-	replacement := newTestAuthMap(t, "alice", "pass") // hash once; the loop only needs to exercise the swap, not rehash every iteration
+	replacement := newTestAuthMap(t, "pass") // hash once; the loop only needs to exercise the swap, not rehash every iteration
 
 	wg.Go(func() {
 		for {
@@ -76,7 +76,7 @@ func TestHandler_AuthMap_ReflectsLatestSetAuthMap(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, h.AuthMap())
 
-	h.SetAuthMap(newTestAuthMap(t, "alice", "pass"))
+	h.SetAuthMap(newTestAuthMap(t, "pass"))
 	assert.True(t, h.AuthMap().UserExists("alice"))
 }
 

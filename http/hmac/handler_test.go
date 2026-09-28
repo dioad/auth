@@ -159,10 +159,8 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			if tt.wantAccepted {
 				assert.NoError(t, err, "expected request to be accepted")
 				assert.NotNil(t, ctx)
-			} else {
-				if assert.Error(t, err, "expected request to be rejected, but it was accepted") && tt.wantErrorContains != "" {
-					assert.Contains(t, err.Error(), tt.wantErrorContains)
-				}
+			} else if assert.Error(t, err, "expected request to be rejected, but it was accepted") && tt.wantErrorContains != "" {
+				assert.Contains(t, err.Error(), tt.wantErrorContains)
 			}
 		})
 	}
@@ -235,8 +233,11 @@ const (
 )
 
 // createAuthenticatedRequest is a helper function to create an authenticated request with a body of specified size.
-func createAuthenticatedRequest(t *testing.T, sharedKey, principal string, bodySize int) *http.Request {
+func createAuthenticatedRequest(t *testing.T, bodySize int) *http.Request {
 	t.Helper()
+
+	const sharedKey = "test-key"
+	const principal = "user"
 
 	bodyContent := strings.Repeat("a", bodySize)
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/api", strings.NewReader(bodyContent))
@@ -256,7 +257,6 @@ func createAuthenticatedRequest(t *testing.T, sharedKey, principal string, bodyS
 // TestMaxRequestSize_UnderLimit tests that requests under the size limit are accepted.
 func TestMaxRequestSize_UnderLimit(t *testing.T) {
 	const sharedKey = "test-key"
-	const principal = "user"
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
@@ -267,7 +267,7 @@ func TestMaxRequestSize_UnderLimit(t *testing.T) {
 	})
 
 	// Create a request with body under the limit (500 bytes)
-	req := createAuthenticatedRequest(t, sharedKey, principal, 500)
+	req := createAuthenticatedRequest(t, 500)
 
 	// Request should be accepted
 	ctx, err := handler.AuthRequest(req)
@@ -278,7 +278,6 @@ func TestMaxRequestSize_UnderLimit(t *testing.T) {
 // TestMaxRequestSize_ExceedsLimit tests that requests exceeding the size limit are rejected.
 func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
 	const sharedKey = "test-key"
-	const principal = "user"
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
@@ -289,7 +288,7 @@ func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
 	})
 
 	// Create a request with body exceeding the limit (2KB)
-	req := createAuthenticatedRequest(t, sharedKey, principal, 2048)
+	req := createAuthenticatedRequest(t, 2048)
 
 	// Request should be rejected
 	_, err := handler.AuthRequest(req)
@@ -301,7 +300,6 @@ func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
 // TestMaxRequestSize_DefaultLimit tests that the default 10MB limit is applied when not configured.
 func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 	const sharedKey = "test-key"
-	const principal = "user"
 
 	handler := NewHandler(ServerConfig{
 		CommonConfig: CommonConfig{
@@ -315,7 +313,7 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 
 	// Create a request with body under the default limit (9MB - close to the 10MB default)
 	bodySize := 9 * 1024 * 1024 // 9MB
-	req := createAuthenticatedRequest(t, sharedKey, principal, bodySize)
+	req := createAuthenticatedRequest(t, bodySize)
 
 	// Request should be accepted with default limit
 	ctx, err := handler.AuthRequest(req)
@@ -326,7 +324,6 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 // TestMaxRequestSize_AtExactLimit tests behavior at the exact size limit.
 func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 	const sharedKey = "test-key"
-	const principal = "user"
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
@@ -337,7 +334,7 @@ func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 	})
 
 	// Create a request with body exactly at the limit (1024 bytes)
-	req := createAuthenticatedRequest(t, sharedKey, principal, maxSize)
+	req := createAuthenticatedRequest(t, maxSize)
 
 	// Request at exact limit should be accepted
 	ctx, err := handler.AuthRequest(req)
@@ -348,7 +345,6 @@ func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 // TestMaxRequestSize_OneBytePastLimit tests behavior one byte past the limit.
 func TestMaxRequestSize_OneBytePastLimit(t *testing.T) {
 	const sharedKey = "test-key"
-	const principal = "user"
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
@@ -359,7 +355,7 @@ func TestMaxRequestSize_OneBytePastLimit(t *testing.T) {
 	})
 
 	// Create a request with body one byte over the limit (1025 bytes)
-	req := createAuthenticatedRequest(t, sharedKey, principal, maxSize+1)
+	req := createAuthenticatedRequest(t, maxSize+1)
 
 	// Request should be rejected
 	_, err := handler.AuthRequest(req)

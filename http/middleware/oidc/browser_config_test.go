@@ -55,6 +55,7 @@ func TestCallbackRejectsMissingCodeAndState(t *testing.T) {
 	}
 
 	t.Run("missing code", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?state=abc", nil)
 		req.AddCookie(&http.Cookie{Name: "oidc_state", Value: "abc"})
 		w := httptest.NewRecorder()
@@ -65,6 +66,7 @@ func TestCallbackRejectsMissingCodeAndState(t *testing.T) {
 	})
 
 	t.Run("missing state", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=xyz", nil)
 		w := httptest.NewRecorder()
 
