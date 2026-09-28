@@ -17,17 +17,15 @@ import (
 )
 
 var (
-	DefaultCookiePath          = "/"
-	DefaultTokenCookieName     = "oidc_token"
-	DefaultTokenCookieMaxAge   = time.Hour
-	DefaultStateCookieName     = "oidc_state"
-	DefaultStateCookieMaxAge   = 5 * time.Minute
-	DefaultRefreshCookieName   = "oidc_refresh"
-	DefaultRefreshCookieMaxAge = 24 * time.Hour
-	// #nosec G101
-	DefaultTokenExpiryCookieName = "oidc_expires_in"
-	// #nosec G101
-	DefaultIDTokenCookieName = "oidc_id_token"
+	DefaultCookiePath            = "/"
+	DefaultTokenCookieName       = "oidc_token"
+	DefaultTokenCookieMaxAge     = time.Hour
+	DefaultStateCookieName       = "oidc_state"
+	DefaultStateCookieMaxAge     = 5 * time.Minute
+	DefaultRefreshCookieName     = "oidc_refresh"
+	DefaultRefreshCookieMaxAge   = 24 * time.Hour
+	DefaultTokenExpiryCookieName = "oidc_expires_in" // #nosec G101
+	DefaultIDTokenCookieName     = "oidc_id_token"   // #nosec G101
 )
 
 type CookieConfig struct {

@@ -1,4 +1,3 @@
-// Package hmac provides HMAC-based authentication middleware.
 package hmac
 
 import (

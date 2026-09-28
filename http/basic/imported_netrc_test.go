@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 // Imported from https://golang.org/src/cmd/go/internal/auth/netrc.go
+
 package basic
 
 import (
