@@ -307,7 +307,11 @@ func (c *Client) ValidateToken(ctx context.Context, token string, audiences []st
 		return nil, fmt.Errorf("error validating token: %w", err)
 	}
 
-	return validatedClaims.(*jwtvalidator.ValidatedClaims), nil
+	claims, ok := validatedClaims.(*jwtvalidator.ValidatedClaims)
+	if !ok {
+		return nil, fmt.Errorf("unexpected claims type %T returned by token validator", validatedClaims)
+	}
+	return claims, nil
 }
 
 func (c *Client) effectiveValidatingSignatureAlgorithms() ([]jwtvalidator.SignatureAlgorithm, error) {

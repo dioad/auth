@@ -273,12 +273,15 @@ func (v *enrichingValidator) ValidateToken(ctx context.Context, tokenString stri
 
 	customClaimsMap, err := jwt.ClaimsMapFromToken(tokenString)
 	if err != nil {
-		return claims, nil
+		// Enrichment is best-effort: the token already passed validation,
+		// so a failure to re-parse it for custom claims should not fail
+		// the request.
+		return claims, nil //nolint:nilerr // see comment above
 	}
 
 	customClaims, err := introspectionFromClaimsMap(customClaimsMap)
 	if err != nil {
-		return claims, nil
+		return claims, nil //nolint:nilerr // best-effort enrichment, see above
 	}
 	if customClaims.TokenType == "" {
 		customClaims.TokenType = "Bearer"

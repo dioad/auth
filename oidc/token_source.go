@@ -71,7 +71,10 @@ func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[strin
 		if err != nil {
 			return nil, err
 		}
-		return client.RefreshingClientCredentialsToken(context.Background())
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		return client.RefreshingClientCredentialsToken(ctx)
 	}
 	return nil, ErrNoIdentity
 }

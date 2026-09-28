@@ -37,10 +37,11 @@ func (f *fakeIMDSClient) GetRegion(_ context.Context, _ *imds.GetRegionInput, _ 
 }
 
 func TestNewTokenSource(t *testing.T) {
-	ts := NewTokenSource(
+	ts, ok := NewTokenSource(
 		WithAudience("my-audience"),
 		WithSigningAlgorithm("RS256"),
 	).(*tokenSource)
+	require.True(t, ok)
 	assert.NotNil(t, ts)
 	assert.Equal(t, "my-audience", ts.audience)
 	assert.Equal(t, "RS256", ts.signingAlgorithm)
@@ -48,13 +49,15 @@ func TestNewTokenSource(t *testing.T) {
 
 func TestWithAWSConfig(t *testing.T) {
 	cfg := aws.Config{Region: "us-east-1"}
-	ts := NewTokenSource(WithAWSConfig(cfg)).(*tokenSource)
+	ts, ok := NewTokenSource(WithAWSConfig(cfg)).(*tokenSource)
+	require.True(t, ok)
 	assert.NotNil(t, ts.awsConfig)
 	assert.Equal(t, "us-east-1", ts.awsConfig.Region)
 }
 
 func TestWithRegion(t *testing.T) {
-	ts := NewTokenSource(WithRegion("us-west-2")).(*tokenSource)
+	ts, ok := NewTokenSource(WithRegion("us-west-2")).(*tokenSource)
+	require.True(t, ok)
 	assert.Equal(t, "us-west-2", ts.region)
 }
 
@@ -128,11 +131,12 @@ func TestTokenUsesInjectedSTSClient(t *testing.T) {
 		},
 	}
 
-	ts := NewTokenSource(
+	ts, ok := NewTokenSource(
 		WithAudience("aud"),
 		WithSigningAlgorithm("RS256"),
 		WithSTSClient(client),
 	).(*tokenSource)
+	require.True(t, ok)
 
 	result, err := ts.Token()
 	require.NoError(t, err)
