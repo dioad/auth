@@ -26,9 +26,13 @@ const (
 	// This aligns with custom implementations; RFC 9421 uses 'Signature-Input'.
 	DefaultSignedHeadersHeader = "X-Signed-Headers"
 	// AuthScheme is the scheme used in the Authorization header.
-	AuthScheme                 = "HMAC"
+	AuthScheme = "HMAC"
+	// DefaultMaxRequestSizeBytes is the request body size limit applied when
+	// ServerConfig.MaxRequestSize is unset.
 	DefaultMaxRequestSizeBytes = 10 * 1024 * 1024 // 10 MB
-	DefaultMaxTimestampDiff    = 5 * time.Minute
+	// DefaultMaxTimestampDiff is the maximum allowed age of a request
+	// timestamp applied when ServerConfig.MaxTimestampDiff is unset.
+	DefaultMaxTimestampDiff = 5 * time.Minute
 )
 
 // CanonicalData generates the string to be signed based on the request.
@@ -89,8 +93,8 @@ func CanonicalData(r *http.Request, principal string, timestamp string, signedHe
 	return b.String()
 }
 
-// HMACKeyBytes generates an HMAC-SHA256 signature as bytes using the shared key and data.
-func HMACKeyBytes(sharedKey, data []byte) ([]byte, error) {
+// KeyBytes generates an HMAC-SHA256 signature as bytes using the shared key and data.
+func KeyBytes(sharedKey, data []byte) ([]byte, error) {
 	h := hmac.New(sha256.New, sharedKey)
 	_, err := h.Write(data)
 	if err != nil {
@@ -100,9 +104,9 @@ func HMACKeyBytes(sharedKey, data []byte) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-// HMACKey generates an HMAC-SHA256 signature as a hex-encoded string.
-func HMACKey(sharedKey, data []byte) (string, error) {
-	keyBytes, err := HMACKeyBytes(sharedKey, data)
+// Key generates an HMAC-SHA256 signature as a hex-encoded string.
+func Key(sharedKey, data []byte) (string, error) {
+	keyBytes, err := KeyBytes(sharedKey, data)
 	if err != nil {
 		return "", err
 	}

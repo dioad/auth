@@ -54,7 +54,7 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 
 	// Generate canonical data and token
 	data := CanonicalData(req, principal, timestamp, a.Config.SignedHeaders, bodyBytes)
-	token, err := HMACKey([]byte(a.Config.SharedKey), []byte(data))
+	token, err := Key([]byte(a.Config.SharedKey), []byte(data))
 	if err != nil {
 		return err
 	}
@@ -67,20 +67,20 @@ func (a ClientAuth) AddAuth(req *http.Request) error {
 // HTTPClient returns an http.Client that automatically adds the HMAC token to requests.
 func (a ClientAuth) HTTPClient() *http.Client {
 	return &http.Client{
-		Transport: &HMACRoundTripper{
+		Transport: &RoundTripper{
 			Config: a.Config,
 		},
 	}
 }
 
-// HMACRoundTripper is an http.RoundTripper that adds HMAC authentication.
-type HMACRoundTripper struct {
+// RoundTripper is an http.RoundTripper that adds HMAC authentication.
+type RoundTripper struct {
 	Config ClientConfig
 	Base   http.RoundTripper
 }
 
 // RoundTrip executes a single HTTP transaction, adding HMAC authentication.
-func (t *HMACRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Clone the request to avoid modifying the original
 	req = req.Clone(req.Context())
 

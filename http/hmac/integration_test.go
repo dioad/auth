@@ -231,7 +231,7 @@ func TestHMACRoundTripper(t *testing.T) {
 	defer testServer.Close()
 
 	client := &http.Client{
-		Transport: &HMACRoundTripper{
+		Transport: &RoundTripper{
 			Config: ClientConfig{
 				CommonConfig: CommonConfig{SharedKey: sharedKey},
 				Principal:    principalID,

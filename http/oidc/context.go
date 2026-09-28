@@ -15,9 +15,9 @@ func ContextWithOIDCUserInfo(ctx context.Context, userInfo *goth.User) context.C
 	return context.WithValue(ctx, oidcUserContext{}, userInfo)
 }
 
-// OIDCUserInfoFromContext returns the OIDC user info from the provided context.
+// UserInfoFromContext returns the OIDC user info from the provided context.
 // It returns nil if no user info is found.
-func OIDCUserInfoFromContext(ctx context.Context) *goth.User {
+func UserInfoFromContext(ctx context.Context) *goth.User {
 	val := ctx.Value(oidcUserContext{})
 	if userInfo, ok := val.(*goth.User); ok {
 		return userInfo

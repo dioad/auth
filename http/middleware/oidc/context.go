@@ -13,8 +13,8 @@ func ContextWithOIDCUserInfo(ctx context.Context, userInfo *goth.User) context.C
 	return context.WithValue(ctx, oidcUserContext{}, userInfo)
 }
 
-// OIDCUserInfoFromContext returns the OIDC user info from the provided context.
-func OIDCUserInfoFromContext(ctx context.Context) *goth.User {
+// UserInfoFromContext returns the OIDC user info from the provided context.
+func UserInfoFromContext(ctx context.Context) *goth.User {
 	val := ctx.Value(oidcUserContext{})
 	if userInfo, ok := val.(*goth.User); ok {
 		return userInfo
@@ -24,10 +24,12 @@ func OIDCUserInfoFromContext(ctx context.Context) *goth.User {
 
 type authTokenContext struct{}
 
+// ContextWithAccessToken returns a new context with the provided access token.
 func ContextWithAccessToken(ctx context.Context, token string) context.Context {
 	return context.WithValue(ctx, authTokenContext{}, token)
 }
 
+// AccessTokenFromContext returns the access token from the provided context, or "" if none is found.
 func AccessTokenFromContext(ctx context.Context) string {
 	val := ctx.Value(authTokenContext{})
 	if val != nil {
