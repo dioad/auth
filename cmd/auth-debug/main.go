@@ -23,6 +23,36 @@ import (
 	"github.com/dioad/auth/oidc/githubactions"
 )
 
+// platformSource pairs a platform name with the token source that fetches an
+// OIDC token for it.
+type platformSource struct {
+	name   string
+	source oauth2.TokenSource
+}
+
+// detectPlatformToken fetches a token from the named platform, or — when
+// platformFlag is "auto" — tries each platform in order and returns the
+// first one that succeeds.
+func detectPlatformToken(platformFlag string, platforms []platformSource) (*oauth2.Token, string, error) {
+	if platformFlag != "auto" {
+		for _, p := range platforms {
+			if p.name == platformFlag {
+				token, err := p.source.Token()
+				return token, p.name, err
+			}
+		}
+		return nil, "", fmt.Errorf("unknown platform: %s", platformFlag)
+	}
+
+	for _, p := range platforms {
+		token, err := p.source.Token()
+		if err == nil {
+			return token, p.name, nil
+		}
+	}
+	return nil, "", nil
+}
+
 func main() {
 	// Check for subcommands first.
 	if len(os.Args) > 1 && os.Args[1] == "validate" {
@@ -37,47 +67,13 @@ func main() {
 	verify := flag.Bool("verify", false, "Verify the token signature using the platform's JWKS keys")
 	flag.Parse()
 
-	var token *oauth2.Token
-	var detectedPlatform string
-	var err error
-
-	platforms := []struct {
-		name   string
-		source oauth2.TokenSource
-	}{
+	platforms := []platformSource{
 		{"aws", aws.NewTokenSource(aws.WithAudience(*audience), aws.WithSigningAlgorithm(*awsSigningAlg))},
 		{"github", githubactions.NewTokenSource(githubactions.WithAudience(*audience))},
 		{"flyio", flyio.NewTokenSource(flyio.WithAudience(*audience))},
 	}
 
-	if *platform != "auto" {
-		found := false
-		for _, p := range platforms {
-			if p.name == *platform {
-				detectedPlatform = p.name
-				token, err = p.source.Token()
-				found = true
-				break
-			}
-		}
-		if !found {
-			_, _ = fmt.Fprintf(os.Stderr, "Unknown platform: %s\n", *platform)
-			os.Exit(1)
-		}
-	} else {
-		// Auto-detection
-		for _, p := range platforms {
-			t, e := p.source.Token()
-			if e == nil {
-				token = t
-				detectedPlatform = p.name
-				break
-			}
-			// Log error if not auto-detecting or if it's a real error?
-			// For auto-detect, we just move to the next.
-		}
-	}
-
+	token, detectedPlatform, err := detectPlatformToken(*platform, platforms)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error fetching token: %v\n", err)
 		os.Exit(1)
@@ -93,15 +89,39 @@ func main() {
 		return
 	}
 
+	printTokenDetails(detectedPlatform, token, *verify)
+}
+
+// printTokenDetails prints the platform, expiry, header, and claims for
+// token, and — when verify is set — checks its signature against the
+// issuer's JWKS keys.
+// printDecodedHeader decodes and prints tokenString's JWT header, or reports
+// the decode error to stderr.
+func printDecodedHeader(tokenString string) {
+	header, err := decodeHeader(tokenString)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error decoding header: %v\n", err)
+		return
+	}
+	printHeaderDetails(header)
+}
+
+// printClaims pretty-prints claims as JSON, or reports the formatting error
+// to stderr.
+func printClaims(claims map[string]any) {
+	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Error formatting claims: %v\n", err)
+		return
+	}
+	_, _ = fmt.Println(string(prettyClaims))
+}
+
+func printTokenDetails(detectedPlatform string, token *oauth2.Token, verify bool) {
 	_, _ = fmt.Printf("Platform: %s\n", detectedPlatform)
 	_, _ = fmt.Printf("Token Expiry: %v\n", token.Expiry)
 	_, _ = fmt.Println("\nHeader:")
-	header, err := decodeHeader(token.AccessToken)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error decoding header: %v\n", err)
-	} else {
-		printHeaderDetails(header)
-	}
+	printDecodedHeader(token.AccessToken)
 
 	_, _ = fmt.Println("\nClaims:")
 
@@ -113,24 +133,20 @@ func main() {
 		_, _ = fmt.Printf("\nRaw Token: %s\n", token.AccessToken)
 		return
 	}
+	printClaims(claims)
 
-	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error formatting claims: %v\n", err)
-	} else {
-		_, _ = fmt.Println(string(prettyClaims))
+	if !verify {
+		return
 	}
 
-	if *verify {
-		issuer, _ := claims["iss"].(string)
-		_, _ = fmt.Println("\nVerification:")
-		printJWKSKeys(issuer)
-		if err := verifyToken(context.Background(), token.AccessToken); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "✗ Token verification failed: %v\n", err)
-			os.Exit(1)
-		}
-		_, _ = fmt.Println("✓ Token signature verified successfully")
+	issuer, _ := claims["iss"].(string)
+	_, _ = fmt.Println("\nVerification:")
+	printJWKSKeys(issuer)
+	if err := verifyToken(context.Background(), token.AccessToken); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "✗ Token verification failed: %v\n", err)
+		os.Exit(1)
 	}
+	_, _ = fmt.Println("✓ Token signature verified successfully")
 }
 
 // runValidate implements the "validate" subcommand, which reads a JWT from
@@ -160,12 +176,7 @@ func runValidate(args []string) {
 	}
 
 	_, _ = fmt.Println("Header:")
-	header, err := decodeHeader(tokenString)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error decoding header: %v\n", err)
-	} else {
-		printHeaderDetails(header)
-	}
+	printDecodedHeader(tokenString)
 
 	_, _ = fmt.Println("\nClaims:")
 	claims, err := decodeClaims(tokenString)
@@ -174,13 +185,7 @@ func runValidate(args []string) {
 		_, _ = fmt.Printf("\nRaw Token: %s\n", tokenString)
 		os.Exit(1)
 	}
-
-	prettyClaims, err := json.MarshalIndent(claims, "", "  ")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error formatting claims: %v\n", err)
-	} else {
-		_, _ = fmt.Println(string(prettyClaims))
-	}
+	printClaims(claims)
 
 	_, _ = fmt.Println("\nVerification:")
 
@@ -317,55 +322,52 @@ func fetchJWKSKeys(issuerURL string) (*jose.JSONWebKeySet, error) {
 // fetchJWKSKeysContext retrieves the JWKS key set using a context-aware HTTP
 // client with a 10-second timeout, preventing indefinite hangs on slow or
 // unreachable endpoints.
-func fetchJWKSKeysContext(ctx context.Context, issuerURL string) (*jose.JSONWebKeySet, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	discoveryURL := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil) // #nosec G704 -- issuerURL is an operator-supplied CLI argument to this debug tool, not untrusted network input
+// fetchBody GETs url and returns its response body, failing on any non-200
+// status. what names the resource in error messages (e.g. "discovery
+// document", "JWKS").
+func fetchBody(ctx context.Context, client *http.Client, url, what string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // #nosec G704 -- url is derived from an operator-supplied CLI argument to this debug tool, not untrusted network input
 	if err != nil {
-		return nil, fmt.Errorf("creating discovery request for %s: %w", discoveryURL, err)
+		return nil, fmt.Errorf("creating %s request for %s: %w", what, url, err)
 	}
 	resp, err := client.Do(req) // #nosec G704 -- see above
 	if err != nil {
-		return nil, fmt.Errorf("fetching discovery document from %s: %w", discoveryURL, err)
+		return nil, fmt.Errorf("fetching %s from %s: %w", what, url, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("discovery endpoint returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("%s endpoint returned status %d", what, resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
+}
+
+func fetchJWKSKeysContext(ctx context.Context, issuerURL string) (*jose.JSONWebKeySet, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	discoveryURL := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
+
+	discoveryBody, err := fetchBody(ctx, client, discoveryURL, "discovery document")
+	if err != nil {
+		return nil, err
 	}
 
-	var config struct {
+	var discoveryConfig struct {
 		JWKSURI string `json:"jwks_uri"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
+	if err := json.Unmarshal(discoveryBody, &discoveryConfig); err != nil {
 		return nil, fmt.Errorf("decoding discovery document: %w", err)
 	}
-	if config.JWKSURI == "" {
+	if discoveryConfig.JWKSURI == "" {
 		return nil, errors.New("no jwks_uri in discovery document")
 	}
 
-	jwksReq, err := http.NewRequestWithContext(ctx, http.MethodGet, config.JWKSURI, nil)
+	jwksBody, err := fetchBody(ctx, client, discoveryConfig.JWKSURI, "JWKS")
 	if err != nil {
-		return nil, fmt.Errorf("creating JWKS request for %s: %w", config.JWKSURI, err)
-	}
-	jwksResp, err := client.Do(jwksReq)
-	if err != nil {
-		return nil, fmt.Errorf("fetching JWKS from %s: %w", config.JWKSURI, err)
-	}
-	defer func() { _ = jwksResp.Body.Close() }()
-
-	if jwksResp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("JWKS endpoint returned status %d", jwksResp.StatusCode)
-	}
-
-	body, err := io.ReadAll(jwksResp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading JWKS response: %w", err)
+		return nil, err
 	}
 
 	var keySet jose.JSONWebKeySet
-	if err := json.Unmarshal(body, &keySet); err != nil {
+	if err := json.Unmarshal(jwksBody, &keySet); err != nil {
 		return nil, fmt.Errorf("decoding JWKS: %w", err)
 	}
 

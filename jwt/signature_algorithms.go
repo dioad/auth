@@ -19,42 +19,33 @@ func DefaultSignatureAlgorithms() []jwtvalidator.SignatureAlgorithm {
 	return append([]jwtvalidator.SignatureAlgorithm(nil), defaultSignatureAlgorithms...)
 }
 
+// signatureAlgorithmsByName maps the normalized (uppercased, trimmed) name of
+// each supported algorithm to its typed constant.
+var signatureAlgorithmsByName = map[string]jwtvalidator.SignatureAlgorithm{
+	string(jwtvalidator.HS256):                  jwtvalidator.HS256,
+	string(jwtvalidator.HS384):                  jwtvalidator.HS384,
+	string(jwtvalidator.HS512):                  jwtvalidator.HS512,
+	string(jwtvalidator.RS256):                  jwtvalidator.RS256,
+	string(jwtvalidator.RS384):                  jwtvalidator.RS384,
+	string(jwtvalidator.RS512):                  jwtvalidator.RS512,
+	string(jwtvalidator.PS256):                  jwtvalidator.PS256,
+	string(jwtvalidator.PS384):                  jwtvalidator.PS384,
+	string(jwtvalidator.PS512):                  jwtvalidator.PS512,
+	string(jwtvalidator.ES256):                  jwtvalidator.ES256,
+	string(jwtvalidator.ES384):                  jwtvalidator.ES384,
+	string(jwtvalidator.ES512):                  jwtvalidator.ES512,
+	string(jwtvalidator.ES256K):                 jwtvalidator.ES256K,
+	strings.ToUpper(string(jwtvalidator.EdDSA)): jwtvalidator.EdDSA,
+}
+
 // ParseSignatureAlgorithm parses a configured algorithm string into a supported
 // validator.SignatureAlgorithm.
 func ParseSignatureAlgorithm(raw string) (jwtvalidator.SignatureAlgorithm, error) {
 	normalized := strings.ToUpper(strings.TrimSpace(raw))
-	switch normalized {
-	case string(jwtvalidator.HS256):
-		return jwtvalidator.HS256, nil
-	case string(jwtvalidator.HS384):
-		return jwtvalidator.HS384, nil
-	case string(jwtvalidator.HS512):
-		return jwtvalidator.HS512, nil
-	case string(jwtvalidator.RS256):
-		return jwtvalidator.RS256, nil
-	case string(jwtvalidator.RS384):
-		return jwtvalidator.RS384, nil
-	case string(jwtvalidator.RS512):
-		return jwtvalidator.RS512, nil
-	case string(jwtvalidator.PS256):
-		return jwtvalidator.PS256, nil
-	case string(jwtvalidator.PS384):
-		return jwtvalidator.PS384, nil
-	case string(jwtvalidator.PS512):
-		return jwtvalidator.PS512, nil
-	case string(jwtvalidator.ES256):
-		return jwtvalidator.ES256, nil
-	case string(jwtvalidator.ES384):
-		return jwtvalidator.ES384, nil
-	case string(jwtvalidator.ES512):
-		return jwtvalidator.ES512, nil
-	case string(jwtvalidator.ES256K):
-		return jwtvalidator.ES256K, nil
-	case strings.ToUpper(string(jwtvalidator.EdDSA)):
-		return jwtvalidator.EdDSA, nil
-	default:
-		return "", fmt.Errorf("unsupported signature algorithm %q", raw)
+	if alg, ok := signatureAlgorithmsByName[normalized]; ok {
+		return alg, nil
 	}
+	return "", fmt.Errorf("unsupported signature algorithm %q", raw)
 }
 
 // ResolveSignatureAlgorithms resolves algorithm configuration from either the
