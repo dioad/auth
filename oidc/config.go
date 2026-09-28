@@ -8,8 +8,8 @@ import (
 
 // EndpointConfig describes the issuer endpoint and any provider-specific options.
 type EndpointConfig struct {
-	Type          string `json:"type,omitempty" mapstructure:"type,omitempty"`
-	URL           string `json:"url" mapstructure:"url"`
+	Type          string `json:"type,omitempty"           mapstructure:"type,omitempty"`
+	URL           string `json:"url"                      mapstructure:"url"`
 	KeycloakRealm string `json:"keycloak_realm,omitempty" mapstructure:"keycloak-realm,omitempty"`
 }
 
@@ -17,8 +17,8 @@ type EndpointConfig struct {
 type ClientConfig struct {
 	// Provider     EndpointConfig    `json:"provider"` // e.g. "github", "keycloak"
 	EndpointConfig `mapstructure:",squash"`
-	ClientID       string            `json:"client_id" mapstructure:"client-id"`
-	ClientSecret   util.MaskedString `json:"client_secret" mapstructure:"client-secret,omitempty"`
+	ClientID       string            `json:"client_id"       mapstructure:"client-id"`
+	ClientSecret   util.MaskedString `json:"client_secret"   mapstructure:"client-secret,omitempty"`
 
 	Audience string `json:"audience,omitempty" mapstructure:"audience,omitempty"`
 
@@ -31,14 +31,14 @@ type ClientConfig struct {
 // ValidatorConfig controls validation behavior for issued tokens.
 type ValidatorConfig struct {
 	EndpointConfig      `mapstructure:",squash"`
-	Audiences           []string       `json:"audiences" mapstructure:"audiences"`
-	Issuer              string         `json:"issuer" mapstructure:"issuer"`
-	CacheTTL            int            `json:"cache_ttl_seconds" mapstructure:"cache_ttl_seconds"`
-	SignatureAlgorithm  string         `json:"signature_algorithm" mapstructure:"signature_algorithm"`
-	SignatureAlgorithms []string       `json:"signature_algorithms" mapstructure:"signature_algorithms"`
+	Audiences           []string       `json:"audiences"                  mapstructure:"audiences"`
+	Issuer              string         `json:"issuer"                     mapstructure:"issuer"`
+	CacheTTL            int            `json:"cache_ttl_seconds"          mapstructure:"cache_ttl_seconds"`
+	SignatureAlgorithm  string         `json:"signature_algorithm"        mapstructure:"signature_algorithm"`
+	SignatureAlgorithms []string       `json:"signature_algorithms"       mapstructure:"signature_algorithms"`
 	AllowedClockSkew    int            `json:"allowed_clock_skew_seconds" mapstructure:"allowed_clock_skew_seconds"`
-	Debug               bool           `json:"debug" mapstructure:"debug"`
-	ClaimPredicate      map[string]any `json:"claim_predicates" mapstructure:"claim_predicates"`
+	Debug               bool           `json:"debug"                      mapstructure:"debug"`
+	ClaimPredicate      map[string]any `json:"claim_predicates"           mapstructure:"claim_predicates"`
 	// HMACSecret is an optional shared secret for HS256/HS384/HS512 token
 	// validation. When non-empty, JWKS discovery is skipped and the secret is
 	// used directly as the signing key. Intended for local development and
@@ -59,9 +59,9 @@ type TrustConfig struct {
 
 // ProviderConfig represents a single web provider configuration for Goth callbacks.
 type ProviderConfig struct {
-	ClientID     string `json:"client_id" mapstructure:"client-id"`
+	ClientID     string `json:"client_id"     mapstructure:"client-id"`
 	ClientSecret string `json:"client_secret" mapstructure:"client-secret"`
-	Callback     string `json:"callback" mapstructure:"callback"`
+	Callback     string `json:"callback"      mapstructure:"callback"`
 	// Scopes is optional and only used by browser/login-oriented integrations.
 	Scopes []string `json:"scopes,omitzero" mapstructure:"scopes,omitzero"`
 	// DiscoveryURL is optional and allows overriding provider discovery behavior

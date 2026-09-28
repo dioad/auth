@@ -6,6 +6,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -97,11 +98,11 @@ func (c *tokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	if response == nil {
-		return nil, fmt.Errorf("received nil response from GetWebIdentityToken")
+		return nil, errors.New("received nil response from GetWebIdentityToken")
 	}
 
 	if response.WebIdentityToken == nil || response.Expiration == nil {
-		return nil, fmt.Errorf("response missing required fields: WebIdentityToken or Expiration")
+		return nil, errors.New("response missing required fields: WebIdentityToken or Expiration")
 	}
 
 	token := &oauth2.Token{

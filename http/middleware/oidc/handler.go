@@ -31,10 +31,10 @@ var (
 )
 
 type CookieConfig struct {
-	Name   string        `json:"name" mapstructure:"name"`
-	Domain string        `json:"domain,omitzero" mapstructure:"domain,omitzero"`
-	Secure bool          `json:"secure,omitzero" mapstructure:"secure,omitzero"`
-	Path   string        `json:"path,omitzero" mapstructure:"path,omitzero"`
+	Name   string        `json:"name"             mapstructure:"name"`
+	Domain string        `json:"domain,omitzero"  mapstructure:"domain,omitzero"`
+	Secure bool          `json:"secure,omitzero"  mapstructure:"secure,omitzero"`
+	Path   string        `json:"path,omitzero"    mapstructure:"path,omitzero"`
 	MaxAge time.Duration `json:"max_age,omitzero" mapstructure:"max-age,omitzero"`
 }
 
@@ -65,20 +65,20 @@ func (c CookieConfig) Delete(w http.ResponseWriter) {
 }
 
 type OIDCConfig struct {
-	Scopes      []string `json:"scopes,omitzero" mapstructure:"scopes,omitzero"`
+	Scopes      []string `json:"scopes,omitzero"       mapstructure:"scopes,omitzero"`
 	RedirectURI string   `json:"redirect_uri,omitzero" mapstructure:"redirect-uri,omitzero"`
 
-	TokenCookie       CookieConfig `json:"token_cookie,omitzero" mapstructure:"token-cookie,omitzero"`
-	StateCookie       CookieConfig `json:"state_cookie,omitzero" mapstructure:"state-cookie,omitzero"`
-	RefreshCookie     CookieConfig `json:"refresh_cookie,omitzero" mapstructure:"refresh-cookie,omitzero"`
-	TokenExpiryCookie CookieConfig `json:"token_expiry,omitzero" mapstructure:"token-expiry,omitzero"`
+	TokenCookie       CookieConfig `json:"token_cookie,omitzero"    mapstructure:"token-cookie,omitzero"`
+	StateCookie       CookieConfig `json:"state_cookie,omitzero"    mapstructure:"state-cookie,omitzero"`
+	RefreshCookie     CookieConfig `json:"refresh_cookie,omitzero"  mapstructure:"refresh-cookie,omitzero"`
+	TokenExpiryCookie CookieConfig `json:"token_expiry,omitzero"    mapstructure:"token-expiry,omitzero"`
 	RedirectCookie    CookieConfig `json:"redirect_cookie,omitzero" mapstructure:"redirect-cookie,omitzero"`
 	IDTokenCookie     CookieConfig `json:"id_token_cookie,omitzero" mapstructure:"id-token-cookie,omitzero"`
 
 	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero"`
-	Now           func() time.Time `json:"-" mapstructure:"-"`
-	LoginPath     string           `json:"login_path,omitzero" mapstructure:"login-path,omitzero"`
-	LogoutPath    string           `json:"logout_path,omitzero" mapstructure:"logout-path,omitzero"`
+	Now           func() time.Time `json:"-"                       mapstructure:"-"`
+	LoginPath     string           `json:"login_path,omitzero"     mapstructure:"login-path,omitzero"`
+	LogoutPath    string           `json:"logout_path,omitzero"    mapstructure:"logout-path,omitzero"`
 
 	// AllowInsecureCookies disables the default Secure attribute on session
 	// cookies, allowing them to be sent over plain HTTP. Session cookies

@@ -3,6 +3,7 @@ package basic
 
 import (
 	stdctx "context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -41,12 +42,12 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	reqUser, reqPass, _ := r.BasicAuth()
 
 	if reqUser == "" {
-		return r.Context(), fmt.Errorf("no credentials provided")
+		return r.Context(), errors.New("no credentials provided")
 	}
 
 	authMap := h.authMap.Load()
 	if authMap == nil {
-		return r.Context(), fmt.Errorf("authentication failed")
+		return r.Context(), errors.New("authentication failed")
 	}
 
 	authenticated, err := authMap.Authenticate(reqUser, reqPass)
@@ -59,7 +60,7 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 		return r.Context(), err
 	}
 
-	return r.Context(), fmt.Errorf("authentication failed")
+	return r.Context(), errors.New("authentication failed")
 }
 
 // Wrap wraps an HTTP handler with Basic authentication middleware.

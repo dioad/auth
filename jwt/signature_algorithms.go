@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -92,7 +93,7 @@ func ResolveSignatureAlgorithms(
 	}
 
 	if len(defaults) == 0 {
-		return nil, fmt.Errorf("no signature algorithms configured")
+		return nil, errors.New("no signature algorithms configured")
 	}
 	return append([]jwtvalidator.SignatureAlgorithm(nil), defaults...), nil
 }

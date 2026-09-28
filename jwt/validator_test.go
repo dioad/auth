@@ -294,7 +294,7 @@ func TestPredicateValidatorWithValidatedClaimsFallback(t *testing.T) {
 }
 
 func TestMultiValidator(t *testing.T) {
-	v1 := &mockValidator{err: fmt.Errorf("fail 1")}
+	v1 := &mockValidator{err: errors.New("fail 1")}
 	v2 := &mockValidator{claims: "success 2"}
 
 	mv := NewMultiValidator(v1, v2)
@@ -303,7 +303,7 @@ func TestMultiValidator(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "success 2", claims)
 
-	v3 := &mockValidator{err: fmt.Errorf("fail 3")}
+	v3 := &mockValidator{err: errors.New("fail 3")}
 	mv2 := NewMultiValidator(v1, v3)
 	_, err = mv2.ValidateToken(context.Background(), "some-token")
 	assert.Error(t, err)
@@ -346,7 +346,7 @@ func TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionErro
 	assert.ErrorContains(t, err, "resolving signature algorithms")
 
 	inner := errors.Unwrap(err)
-	require.NotNil(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
+	require.Error(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
 	assert.ErrorContains(t, inner, "signature_algorithms[0] must not be empty")
 }
 
@@ -388,7 +388,7 @@ func TestResolveKeyFunc_WrapsInvalidIssuerURLError(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid issuer URL")
 
 	inner := errors.Unwrap(err)
-	require.NotNil(t, inner, "the underlying url.Parse error must be unwrappable, not just interpolated")
+	require.Error(t, inner, "the underlying url.Parse error must be unwrappable, not just interpolated")
 }
 
 // TestValidatedClaimsToMapClaims_PopulatesRegisteredClaims pins the exact

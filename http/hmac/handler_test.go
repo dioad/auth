@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -123,10 +124,10 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 
 			// Calculate timestamp with offset
 			timestamp := time.Now().Unix() + int64(tt.timestampOffset.Seconds())
-			timestampStr := fmt.Sprintf("%d", timestamp)
+			timestampStr := strconv.FormatInt(timestamp, 10)
 
 			// Create test request with manually crafted headers
-			req := httptest.NewRequest("GET", "http://example.com/test", nil)
+			req := httptest.NewRequest(http.MethodGet, "http://example.com/test", nil)
 
 			// Create client auth to generate valid signature
 			clientAuth := ClientAuth{
@@ -199,9 +200,9 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	// Simulate the attack scenario from the issue:
 	// Attacker creates a request with timestamp 5 minutes in the future
 	futureTimestamp := time.Now().Unix() + int64(5*time.Minute.Seconds())
-	timestampStr := fmt.Sprintf("%d", futureTimestamp)
+	timestampStr := strconv.FormatInt(futureTimestamp, 10)
 
-	req := httptest.NewRequest("GET", "http://example.com/api", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/api", nil)
 
 	clientAuth := ClientAuth{
 		Config: ClientConfig{
@@ -238,7 +239,7 @@ func createAuthenticatedRequest(t *testing.T, sharedKey, principal string, bodyS
 	t.Helper()
 
 	bodyContent := strings.Repeat("a", bodySize)
-	req := httptest.NewRequest("POST", "http://example.com/api", strings.NewReader(bodyContent))
+	req := httptest.NewRequest(http.MethodPost, "http://example.com/api", strings.NewReader(bodyContent))
 
 	clientAuth := ClientAuth{
 		Config: ClientConfig{

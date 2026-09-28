@@ -53,7 +53,7 @@ func TestExtract_WithoutFlyioClaims(t *testing.T) {
 	principal, err := s.Extract(ctx)
 
 	require.NoError(t, err)
-	assert.Equal(t, "", principal)
+	assert.Empty(t, principal)
 }
 
 // TestExtract_EmptyContext verifies that Extract returns empty string and nil error
@@ -63,7 +63,7 @@ func TestExtract_EmptyContext(t *testing.T) {
 	principal, err := s.Extract(context.Background())
 
 	require.NoError(t, err)
-	assert.Equal(t, "", principal)
+	assert.Empty(t, principal)
 }
 
 // TestName verifies that Name returns the provider identifier.
@@ -259,7 +259,7 @@ func TestExtract_WithGenericClaims_NoMatch(t *testing.T) {
 	principal, err := s.Extract(ctx)
 
 	require.NoError(t, err)
-	assert.Equal(t, "", principal)
+	assert.Empty(t, principal)
 }
 
 // TestIsService_WithGenericClaims verifies IsService returns true for Fly.io

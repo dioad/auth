@@ -70,7 +70,7 @@ func TestCustomClaimsMapFromValidatedClaims_MarshalError(t *testing.T) {
 	// claims" (the sibling error message a few lines down), so pin the full
 	// wrapped message to actually distinguish the two paths.
 	require.ErrorContains(t, err, "marshal custom claims: json: unsupported type: chan int")
-	require.NotNil(t, errors.Unwrap(err), "the underlying marshal error must be unwrappable, not just interpolated")
+	require.Error(t, errors.Unwrap(err), "the underlying marshal error must be unwrappable, not just interpolated")
 }
 
 func TestCustomClaimsMapFromValidatedClaims_UnmarshalError(t *testing.T) {

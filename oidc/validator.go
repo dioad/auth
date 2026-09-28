@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -98,7 +99,7 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		return nil, err
 	}
 	if issuer == "" {
-		return nil, fmt.Errorf("issuer or URL must be provided")
+		return nil, errors.New("issuer or URL must be provided")
 	}
 
 	if options.keyFunc == nil {
@@ -150,7 +151,7 @@ func applyHMACOverrides(cfg *ValidatorConfig, issuer string, algorithms []valida
 		return issuer, algorithms, false, nil
 	}
 	if !cfg.AllowInsecureHMAC {
-		return "", nil, false, fmt.Errorf("HMACSecret requires AllowInsecureHMAC: true — HMAC shared secrets are not suitable for production")
+		return "", nil, false, errors.New("HMACSecret requires AllowInsecureHMAC: true — HMAC shared secrets are not suitable for production")
 	}
 
 	if options.keyFunc == nil {
@@ -208,7 +209,7 @@ func buildValidatorOptions(cfg *ValidatorConfig, issuer string, algorithms []val
 	default:
 		// Non-HMAC mode (production) requires explicit audience configuration to prevent
 		// accidental deployments without audience validation, which is a critical security check.
-		return nil, fmt.Errorf("audiences must be configured in non-HMAC mode")
+		return nil, errors.New("audiences must be configured in non-HMAC mode")
 	}
 
 	if cfg.HMACSecret != "" && hmacFlexibleIssuer {

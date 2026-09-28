@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -211,7 +212,7 @@ func verifyToken(ctx context.Context, tokenString string) error {
 
 	issuer, ok := claims["iss"].(string)
 	if !ok || issuer == "" {
-		return fmt.Errorf("token has no 'iss' claim; cannot discover JWKS keys")
+		return errors.New("token has no 'iss' claim; cannot discover JWKS keys")
 	}
 
 	audiences := extractAudiences(claims)
@@ -262,7 +263,7 @@ func extractAudiences(claims map[string]any) []string {
 func decodeHeader(token string) (map[string]any, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
@@ -333,7 +334,7 @@ func fetchJWKSKeysContext(ctx context.Context, issuerURL string) (*jose.JSONWebK
 		return nil, fmt.Errorf("decoding discovery document: %w", err)
 	}
 	if config.JWKSURI == "" {
-		return nil, fmt.Errorf("no jwks_uri in discovery document")
+		return nil, errors.New("no jwks_uri in discovery document")
 	}
 
 	jwksReq, err := http.NewRequestWithContext(ctx, http.MethodGet, config.JWKSURI, nil)
@@ -388,7 +389,7 @@ func printJWKSKeys(issuerURL string) {
 func decodeClaims(token string) (map[string]any, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])

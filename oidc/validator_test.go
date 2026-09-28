@@ -649,7 +649,7 @@ func TestNewValidatorFromConfigWithOptions_WrapsSignatureAlgorithmResolutionErro
 	assert.ErrorContains(t, err, "resolving signature algorithms")
 
 	inner := errors.Unwrap(err)
-	require.NotNil(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
+	require.Error(t, inner, "the underlying signature-algorithm error must be unwrappable, not just interpolated into the message")
 	assert.ErrorContains(t, inner, "signature_algorithms[0] must not be empty")
 }
 

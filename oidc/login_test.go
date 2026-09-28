@@ -46,7 +46,7 @@ func TestNewClientFromConfig_AppliesAdditionalOpts(t *testing.T) {
 	_, err = client.AuthorizationCodeToken(ctx, "mock-code", "http://localhost/callback")
 	require.NoError(t, err)
 
-	assert.Greater(t, doer.calls, 0, "custom HTTPDoer passed via NewClientFromConfig's opts should have handled the token exchange request")
+	assert.Positive(t, doer.calls, "custom HTTPDoer passed via NewClientFromConfig's opts should have handled the token exchange request")
 }
 
 func TestOIDCLoginFlow(t *testing.T) {

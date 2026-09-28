@@ -24,10 +24,10 @@ password pass2`
 	provider2 := NewNetrcProviderFromContent(netrc2Content)
 
 	// Create test requests
-	req1, err := http.NewRequest("GET", "http://example.com", nil)
+	req1, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
 	require.NoError(t, err, "failed to create request")
 
-	req2, err := http.NewRequest("GET", "http://example.com", nil)
+	req2, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
 	require.NoError(t, err, "failed to create request")
 
 	_ = AddCredentialsWithProvider(req1, provider1)
@@ -58,7 +58,7 @@ password testpass`
 	}
 
 	// Create a request
-	req, err := http.NewRequest("GET", "http://test.example.com", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://test.example.com", nil)
 	require.NoError(t, err, "failed to create request")
 
 	// Add auth
@@ -75,7 +75,7 @@ func TestAddCredentialsBackwardCompatibility(t *testing.T) {
 	// Test that the old AddCredentials function still works
 	// This is a basic smoke test to ensure backward compatibility
 
-	req, err := http.NewRequest("GET", "http://nonexistent.example.com", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://nonexistent.example.com", nil)
 	require.NoError(t, err, "failed to create request")
 
 	// This should not panic and should return false (no credentials found)
@@ -101,8 +101,8 @@ password pass2`
 	auth2 := &ClientAuth{Config: ClientConfig{}, netrcProvider: provider}
 
 	// Create requests for different hosts
-	req1, _ := http.NewRequest("GET", "http://example1.com", nil)
-	req2, _ := http.NewRequest("GET", "http://example2.com", nil)
+	req1, _ := http.NewRequest(http.MethodGet, "http://example1.com", nil)
+	req2, _ := http.NewRequest(http.MethodGet, "http://example2.com", nil)
 
 	// Add auth from different instances
 	require.NoError(t, auth1.AddAuth(req1), "auth1.AddAuth(req1) returned error")
@@ -136,7 +136,7 @@ func TestNetrcProviderParseError(t *testing.T) {
 
 func TestAddCredentialsWithNilProvider(t *testing.T) {
 	// Ensure we handle edge cases gracefully
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 
 	// Using the default provider should not panic
 	added := AddCredentials(req)
@@ -154,7 +154,7 @@ func TestClientAuthWithConfiguredCredentials(t *testing.T) {
 		},
 	}
 
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 	require.NoError(t, auth.AddAuth(req), "AddAuth returned error")
 
 	user, pass, ok := req.BasicAuth()
@@ -171,7 +171,7 @@ func TestNetrcProviderConcurrency(t *testing.T) {
 	done := make(chan bool, 10)
 	for range 10 {
 		go func() {
-			req, _ := http.NewRequest("GET", "http://example.com", nil)
+			req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 			_ = AddCredentialsWithProvider(req, provider)
 			done <- true
 		}()
@@ -215,7 +215,7 @@ login user2
 password pass2`
 
 	provider := NewNetrcProviderFromContent(netrcContent)
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 
 	added := AddCredentialsWithProvider(req, provider)
 

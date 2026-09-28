@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,7 +88,7 @@ func (ts *tokenSource) Token() (*oauth2.Token, error) {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	tokenReq, err := http.NewRequest("POST", tokenURL.String(), bytes.NewReader(payloadData))
+	tokenReq, err := http.NewRequest(http.MethodPost, tokenURL.String(), bytes.NewReader(payloadData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
@@ -112,7 +113,7 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 	// Decode Access Token and extract expiry and any other details necessary from the token
 	tokenParts := strings.Split(accessToken, ".")
 	if len(tokenParts) != 3 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	payload, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
@@ -127,7 +128,7 @@ func decodeToken(accessToken string) (*oauth2.Token, error) {
 
 	expiry, ok := tokenData["exp"].(float64)
 	if !ok {
-		return nil, fmt.Errorf("failed to extract expiry from token")
+		return nil, errors.New("failed to extract expiry from token")
 	}
 
 	return &oauth2.Token{

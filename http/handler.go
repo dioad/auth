@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -109,7 +110,7 @@ func resolveOIDCHandler(cfg *OIDCServerConfig) (Middleware, error) {
 	}
 
 	if cfg.RedirectURI == "" {
-		return nil, fmt.Errorf("oidc auth: redirect-uri is required to complete a login")
+		return nil, errors.New("oidc auth: redirect-uri is required to complete a login")
 	}
 	u, err := url.Parse(cfg.RedirectURI)
 	if err != nil || u.Path == "" {

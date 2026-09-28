@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -18,7 +19,7 @@ import (
 type TokenSourceFactory func(cfg ClientConfig) (oauth2.TokenSource, error)
 
 var (
-	ErrNoIdentity = fmt.Errorf("no identity information found in config")
+	ErrNoIdentity = errors.New("no identity information found in config")
 )
 
 var defaultTokenSourceFactories = map[string]TokenSourceFactory{
@@ -156,7 +157,7 @@ type waitingTokenSource struct {
 
 func (s *waitingTokenSource) Token() (*oauth2.Token, error) {
 	if s.source == nil {
-		return nil, fmt.Errorf("no token source provided")
+		return nil, errors.New("no token source provided")
 	}
 
 	start := time.Now()
@@ -186,7 +187,7 @@ func NewHTTPClientFromConfig(cfg *ClientConfig) (*http.Client, error) {
 		return nil, fmt.Errorf("failed to create OIDC http client from config: %w", err)
 	}
 	if source == nil {
-		return nil, fmt.Errorf("failed to create token source from config")
+		return nil, errors.New("failed to create token source from config")
 	}
 	return oauth2.NewClient(context.Background(), source), nil
 }

@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -135,7 +136,7 @@ func (e *oidcEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch discover endpoint: %w", err)
 	}
-	req, err := http.NewRequest("GET", discoveryEndpoint.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, discoveryEndpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build discovery request for %v: %w", discoveryEndpoint, err)
 	}
@@ -224,7 +225,7 @@ func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 			return NewEndpoint(config.URL, WithCustomClaims(&IntrospectionResponse{}))
 		}
 		if config.Type == "" {
-			return nil, fmt.Errorf("config type cannot be empty")
+			return nil, errors.New("config type cannot be empty")
 		}
 		return nil, fmt.Errorf("config type %s not supported", config.Type)
 	}
@@ -266,7 +267,7 @@ func (e *GitHubEndpoint) URL() *url.URL {
 }
 
 func (e *GitHubEndpoint) DiscoveryEndpoint() (*url.URL, error) {
-	return nil, fmt.Errorf("GitHub does not support OpenID Connect discovery")
+	return nil, errors.New("GitHub does not support OpenID Connect discovery")
 }
 
 func (e *GitHubEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration, error) {
@@ -317,7 +318,7 @@ func (e *GitHubActionsEndpoint) DiscoveredConfiguration() (*OpenIDConfiguration,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discovery endpoint: %w", err)
 	}
-	req, err := http.NewRequest("GET", discoveryEndpoint.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, discoveryEndpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build discovery request for %v: %w", discoveryEndpoint, err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/url"
@@ -50,10 +51,10 @@ func NewValidatorFromConfig(cfg *ValidatorConfig) (TokenValidator, error) {
 // NewValidatorFromConfigWithOptions creates a TokenValidator from a ValidatorConfig using custom options.
 func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOpt) (TokenValidator, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("validator config is nil")
+		return nil, errors.New("validator config is nil")
 	}
 	if cfg.Issuer == "" {
-		return nil, fmt.Errorf("issuer must be provided")
+		return nil, errors.New("issuer must be provided")
 	}
 
 	algorithms, err := ResolveSignatureAlgorithms(
@@ -267,7 +268,7 @@ func (v *PredicateValidator) ValidateToken(ctx context.Context, tokenString stri
 	}
 
 	if !v.Predicate.Validate(mapClaims) {
-		return nil, fmt.Errorf("predicate validation failed")
+		return nil, errors.New("predicate validation failed")
 	}
 
 	return claims, nil
@@ -351,7 +352,7 @@ func (v *ValidatorDebugger) String() string {
 func decodeTokenData(accessToken string) (any, error) {
 	tokenParts := strings.Split(accessToken, ".")
 	if len(tokenParts) != 3 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	payload, err := base64.RawURLEncoding.DecodeString(tokenParts[1])
@@ -426,7 +427,7 @@ func validatedClaimsToMapClaims(vc *jwtvalidator.ValidatedClaims) (jwt.MapClaims
 func extractClaimsMap(tokenString string) (jwt.MapClaims, error) {
 	parts := strings.Split(tokenString, ".")
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
