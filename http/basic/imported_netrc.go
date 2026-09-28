@@ -107,6 +107,16 @@ func netrcPath() (string, error) {
 	return filepath.Join(dir, base), nil
 }
 
+// NewNetrcProviderFromContent creates a NetrcProvider initialized with the given netrc content.
+// This is useful for testing or when netrc data comes from a non-standard source.
+func NewNetrcProviderFromContent(content string) *NetrcProvider {
+	p := &NetrcProvider{}
+	p.once.Do(func() {
+		p.lines = parseNetrc(content)
+	})
+	return p
+}
+
 // readNetrc reads and parses the netrc file for this provider.
 func (p *NetrcProvider) readNetrc() {
 	path, err := netrcPath()
@@ -125,16 +135,6 @@ func (p *NetrcProvider) readNetrc() {
 	}
 
 	p.lines = parseNetrc(string(data))
-}
-
-// NewNetrcProviderFromContent creates a NetrcProvider initialized with the given netrc content.
-// This is useful for testing or when netrc data comes from a non-standard source.
-func NewNetrcProviderFromContent(content string) *NetrcProvider {
-	p := &NetrcProvider{}
-	p.once.Do(func() {
-		p.lines = parseNetrc(content)
-	})
-	return p
 }
 
 // Following imported from https://golang.org/src/cmd/go/internal/auth/auth.go

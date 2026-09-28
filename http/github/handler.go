@@ -18,6 +18,11 @@ type TokenAuthenticator interface {
 	AuthenticateToken(accessToken string) (*authhttp.GitHubUserInfo, error)
 }
 
+// Handler implements GitHub token authentication.
+type Handler struct {
+	Authenticator TokenAuthenticator
+}
+
 // NewHandler creates a new GitHub authentication handler with the provided configuration.
 func NewHandler(cfg ServerConfig) *Handler {
 	return &Handler{
@@ -29,11 +34,6 @@ func NewHandlerWithAuthenticator(authenticator TokenAuthenticator) *Handler {
 	return &Handler{
 		Authenticator: authenticator,
 	}
-}
-
-// Handler implements GitHub token authentication.
-type Handler struct {
-	Authenticator TokenAuthenticator
 }
 
 // AuthRequest authenticates an HTTP request using a GitHub token.

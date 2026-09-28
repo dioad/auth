@@ -36,13 +36,6 @@ type Handler struct {
 	middleware Middleware
 }
 
-// LoginRoutes returns h's concrete login-routing methods, if its underlying
-// middleware implements LoginRoutable.
-func (h *Handler) LoginRoutes() (LoginRoutable, bool) {
-	lr, ok := h.middleware.(LoginRoutable)
-	return lr, ok
-}
-
 // NewHandler creates a new authentication handler from the provided configuration.
 func NewHandler(cfg *ServerConfig) (*Handler, error) {
 	mw, err := resolveAuthHandler(cfg)
@@ -53,6 +46,13 @@ func NewHandler(cfg *ServerConfig) (*Handler, error) {
 		Config:     *cfg,
 		middleware: mw,
 	}, nil
+}
+
+// LoginRoutes returns h's concrete login-routing methods, if its underlying
+// middleware implements LoginRoutable.
+func (h *Handler) LoginRoutes() (LoginRoutable, bool) {
+	lr, ok := h.middleware.(LoginRoutable)
+	return lr, ok
 }
 
 func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {

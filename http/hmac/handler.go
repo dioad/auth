@@ -17,6 +17,11 @@ import (
 	"github.com/dioad/auth/http/authmw"
 )
 
+// Handler implements HMAC-based authentication.
+type Handler struct {
+	cfg ServerConfig
+}
+
 // NewHandler creates a new HMAC authentication handler with the provided configuration.
 func NewHandler(cfg ServerConfig) *Handler {
 	if cfg.MaxTimestampDiff == 0 {
@@ -29,18 +34,6 @@ func NewHandler(cfg ServerConfig) *Handler {
 		panic("hmac: shared key must not be empty")
 	}
 	return &Handler{cfg: cfg}
-}
-
-// Handler implements HMAC-based authentication.
-type Handler struct {
-	cfg ServerConfig
-}
-
-func (a *Handler) maxRequestSizeBytes() int {
-	if a.cfg.MaxRequestSize > 0 {
-		return a.cfg.MaxRequestSize
-	}
-	return DefaultMaxRequestSizeBytes
 }
 
 // parseAuthHeader parses the Authorization header and extracts the principal and signature.
@@ -207,4 +200,11 @@ func (a *Handler) Wrap(handler http.Handler) http.Handler {
 	return authmw.Wrap(a.AuthRequest, handler, func(w http.ResponseWriter, r *http.Request, err error) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
+}
+
+func (a *Handler) maxRequestSizeBytes() int {
+	if a.cfg.MaxRequestSize > 0 {
+		return a.cfg.MaxRequestSize
+	}
+	return DefaultMaxRequestSizeBytes
 }

@@ -42,6 +42,48 @@ func init() {
 	gob.Register(goth.User{})
 }
 
+// NewHandler configures OIDC providers and returns a handler.
+func NewHandler(config authoidc.Config, store sessions.Store) *Handler {
+	gothic.Store = store
+
+	if config.ProviderMap == nil {
+		config.ProviderMap = make(map[string]authoidc.ProviderConfig)
+	}
+
+	provider, ok := config.ProviderMap["github"]
+	if ok {
+		scopes := []string{"read:user", "user:email"}
+
+		if len(provider.Scopes) > 0 {
+			scopes = provider.Scopes
+		}
+		goth.UseProviders(
+			github.New(provider.ClientID, provider.ClientSecret, provider.Callback, scopes...),
+		)
+	}
+
+	provider, ok = config.ProviderMap["oidc"]
+	if ok {
+		scopes := []string{"openid", "profile", "email", "microprofile-jwt"}
+
+		if len(provider.Scopes) > 0 {
+			scopes = provider.Scopes
+		}
+
+		oidcProvider, err := oidcprovider.New(provider.ClientID, provider.ClientSecret, provider.Callback, provider.DiscoveryURL, scopes...)
+		if err != nil {
+			return nil
+		}
+		goth.UseProviders(
+			oidcProvider,
+		)
+	}
+
+	return &Handler{
+		CookieStore: store,
+	}
+}
+
 // AuthRequest authenticates an HTTP request by checking for a valid OIDC session cookie.
 func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	session, err := h.CookieStore.Get(r, SessionCookieName)
@@ -59,29 +101,6 @@ func (h *Handler) AuthRequest(r *http.Request) (stdctx.Context, error) {
 	ctx = ContextWithOIDCUserInfo(ctx, &data.User)
 
 	return ctx, nil
-}
-
-func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*SessionData, error) {
-	session, err := h.CookieStore.Get(req, SessionCookieName)
-	if err != nil {
-		return nil, err
-	}
-
-	if session.IsNew {
-		r, _ := h.CookieStore.New(req, PreAuthRefererCookieName)
-		r.Values["referer"] = req.URL.String()
-		if err = h.CookieStore.Save(req, w, r); err != nil {
-			return nil, err
-		}
-
-		return nil, nil
-	}
-
-	data, ok := session.Values["data"].(SessionData)
-	if !ok {
-		return nil, errors.New("missing session data")
-	}
-	return &data, nil
 }
 
 // Middleware returns an HTTP middleware for OIDC authentication.
@@ -125,6 +144,90 @@ func (h *Handler) AuthStart() http.HandlerFunc {
 	}
 }
 
+// Callback handles provider callbacks.
+func (h *Handler) Callback() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if provider := req.PathValue("provider"); provider != "" {
+			zerolog.Ctx(req.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
+				return c.Str("provider", provider)
+			})
+		}
+		redirect, err := h.handleCallback(w, req)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Location", redirect)
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+}
+
+// LogoutHandler clears authentication state and redirects to login.
+func (h *Handler) LogoutHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+
+		if err := h.handleLogout(w, req); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Location", h.LoginPath)
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+}
+
+func (*Handler) handleLogout(w http.ResponseWriter, req *http.Request) error {
+	session, err := gothic.Store.Get(req, SessionCookieName)
+	if err != nil {
+		return err
+	}
+	dataValue, ok := session.Values["data"]
+	if !ok {
+		return errors.New("no session data found")
+	}
+	data, ok := dataValue.(SessionData)
+	if !ok {
+		return errors.New("session data has unexpected type")
+	}
+
+	session.Options.MaxAge = -1
+	if err = gothic.Store.Save(req, w, session); err != nil {
+		return err
+	}
+
+	if data.Provider != "github" {
+		if err = gothic.Logout(w, req); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (h *Handler) handleAuth(w http.ResponseWriter, req *http.Request) (*SessionData, error) {
+	session, err := h.CookieStore.Get(req, SessionCookieName)
+	if err != nil {
+		return nil, err
+	}
+
+	if session.IsNew {
+		r, _ := h.CookieStore.New(req, PreAuthRefererCookieName)
+		r.Values["referer"] = req.URL.String()
+		if err = h.CookieStore.Save(req, w, r); err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	}
+
+	data, ok := session.Values["data"].(SessionData)
+	if !ok {
+		return nil, errors.New("missing session data")
+	}
+	return &data, nil
+}
+
 func (h *Handler) handleCallback(w http.ResponseWriter, req *http.Request) (string, error) {
 	user, err := gothic.CompleteUserAuth(w, req)
 	if err != nil {
@@ -161,107 +264,4 @@ func (h *Handler) handleCallback(w http.ResponseWriter, req *http.Request) (stri
 	}
 
 	return redirect, nil
-}
-
-// Callback handles provider callbacks.
-func (h *Handler) Callback() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		if provider := req.PathValue("provider"); provider != "" {
-			zerolog.Ctx(req.Context()).UpdateContext(func(c zerolog.Context) zerolog.Context {
-				return c.Str("provider", provider)
-			})
-		}
-		redirect, err := h.handleCallback(w, req)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Location", redirect)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	}
-}
-
-func (*Handler) handleLogout(w http.ResponseWriter, req *http.Request) error {
-	session, err := gothic.Store.Get(req, SessionCookieName)
-	if err != nil {
-		return err
-	}
-	dataValue, ok := session.Values["data"]
-	if !ok {
-		return errors.New("no session data found")
-	}
-	data, ok := dataValue.(SessionData)
-	if !ok {
-		return errors.New("session data has unexpected type")
-	}
-
-	session.Options.MaxAge = -1
-	if err = gothic.Store.Save(req, w, session); err != nil {
-		return err
-	}
-
-	if data.Provider != "github" {
-		if err = gothic.Logout(w, req); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// LogoutHandler clears authentication state and redirects to login.
-func (h *Handler) LogoutHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-
-		if err := h.handleLogout(w, req); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Location", h.LoginPath)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	}
-}
-
-// NewHandler configures OIDC providers and returns a handler.
-func NewHandler(config authoidc.Config, store sessions.Store) *Handler {
-	gothic.Store = store
-
-	if config.ProviderMap == nil {
-		config.ProviderMap = make(map[string]authoidc.ProviderConfig)
-	}
-
-	provider, ok := config.ProviderMap["github"]
-	if ok {
-		scopes := []string{"read:user", "user:email"}
-
-		if len(provider.Scopes) > 0 {
-			scopes = provider.Scopes
-		}
-		goth.UseProviders(
-			github.New(provider.ClientID, provider.ClientSecret, provider.Callback, scopes...),
-		)
-	}
-
-	provider, ok = config.ProviderMap["oidc"]
-	if ok {
-		scopes := []string{"openid", "profile", "email", "microprofile-jwt"}
-
-		if len(provider.Scopes) > 0 {
-			scopes = provider.Scopes
-		}
-
-		oidcProvider, err := oidcprovider.New(provider.ClientID, provider.ClientSecret, provider.Callback, provider.DiscoveryURL, scopes...)
-		if err != nil {
-			return nil
-		}
-		goth.UseProviders(
-			oidcProvider,
-		)
-	}
-
-	return &Handler{
-		CookieStore: store,
-	}
 }
