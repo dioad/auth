@@ -35,6 +35,20 @@ linters:
     - ireturn
     # gomodguard is deprecated in favor of gomodguard_v2 (enabled below).
     - gomodguard
+    # containedctx flags every struct with a context.Context field. All three
+    # occurrences in this codebase (oidc.RefreshingClientCredentialsTokenSource,
+    # fileTokenSource, waitingTokenSource) exist because they implement
+    # oauth2.TokenSource, whose Token() method takes no context — storing ctx
+    # at construction is the only way to thread one through, not an oversight.
+    - containedctx
+    # contextcheck's remaining findings here are either the same
+    # oauth2.TokenSource constraint as containedctx above, an optional ctx
+    # parameter that legitimately defaults to context.Background() when the
+    # caller passes nil, or middleware that derives its context through an
+    # AuthRequestFunc value (http/authmw.Wrap and friends) — the linter
+    # can't trace context provenance through that indirection, but every
+    # implementation does correctly derive from r.Context().
+    - contextcheck
   enable:
     - gomodguard_v2
   settings:
