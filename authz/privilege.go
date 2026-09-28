@@ -29,21 +29,21 @@ func NewPrivilegeSet(caps ...Capability) *PrivilegeSet {
 	return ps
 }
 
-// Has reports whether the set contains cap.
-func (p *PrivilegeSet) Has(cap Capability) bool {
+// Has reports whether the set contains capability.
+func (p *PrivilegeSet) Has(capability Capability) bool {
 	if p == nil || p.caps == nil {
 		return false
 	}
-	_, ok := p.caps[cap]
+	_, ok := p.caps[capability]
 	return ok
 }
 
-// Grant adds cap to the set.
-func (p *PrivilegeSet) Grant(cap Capability) {
+// Grant adds capability to the set.
+func (p *PrivilegeSet) Grant(capability Capability) {
 	if p.caps == nil {
 		p.caps = make(map[Capability]struct{})
 	}
-	p.caps[cap] = struct{}{}
+	p.caps[capability] = struct{}{}
 }
 
 // Capabilities returns a snapshot of all capabilities in the set.
@@ -100,14 +100,14 @@ func NewWildcardPrivilege(ps *PrivilegeSet) Privilege {
 // Has reports whether the capability is granted by exact match, by matching
 // "resource:any", or by a keyMatch-compatible resource pattern with the same
 // action (or action "any").
-func (w wildcardAwarePrivilege) Has(cap Capability) bool {
+func (w wildcardAwarePrivilege) Has(capability Capability) bool {
 	if w.set == nil {
 		return false
 	}
-	if w.set.Has(cap) {
+	if w.set.Has(capability) {
 		return true
 	}
-	requestedResource, requestedAction, ok := strings.Cut(string(cap), ":")
+	requestedResource, requestedAction, ok := strings.Cut(string(capability), ":")
 	if !ok {
 		return false
 	}

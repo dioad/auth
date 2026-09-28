@@ -59,7 +59,7 @@ type Authorizer interface {
 	// Contract: when principalCtx is nil, all enforcing implementations must
 	// return ErrUnauthorized. AllowAllAuthorizer is the sole exception — it
 	// bypasses all checks by design and must never be used in production.
-	Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error)
+	Can(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) (*Decision, error)
 
 	// Metadata returns the policy metadata for introspection.
 	Metadata() PolicyMetadata

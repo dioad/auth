@@ -52,10 +52,10 @@ func (a *MapAuthorizer) Privileges(_ context.Context, principalCtx *auth.Princip
 	return NewWildcardPrivilege(ps), nil
 }
 
-// Can checks whether the principal's mapped PrivilegeSet contains cap.
-func (a *MapAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, cap Capability) (*Decision, error) {
+// Can checks whether the principal's mapped PrivilegeSet contains capability.
+func (a *MapAuthorizer) Can(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) (*Decision, error) {
 	privs, err := a.Privileges(ctx, principalCtx)
-	return canFromPrivileges(principalCtx, cap, privs, err)
+	return canFromPrivileges(principalCtx, capability, privs, err)
 }
 
 // Metadata returns the policy metadata.

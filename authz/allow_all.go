@@ -25,8 +25,8 @@ func (a *AllowAllAuthorizer) Privileges(_ context.Context, _ *auth.PrincipalCont
 }
 
 // Can always returns an allowed Decision with ReasonAllowAll.
-func (a *AllowAllAuthorizer) Can(_ context.Context, _ *auth.PrincipalContext, cap Capability) (*Decision, error) {
-	return allow(ReasonAllowAll, "", cap), nil
+func (a *AllowAllAuthorizer) Can(_ context.Context, _ *auth.PrincipalContext, capability Capability) (*Decision, error) {
+	return allow(ReasonAllowAll, "", capability), nil
 }
 
 // Metadata returns the policy metadata provided at construction.
