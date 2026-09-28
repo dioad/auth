@@ -1,3 +1,5 @@
+// Package jwt provides HTTP middleware for authenticating requests with a
+// bearer JWT and authorizing them against a claim predicate.
 package jwt
 
 import (
@@ -85,7 +87,7 @@ func ScopeMatch(subject, target *Scope) bool {
 	return true
 }
 
-// Helper types/functions for context management
+// Helper types/functions for context management.
 type contextServiceScopesKey struct{}
 
 func ScopesFromContext(ctx context.Context) ([]*Scope, bool) {

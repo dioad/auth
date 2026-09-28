@@ -1,3 +1,6 @@
+// Package testutil provides a mock OIDC identity provider (discovery
+// document, JWKS, token, and userinfo endpoints) for tests that exercise
+// this module's OIDC client and validator against a real HTTP server.
 package testutil
 
 import (

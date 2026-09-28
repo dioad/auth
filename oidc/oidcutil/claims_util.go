@@ -1,3 +1,7 @@
+// Package oidcutil provides shared helpers for provider-specific OIDC
+// PrincipalSource implementations: flattening typed custom claims into a
+// generic map, and the typed-path/generic-fallback-path pattern common to
+// every provider in this module.
 package oidcutil
 
 // HasNonEmptyString returns true if the map contains a string value for the

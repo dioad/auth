@@ -1,3 +1,6 @@
+// Command auth-debug fetches and inspects OIDC tokens from AWS, GitHub
+// Actions, or Fly.io, and validates arbitrary JWTs against their issuer's
+// JWKS keys.
 package main
 
 import (

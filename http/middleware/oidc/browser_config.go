@@ -1,3 +1,6 @@
+// Package oidc provides HTTP middleware for browser-based, cookie-backed
+// OIDC login sessions: the login/callback/logout flow, session cookie
+// management, and transparent token refresh.
 package oidc
 
 import (

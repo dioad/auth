@@ -1,3 +1,5 @@
+// Package flyio provides an OIDC token source and principal extraction for
+// Fly.io Machines, using tokens issued via Fly.io's local metadata socket.
 package flyio
 
 import (

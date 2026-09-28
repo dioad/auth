@@ -1,3 +1,5 @@
+// Command main demonstrates wrapping an HTTP server with OIDC token
+// validation middleware.
 package main
 
 import (

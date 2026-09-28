@@ -1,3 +1,5 @@
+// Command main demonstrates retrieving and decoding a GitHub Actions OIDC
+// token.
 package main
 
 import (
