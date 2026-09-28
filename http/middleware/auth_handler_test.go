@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/dioad/auth"
 )
@@ -78,7 +77,7 @@ func TestPrincipalExtractionHandler_Success_PropagatesPrincipalContext(t *testin
 	mw(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		nextCalled = true
 		principal := auth.PrincipalContextFromContext(r.Context())
-		require.NotNil(t, principal)
+		assert.NotNil(t, principal)
 		assert.Equal(t, expectedPrincipal, principal)
 	})).ServeHTTP(rr, req)
 

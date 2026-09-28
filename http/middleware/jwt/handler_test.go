@@ -9,6 +9,7 @@ import (
 
 	jwtvalidator "github.com/auth0/go-jwt-middleware/v3/validator"
 	gojwt "github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	authcontext "github.com/dioad/auth/authctx"
@@ -63,12 +64,12 @@ func TestHandler_PopulatesAuthenticatedCustomClaimsFromTokenPayload(t *testing.T
 
 	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := authcontext.AuthenticatedCustomClaimsFromContext(r.Context())
-		require.True(t, ok)
-		require.Equal(t, "alice", claims["sub"])
+		assert.True(t, ok)
+		assert.Equal(t, "alice", claims["sub"])
 
 		realmAccess, ok := claims["realm_access"].(map[string]any)
-		require.True(t, ok)
-		require.Equal(t, []any{"connect-admin"}, realmAccess["roles"])
+		assert.True(t, ok)
+		assert.Equal(t, []any{"connect-admin"}, realmAccess["roles"])
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)
 
@@ -91,8 +92,8 @@ func TestHandler_PrefersValidatedCustomClaimsOverTokenPayloadFallback(t *testing
 
 	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := authcontext.AuthenticatedCustomClaimsFromContext(r.Context())
-		require.True(t, ok)
-		require.Equal(t, "validated", claims["source"])
+		assert.True(t, ok)
+		assert.Equal(t, "validated", claims["source"])
 		w.WriteHeader(http.StatusOK)
 	})).ServeHTTP(rr, req)
 

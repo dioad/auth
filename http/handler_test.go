@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	oidcmw "github.com/dioad/auth/http/middleware/oidc"
@@ -75,7 +76,7 @@ func TestResolveAuthHandlerByType_OIDC_RegistersLoginRoutesAndRedirects(t *testi
 	rr := httptest.NewRecorder()
 
 	h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Fail(t, "next handler must not run for an unauthenticated request")
+		assert.Fail(t, "next handler must not run for an unauthenticated request")
 	})).ServeHTTP(rr, req)
 
 	require.Equal(t, http.StatusSeeOther, rr.Code)
