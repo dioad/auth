@@ -79,7 +79,7 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 	if !generics.IsZeroValue(cfg.OIDCAuthConfig) {
 		return resolveOIDCHandler(&cfg.OIDCAuthConfig)
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // no auth type configured; Handler.Wrap treats a nil middleware as pass-through by design
 }
 
 func resolveAuthHandlerByType(cfg *ServerConfig) (Middleware, error) {

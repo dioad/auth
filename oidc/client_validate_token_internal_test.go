@@ -41,7 +41,7 @@ func TestValidateToken_RejectsInvalidSignatureAlgorithmConfig(t *testing.T) {
 		endpoint,
 		WithKeyFunc(func(context.Context) (any, error) {
 			require.Fail(t, "keyFunc must not be invoked when the algorithm config is invalid")
-			return nil, nil
+			return nil, nil //nolint:nilnil // unreachable: require.Fail stops the test before this returns
 		}),
 		WithValidatingSignatureAlgorithms([]jwtvalidator.SignatureAlgorithm{""}),
 	)

@@ -29,7 +29,7 @@ func ClaimsMapFromToken(tokenString string) (map[string]any, error) {
 // CustomClaimsMapFromValidatedClaims converts ValidatedClaims.CustomClaims into a generic map.
 func CustomClaimsMapFromValidatedClaims(vc *jwtvalidator.ValidatedClaims) (map[string]any, error) {
 	if vc == nil || vc.CustomClaims == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // a nil map safely means "no custom claims"; ResolveCustomClaimsMap's len(claims) > 0 check already treats it as such
 	}
 
 	raw, err := json.Marshal(vc.CustomClaims)
