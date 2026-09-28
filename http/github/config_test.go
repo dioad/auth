@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResolveAccessToken(t *testing.T) {
@@ -12,7 +13,7 @@ func TestResolveAccessToken(t *testing.T) {
 			AccessToken: "static-token",
 		}
 		token, err := ResolveAccessToken(cfg)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "static-token", token)
 	})
 
@@ -24,7 +25,7 @@ func TestResolveAccessToken(t *testing.T) {
 			EnvironmentVariableName:          "GH_TOKEN",
 		}
 		token, err := ResolveAccessToken(cfg)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "env-token", token)
 	})
 }

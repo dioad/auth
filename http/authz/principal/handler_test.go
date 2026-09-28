@@ -62,7 +62,7 @@ func TestAuthRequest_Authorized(t *testing.T) {
 
 	resultCtx, err := handler.AuthRequest(req)
 
-	assert.NoError(t, err, "expected no error for authorised principal")
+	require.NoError(t, err, "expected no error for authorised principal")
 	assert.NotNil(t, resultCtx, "expected context to be returned")
 }
 

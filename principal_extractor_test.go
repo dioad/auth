@@ -195,7 +195,7 @@ func TestOIDCPrincipalSource_NilClaims(t *testing.T) {
 
 	principal, err := source.Extract(ctx)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should return empty string when claims are nil, not panic
 	assert.Empty(t, principal)
@@ -231,7 +231,7 @@ func TestOIDCPrincipalSource_WithValidClaims(t *testing.T) {
 
 			principal, err := source.Extract(ctx)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.wantPrinc, principal)
 		})
 	}
