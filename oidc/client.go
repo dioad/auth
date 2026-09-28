@@ -253,7 +253,7 @@ func (c *Client) GothProvider(callbackURL *url.URL, scopes ...string) (goth.Prov
 
 // ValidateToken VerifyToke verifies the token and returns the claims
 // It fetches the verification keys from the OIDC server
-// and uses them to verify the token
+// and uses them to verify the token.
 func (c *Client) ValidateToken(ctx context.Context, token string, audiences []string) (*jwtvalidator.ValidatedClaims, error) {
 	if c.keyFunc == nil && c.jwksProvider != nil {
 		c.keyFunc = c.jwksProvider.KeyFunc
@@ -333,8 +333,7 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...
 	return tokenResponse.toToken(c.clock.Now()), nil
 }
 
-// AuthorizationCodeRedirectFlow generates the authorization URL for the Authorization Code Flow
-// TODO: figure out a better name
+// AuthorizationCodeRedirectFlow generates the authorization URL for the Authorization Code Flow.
 func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string, scopes []string, redirectURI string, opts ...RequestOpt) (string, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
@@ -452,9 +451,9 @@ func (c *Client) RefreshingClientCredentialsToken(ctx context.Context, opts ...R
 	}, nil
 }
 
-// ClientCredentialsToken gets a token using the client_credentials grant
+// ClientCredentialsToken gets a token using the client_credentials grant.
 // It sends the client_id and client_secret to the token endpoint
-// and gets a token in response
+// and gets a token in response.
 func (c *Client) ClientCredentialsToken(ctx context.Context, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
@@ -482,9 +481,8 @@ func (c *Client) ClientCredentialsToken(ctx context.Context, opts ...RequestOpt)
 	return tokenResponse.toToken(c.clock.Now()), nil
 }
 
-// IntrospectToken introspects the token
-// It sends the token to the introspection endpoint
-// and gets the response
+// IntrospectToken introspects the token.
+// It sends the token to the introspection endpoint and gets the response.
 func (c *Client) IntrospectToken(ctx context.Context, token string) (*IntrospectionResponse, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
 	if err != nil {
@@ -553,7 +551,7 @@ func (c *Client) TokenSource(t *oauth2.Token) (oauth2.TokenSource, error) {
 	return oauth2Config.TokenSource(context.Background(), t), nil
 }
 
-// oAuth2Config returns an OAuth2 configuration for the OIDC client
+// oAuth2Config returns an OAuth2 configuration for the OIDC client.
 func (c *Client) oAuth2Config(ctx context.Context, opts ...oAuth2ConfigOpt) (*oauth2.Config, error) {
 	oauth2Endpoint, err := c.endpoint.OAuth2Endpoint(ctx)
 	if err != nil {
