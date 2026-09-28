@@ -88,7 +88,7 @@ func verifyHMACSignature(r *http.Request, principal, signature, timestampStr str
 	verificationData := CanonicalData(r, principal, timestampStr, signedHeaders, bodyBytes)
 
 	// Verify HMAC token
-	verificationKey, err := HMACKey(sharedKey, []byte(verificationData))
+	verificationKey, err := Key(sharedKey, []byte(verificationData))
 	if err != nil {
 		return fmt.Errorf("failed to generate verification key: %w", err)
 	}
@@ -195,6 +195,7 @@ func verifyTimestamp(r *http.Request, timestampHeader string, maxTimestampDiff, 
 	return timestampStr, nil
 }
 
+// Wrap wraps handler with HMAC authentication middleware.
 func (a *Handler) Wrap(handler http.Handler) http.Handler {
 	return authmw.Wrap(a.AuthRequest, handler, func(w http.ResponseWriter, _ *http.Request, _ error) {
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)

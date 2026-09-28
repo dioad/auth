@@ -149,7 +149,7 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 			bodyBytes := []byte{}
 			signedHeaders := []string{}
 			verificationData := CanonicalData(req, principal, timestampStr, signedHeaders, bodyBytes)
-			signature, err := HMACKey([]byte(sharedKey), []byte(verificationData))
+			signature, err := Key([]byte(sharedKey), []byte(verificationData))
 			require.NoError(t, err, "failed to generate signature")
 			req.Header.Set("Authorization", fmt.Sprintf("HMAC %s:%s", principal, signature))
 
@@ -216,7 +216,7 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	bodyBytes := []byte{}
 	signedHeaders := []string{}
 	verificationData := CanonicalData(req, principal, timestampStr, signedHeaders, bodyBytes)
-	signature, err := HMACKey([]byte(sharedKey), []byte(verificationData))
+	signature, err := Key([]byte(sharedKey), []byte(verificationData))
 	require.NoError(t, err, "failed to generate signature")
 	req.Header.Set("Authorization", fmt.Sprintf("HMAC %s:%s", principal, signature))
 
