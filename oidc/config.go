@@ -13,6 +13,15 @@ type EndpointConfig struct {
 	KeycloakRealm string `json:"keycloak_realm,omitempty" mapstructure:"keycloak-realm,omitempty"`
 }
 
+// Recognised EndpointConfig.Type values.
+const (
+	ProviderTypeGitHub        = "github"
+	ProviderTypeGitHubActions = "githubactions"
+	ProviderTypeKeycloak      = "keycloak"
+	ProviderTypeFlyIO         = "flyio"
+	ProviderTypeAWS           = "aws"
+)
+
 // ClientConfig captures client credentials and token acquisition options for an OIDC provider.
 type ClientConfig struct {
 	// Provider     EndpointConfig    `json:"provider"` // e.g. "github", "keycloak"

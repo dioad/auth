@@ -25,6 +25,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// Claim and scope names shared across the discovery document, issued
+// tokens, and userinfo response, so all three stay consistent.
+const (
+	claimSub   = "sub"
+	claimEmail = "email"
+)
+
 // MockIdP is a mock Identity Provider for testing OIDC flows.
 type MockIdP struct {
 	Server *httptest.Server
@@ -71,9 +78,9 @@ func (i *MockIdP) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		"response_types_supported":              []string{"code", "id_token"},
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"RS256"},
-		"scopes_supported":                      []string{"openid", "profile", "email"},
+		"scopes_supported":                      []string{"openid", "profile", claimEmail},
 		"token_endpoint_auth_methods_supported": []string{"client_secret_post", "client_secret_basic"},
-		"claims_supported":                      []string{"sub", "iss", "aud", "exp", "iat", "email"},
+		"claims_supported":                      []string{claimSub, "iss", "aud", "exp", "iat", claimEmail},
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(config); err != nil {
@@ -109,12 +116,12 @@ func (i *MockIdP) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 
 func (i *MockIdP) handleToken(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"iss":   i.Issuer,
-		"sub":   "test-user",
-		"aud":   "test-client",
-		"exp":   time.Now().Add(time.Hour).Unix(),
-		"iat":   time.Now().Unix(),
-		"email": "test@example.com",
+		"iss":      i.Issuer,
+		claimSub:   "test-user",
+		"aud":      "test-client",
+		"exp":      time.Now().Add(time.Hour).Unix(),
+		"iat":      time.Now().Unix(),
+		claimEmail: "test@example.com",
 	})
 	token.Header["kid"] = "test-key"
 
@@ -134,9 +141,9 @@ func (i *MockIdP) handleToken(w http.ResponseWriter, r *http.Request) {
 
 func (i *MockIdP) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 	user := map[string]any{
-		"sub":   "test-user",
-		"email": "test@example.com",
-		"name":  "Test User",
+		claimSub:   "test-user",
+		claimEmail: "test@example.com",
+		"name":     "Test User",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(user); err != nil {

@@ -240,11 +240,11 @@ func anyIssuerResolver(ctx context.Context) ([]string, error) {
 // to use the default generic claims map.
 func customClaimsFactoryForType(providerType string) func() validator.CustomClaims {
 	switch providerType {
-	case "flyio":
+	case ProviderTypeFlyIO:
 		return func() validator.CustomClaims { return &flyio.Claims{} }
-	case "aws":
+	case ProviderTypeAWS:
 		return func() validator.CustomClaims { return &aws.Claims{} }
-	case "githubactions":
+	case ProviderTypeGitHubActions:
 		return func() validator.CustomClaims { return &githubactions.Claims{} }
 	default:
 		return nil

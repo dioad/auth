@@ -23,16 +23,16 @@ var (
 )
 
 var defaultTokenSourceFactories = map[string]TokenSourceFactory{
-	"aws": func(cfg ClientConfig) (oauth2.TokenSource, error) {
+	ProviderTypeAWS: func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return aws.NewTokenSource(aws.WithAudience(cfg.Audience)), nil
 	},
-	"github": func(cfg ClientConfig) (oauth2.TokenSource, error) {
+	ProviderTypeGitHub: func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return githubactions.NewTokenSource(githubactions.WithAudience(cfg.Audience)), nil
 	},
-	"githubactions": func(cfg ClientConfig) (oauth2.TokenSource, error) {
+	ProviderTypeGitHubActions: func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return githubactions.NewTokenSource(githubactions.WithAudience(cfg.Audience)), nil
 	},
-	"flyio": func(cfg ClientConfig) (oauth2.TokenSource, error) {
+	ProviderTypeFlyIO: func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return flyio.NewTokenSource(flyio.WithAudience(cfg.Audience)), nil
 	},
 }

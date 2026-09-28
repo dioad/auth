@@ -209,16 +209,16 @@ func WithHTTPDoer(doer HTTPDoer) EndpointOption {
 
 func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
 	switch config.Type {
-	case "github":
+	case ProviderTypeGitHub:
 		return NewGitHubEndpoint(config.URL)
-	case "githubactions":
+	case ProviderTypeGitHubActions:
 		return NewGitHubActionsEndpoint(config.URL)
-	case "keycloak":
+	case ProviderTypeKeycloak:
 		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm, WithCustomClaims(&IntrospectionResponse{}))
 		// TODO: make this work
-	case "flyio":
+	case ProviderTypeFlyIO:
 		return NewEndpoint(config.URL, WithCustomClaims(&flyio.Claims{}))
-	case "aws":
+	case ProviderTypeAWS:
 		return NewEndpoint(config.URL, WithCustomClaims(&aws.Claims{}))
 	default:
 		if config.URL != "" {
