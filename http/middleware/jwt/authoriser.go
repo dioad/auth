@@ -13,7 +13,7 @@ type ClaimsAuthoriser struct {
 	Predicate jwt.ClaimPredicate
 }
 
-// Create middleware that checks if request satisfies the predicate
+// Wrap creates middleware that checks if request satisfies the predicate.
 func (a *ClaimsAuthoriser) Wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Placeholder: In a real implementation, we'd extract MapClaims from context
