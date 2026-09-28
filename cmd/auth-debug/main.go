@@ -321,11 +321,11 @@ func fetchJWKSKeysContext(ctx context.Context, issuerURL string) (*jose.JSONWebK
 	client := &http.Client{Timeout: 10 * time.Second}
 	discoveryURL := strings.TrimRight(issuerURL, "/") + "/.well-known/openid-configuration"
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil) // #nosec G704 -- issuerURL is an operator-supplied CLI argument to this debug tool, not untrusted network input
 	if err != nil {
 		return nil, fmt.Errorf("creating discovery request for %s: %w", discoveryURL, err)
 	}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- see above
 	if err != nil {
 		return nil, fmt.Errorf("fetching discovery document from %s: %w", discoveryURL, err)
 	}
