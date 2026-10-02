@@ -319,19 +319,30 @@ func introspectionFromClaimsMap(rawClaims map[string]any) (IntrospectionResponse
 	return customClaims, nil
 }
 
+// validatorDebugger logs validation outcomes via zerolog.Ctx(ctx) rather
+// than a stored logger: ValidateToken runs per-request (transitively from
+// the JWT auth middleware), so logging through ctx picks up request-scoped
+// fields (e.g. request_id) that middleware earlier in the chain already
+// added - a construction-time logger field can't carry those.
 type validatorDebugger struct {
 	jwt.TokenValidator
-
-	logger zerolog.Logger
 }
 
 func (v *validatorDebugger) ValidateToken(ctx context.Context, tokenString string) (any, error) {
 	claims, err := v.TokenValidator.ValidateToken(ctx, tokenString)
 	if err != nil {
-		v.logger.Error().Err(err).Msg("Token validation failed")
-	} else {
-		v.logger.Debug().Msg("Token validation succeeded")
+		zerolog.Ctx(ctx).Error().Err(err).Msg("token validation failed")
+		return claims, err
 	}
+
+	logEvent := zerolog.Ctx(ctx).Debug()
+	if vc, ok := claims.(*validator.ValidatedClaims); ok {
+		logEvent = logEvent.
+			Str("issuer", vc.RegisteredClaims.Issuer).
+			Str("subject", vc.RegisteredClaims.Subject)
+	}
+	logEvent.Msg("token validation succeeded")
+
 	return claims, err
 }
 
@@ -339,23 +350,10 @@ func (v *validatorDebugger) String() string {
 	return fmt.Sprintf("ValidatorDebugger(%s)", v.TokenValidator.String())
 }
 
-// DebuggerOpt configures a TokenValidator debugger.
-type DebuggerOpt func(*validatorDebugger)
-
-// WithLogger sets the logger for validator debug output.
-func WithLogger(logger zerolog.Logger) DebuggerOpt {
-	return func(v *validatorDebugger) {
-		v.logger = logger
-	}
-}
-
-// NewValidatorDebugger wraps a TokenValidator with debugging output.
-func NewValidatorDebugger(v jwt.TokenValidator, opts ...DebuggerOpt) jwt.TokenValidator {
-	dv := &validatorDebugger{TokenValidator: v, logger: zerolog.Nop()}
-	for _, opt := range opts {
-		opt(dv)
-	}
-	return dv
+// NewValidatorDebugger wraps a TokenValidator with debugging output, logged
+// via the logger embedded in each call's ctx - see validatorDebugger.
+func NewValidatorDebugger(v jwt.TokenValidator) jwt.TokenValidator {
+	return &validatorDebugger{TokenValidator: v}
 }
 
 // NewMultiValidatorFromConfig creates a MultiValidator from multiple configs.
