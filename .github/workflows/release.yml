@@ -9,7 +9,7 @@ on:
 jobs:
   metadata:
     name: Build Metadata
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
@@ -19,7 +19,7 @@ jobs:
 
   test:
     name: Vet and Test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Check out code into the Go module directory
@@ -52,7 +52,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs:
       - metadata
       - test
@@ -98,7 +98,7 @@ jobs:
   release:
     name: Create Release
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
