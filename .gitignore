@@ -61,5 +61,6 @@ go.work.sum
 !.github/instructions/*.md
 !.github/workflows/claude.yml
 
-
 .gograph/
+apm_modules/
+.github/instructions/

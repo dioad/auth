@@ -10,7 +10,7 @@ jobs:
 
   test:
     name: Vet and Test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
 
@@ -60,7 +60,7 @@ jobs:
   fuzz:
     name: Fuzz
     needs: test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v7
@@ -114,7 +114,7 @@ jobs:
   build:
     name: Build
     needs: test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:

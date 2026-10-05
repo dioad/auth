@@ -15,7 +15,7 @@ permissions:
 jobs:
   test-oidc-client:
     name: Test OIDC Client
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     
     steps:
     - name: Check out code
@@ -47,7 +47,7 @@ jobs:
 
   test-oidc-validator:
     name: Test OIDC Validator
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: test-oidc-client
     
     steps:
