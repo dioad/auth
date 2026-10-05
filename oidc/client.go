@@ -316,6 +316,16 @@ func WithAudience(audience string) RequestOpt {
 	}
 }
 
+// WithScope sets the "scope" form parameter on a token request, when scope is non-empty.
+// For multiple scopes, pass a single space-delimited string, per the OAuth2 spec.
+func WithScope(scope string) RequestOpt {
+	return func(v url.Values) {
+		if scope != "" {
+			v.Set("scope", scope)
+		}
+	}
+}
+
 // RefreshToken exchanges refreshToken for a new access token via the refresh_token grant.
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
