@@ -25,7 +25,7 @@ import (
 	// this exported test helper for no real benefit.
 	"github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // Claim and scope names shared across the discovery document, issued
