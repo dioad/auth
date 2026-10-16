@@ -110,3 +110,28 @@ func TestTokenSourceCustomFactory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "custom", token.AccessToken)
 }
+
+// TestTokenSourceGitHubUsesItsTokenFile pins that a "github" identity is an
+// interactive one, like keycloak or oidc: its token comes from the token file
+// the device flow writes, not from the GitHub Actions environment (that is
+// the "githubactions" type).
+func TestTokenSourceGitHubUsesItsTokenFile(t *testing.T) {
+	tokenPath := t.TempDir() + "/token.json"
+	require.NoError(t, SaveTokenToFile(&oauth2.Token{AccessToken: "from-device-flow", Expiry: time.Now().Add(time.Hour)}, tokenPath))
+
+	cfg := ClientConfig{Type: ProviderTypeGitHub, TokenFile: tokenPath}
+
+	source, err := NewTokenSourceFromConfigWithFactories(cfg, nil, nil, stubClock{now: time.Now()}, context.Background())
+	require.NoError(t, err)
+	token, err := source.Token()
+	require.NoError(t, err)
+	require.Equal(t, "from-device-flow", token.AccessToken)
+}
+
+func TestTokenSourceGitHubWithoutATokenFileHasNoIdentity(t *testing.T) {
+	cfg := ClientConfig{Type: ProviderTypeGitHub}
+
+	_, err := NewTokenSourceFromConfigWithFactories(cfg, nil, nil, nil, nil)
+
+	require.ErrorIs(t, err, ErrNoIdentity)
+}

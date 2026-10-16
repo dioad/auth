@@ -29,9 +29,6 @@ var defaultTokenSourceFactories = map[string]TokenSourceFactory{
 	ProviderTypeAWS: func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return aws.NewTokenSource(aws.WithAudience(cfg.Audience)), nil
 	},
-	ProviderTypeGitHub: func(cfg ClientConfig) (oauth2.TokenSource, error) {
-		return githubactions.NewTokenSource(githubactions.WithAudience(cfg.Audience)), nil
-	},
 	ProviderTypeGitHubActions: func(cfg ClientConfig) (oauth2.TokenSource, error) {
 		return githubactions.NewTokenSource(githubactions.WithAudience(cfg.Audience)), nil
 	},
