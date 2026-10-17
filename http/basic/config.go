@@ -19,4 +19,7 @@ type ServerConfig struct {
 	HTPasswdFile      string   `mapstructure:"htpasswd-file"`
 	Users             []string `mapstructure:"users"`
 	Realm             string   `mapstructure:"realm"`
+	// Throttle limits failed logins per client address. It is enabled by
+	// default; see ThrottleConfig for the limits.
+	Throttle ThrottleConfig `mapstructure:"throttle"`
 }
