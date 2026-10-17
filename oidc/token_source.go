@@ -68,7 +68,10 @@ func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[strin
 		}
 		return newFileTokenSource(ctx, cfg, store, clock), nil
 	}
-	if cfg.ClientID != "" && cfg.ClientSecret.UnmaskedString() != "" {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	if cfg.ClientID != "" && (cfg.ClientSecret.UnmaskedString() != "" || cfg.ClientSecretFile != "") {
 		client, err := NewClientFromConfig(&cfg)
 		if err != nil {
 			return nil, err

@@ -203,7 +203,11 @@ func NewClientFromConfig(config *ClientConfig, opts ...ClientOpt) (*Client, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new oidc endpoint: %w", err)
 	}
-	allOpts := append([]ClientOpt{WithClientIDAndSecret(config.ClientID, config.ClientSecret.UnmaskedString())}, opts...)
+	clientSecret, err := config.ResolveClientSecret()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve oidc client secret: %w", err)
+	}
+	allOpts := append([]ClientOpt{WithClientIDAndSecret(config.ClientID, clientSecret)}, opts...)
 	return NewClient(endpoint, allOpts...), nil
 }
 

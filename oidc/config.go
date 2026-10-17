@@ -37,8 +37,14 @@ type ClientConfig struct {
 	// ClientID is the OAuth 2.0 client identifier registered with the provider.
 	ClientID string `json:"client_id" mapstructure:"client-id"`
 	// ClientSecret is the OAuth 2.0 client secret, used for the client
-	// credentials flow.
+	// credentials flow. Set at most one of ClientSecret and ClientSecretFile.
 	ClientSecret util.MaskedString `json:"client_secret" mapstructure:"client-secret,omitempty"`
+	// ClientSecretFile is the path to a file containing the client secret, for
+	// example a mounted container secret. Surrounding whitespace is trimmed.
+	// The file is read when the token source is built, not when the config is
+	// validated; an unreadable or empty file is an error. Set at most one of
+	// ClientSecret and ClientSecretFile.
+	ClientSecretFile string `json:"client_secret_file,omitempty" mapstructure:"client-secret-file,omitempty"`
 
 	// Audience is the audience requested for issued tokens. It is required by
 	// platform identity providers such as "githubactions", "flyio" and "aws"
