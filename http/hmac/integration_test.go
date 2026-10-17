@@ -21,9 +21,7 @@ func TestClientHandlerIntegration(t *testing.T) {
 	const requestBody = `{"action": "create"}`
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey: sharedKey,
 	})
 
 	testServer := httptest.NewServer(
@@ -65,10 +63,8 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 	const customValue = "foobar"
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey:     sharedKey,
-			SignedHeaders: []string{customHeader},
-		},
+		SharedKey:     sharedKey,
+		SignedHeaders: []string{customHeader},
 	})
 
 	testServer := httptest.NewServer(
@@ -117,9 +113,7 @@ func TestClientHandlerWithSignedHeaders(t *testing.T) {
 func TestTimestampExpiry(t *testing.T) {
 	const sharedKey = "secret"
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey:        sharedKey,
 		MaxTimestampDiff: 1 * time.Second,
 	})
 
@@ -149,7 +143,7 @@ func TestTimestampExpiry(t *testing.T) {
 func TestWrongPathOrMethod(t *testing.T) {
 	const sharedKey = "secret"
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{SharedKey: sharedKey},
+		SharedKey: sharedKey,
 	})
 
 	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})))
@@ -181,7 +175,7 @@ func TestPrincipalSpoofing(t *testing.T) {
 	const adminPrincipal = "admin"
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{SharedKey: sharedKey},
+		SharedKey: sharedKey,
 	})
 
 	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})))
@@ -222,7 +216,7 @@ func TestHMACRoundTripper(t *testing.T) {
 	const principalID = "round-tripper-user"
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{SharedKey: sharedKey},
+		SharedKey: sharedKey,
 	})
 
 	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -253,10 +247,8 @@ func TestHeaderWhitespaceHandling(t *testing.T) {
 	const customValue = "test-value"
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey:     sharedKey,
-			SignedHeaders: []string{customHeader},
-		},
+		SharedKey:     sharedKey,
+		SignedHeaders: []string{customHeader},
 	})
 
 	testServer := httptest.NewServer(
@@ -313,7 +305,7 @@ func TestQueryParametersInSignature(t *testing.T) {
 	const principalID = "user"
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{SharedKey: sharedKey},
+		SharedKey: sharedKey,
 	})
 
 	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -373,7 +365,7 @@ func TestNoQueryParameters(t *testing.T) {
 	const principalID = "user"
 
 	serverHandler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{SharedKey: sharedKey},
+		SharedKey: sharedKey,
 	})
 
 	testServer := httptest.NewServer(serverHandler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

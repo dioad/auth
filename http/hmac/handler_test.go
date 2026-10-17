@@ -115,9 +115,7 @@ func TestTimestampValidation_FutureTimestamps(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create handler with custom config
 			handler := NewHandler(ServerConfig{
-				CommonConfig: CommonConfig{
-					SharedKey: sharedKey,
-				},
+				SharedKey:              sharedKey,
 				MaxTimestampDiff:       tt.maxTimestampDiff,
 				MaxFutureTimestampDiff: tt.maxFutureTimestampDiff,
 			})
@@ -171,9 +169,7 @@ func TestTimestampValidation_DefaultConfig(t *testing.T) {
 	const sharedKey = "test-key"
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey: sharedKey,
 	})
 
 	// Verify defaults were set
@@ -188,9 +184,7 @@ func TestTimestampValidation_PreSignedReplayAttackPrevention(t *testing.T) {
 	const principal = "attacker"
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey:              sharedKey,
 		MaxTimestampDiff:       5 * time.Minute,
 		MaxFutureTimestampDiff: 30 * time.Second,
 	})
@@ -260,9 +254,7 @@ func TestMaxRequestSize_UnderLimit(t *testing.T) {
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey:      sharedKey,
 		MaxRequestSize: maxSize,
 	})
 
@@ -281,9 +273,7 @@ func TestMaxRequestSize_ExceedsLimit(t *testing.T) {
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey:      sharedKey,
 		MaxRequestSize: maxSize,
 	})
 
@@ -302,9 +292,7 @@ func TestMaxRequestSize_DefaultLimit(t *testing.T) {
 	const sharedKey = "test-key"
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey: sharedKey,
 		// MaxRequestSize not set - should use default
 	})
 
@@ -327,9 +315,7 @@ func TestMaxRequestSize_AtExactLimit(t *testing.T) {
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey:      sharedKey,
 		MaxRequestSize: maxSize,
 	})
 
@@ -348,9 +334,7 @@ func TestMaxRequestSize_OneBytePastLimit(t *testing.T) {
 	const maxSize = 1024 // 1KB limit
 
 	handler := NewHandler(ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: sharedKey,
-		},
+		SharedKey:      sharedKey,
 		MaxRequestSize: maxSize,
 	})
 

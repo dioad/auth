@@ -19,9 +19,7 @@ func Example() {
 
 	// Create a server with HMAC authentication
 	handler := hmac.NewHandler(hmac.ServerConfig{
-		CommonConfig: hmac.CommonConfig{
-			SharedKey: sharedSecret,
-		},
+		SharedKey: sharedSecret,
 	})
 
 	// Wrap the API handler
@@ -80,10 +78,8 @@ func ExampleClientAuth_AddAuth() {
 	const userID = "alice"
 
 	handler := hmac.NewHandler(hmac.ServerConfig{
-		CommonConfig: hmac.CommonConfig{
-			SharedKey:     sharedSecret,
-			SignedHeaders: []string{"X-Custom-Header"},
-		},
+		SharedKey:     sharedSecret,
+		SignedHeaders: []string{"X-Custom-Header"},
 	})
 
 	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -127,10 +123,8 @@ func ExampleClientAuth_AddAuth_requestBinding() {
 
 	// Server configures HMAC to sign the X-JWT-Token header
 	handler := hmac.NewHandler(hmac.ServerConfig{
-		CommonConfig: hmac.CommonConfig{
-			SharedKey:     sharedSecret,
-			SignedHeaders: []string{"X-JWT-Token"},
-		},
+		SharedKey:     sharedSecret,
+		SignedHeaders: []string{"X-JWT-Token"},
 	})
 
 	server := httptest.NewServer(handler.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

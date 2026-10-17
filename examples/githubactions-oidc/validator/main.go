@@ -35,10 +35,8 @@ func main() {
 
 	// Create a validator config
 	validatorConfig := oidc.ValidatorConfig{
-		EndpointConfig: oidc.EndpointConfig{
-			Type: "githubactions",
-			URL:  "https://token.actions.githubusercontent.com",
-		},
+		Type:      "githubactions",
+		URL:       "https://token.actions.githubusercontent.com",
 		Audiences: []string{audience},
 		Issuer:    "https://token.actions.githubusercontent.com",
 	}

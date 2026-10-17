@@ -7,13 +7,14 @@ import (
 	"errors"
 	"net/http"
 
+	"uuid"
+
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/github"
 	oidcprovider "github.com/markbates/goth/providers/openidConnect"
 	"github.com/rs/zerolog"
-	"uuid"
 
 	authhttp "github.com/dioad/auth/authctx"
 	authoidc "github.com/dioad/auth/oidc"

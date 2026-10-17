@@ -20,8 +20,8 @@ func (c stubClock) Now() time.Time {
 
 func TestTokenSourceGithubActionsAlias(t *testing.T) {
 	cfg := ClientConfig{
-		EndpointConfig: EndpointConfig{Type: "githubactions", URL: "https://token.actions.githubusercontent.com"},
-		Audience:       "api://aud",
+		Type: "githubactions", URL: "https://token.actions.githubusercontent.com",
+		Audience: "api://aud",
 	}
 
 	source, err := NewTokenSourceFromConfigWithFactories(cfg, nil, nil, nil, nil)
@@ -93,7 +93,7 @@ func TestWaitingTokenSource_PositiveTimeoutStillExpires(t *testing.T) {
 
 func TestTokenSourceCustomFactory(t *testing.T) {
 	cfg := ClientConfig{
-		EndpointConfig: EndpointConfig{Type: "custom"},
+		Type: "custom",
 	}
 
 	factories := map[string]TokenSourceFactory{

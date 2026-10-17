@@ -65,13 +65,11 @@ func TestFlyioPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T) {
 	})
 
 	flyioClaims := &flyio.Claims{
-		CustomClaims: flyio.CustomClaims{
-			AppID:   "5148555",
-			AppName: "dioad-dev-edgerouter",
-			OrgID:   "837952",
-			OrgName: "dioad-dev",
-			Region:  "lhr",
-		},
+		AppID:   "5148555",
+		AppName: "dioad-dev-edgerouter",
+		OrgID:   "837952",
+		OrgName: "dioad-dev",
+		Region:  "lhr",
 	}
 	vc := &jwtvalidator.ValidatedClaims{
 		RegisteredClaims: jwtvalidator.RegisteredClaims{
@@ -143,14 +141,12 @@ func TestGitHubActionsPrincipalSource_WithTypedClaims_AssignsRoles(t *testing.T)
 	})
 
 	ghClaims := &githubactions.Claims{
-		CustomClaims: githubactions.CustomClaims{
-			Actor:           "patrickdowney",
-			Repository:      "dioad/connect-control",
-			RepositoryOwner: "dioad",
-			Ref:             "refs/heads/main",
-			EventName:       "push",
-			Workflow:        "CI",
-		},
+		Actor:           "patrickdowney",
+		Repository:      "dioad/connect-control",
+		RepositoryOwner: "dioad",
+		Ref:             "refs/heads/main",
+		EventName:       "push",
+		Workflow:        "CI",
 	}
 
 	vc := &jwtvalidator.ValidatedClaims{

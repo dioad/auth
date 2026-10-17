@@ -77,9 +77,9 @@ func (c BrowserConfig) Validate() error {
 // OIDC client for authorization-code token exchange.
 func (c BrowserConfig) ToClientConfig() authoidc.ClientConfig {
 	return authoidc.ClientConfig{
-		EndpointConfig: authoidc.EndpointConfig{URL: strings.TrimSpace(c.Issuer)},
-		ClientID:       strings.TrimSpace(c.ClientID),
-		ClientSecret:   *util.NewMaskedString(strings.TrimSpace(c.ClientSecret)),
+		URL:          strings.TrimSpace(c.Issuer),
+		ClientID:     strings.TrimSpace(c.ClientID),
+		ClientSecret: *util.NewMaskedString(strings.TrimSpace(c.ClientSecret)),
 	}
 }
 

@@ -15,11 +15,9 @@ import (
 // TestExtract_WithFlyioClaims verifies that Extract returns the subject from Fly.io claims.
 func TestExtract_WithFlyioClaims(t *testing.T) {
 	claims := &Claims{
-		CustomClaims: CustomClaims{
-			AppName:   "my-app",
-			OrgName:   "my-org",
-			MachineID: "machine-123",
-		},
+		AppName:   "my-app",
+		OrgName:   "my-org",
+		MachineID: "machine-123",
 	}
 
 	vc := &jwtvalidator.ValidatedClaims{
@@ -82,7 +80,7 @@ func TestIsService(t *testing.T) {
 		{
 			name: "with flyio claims",
 			claims: &Claims{
-				CustomClaims: CustomClaims{MachineID: "machine-123"},
+				MachineID: "machine-123",
 			},
 			wantTrue: true,
 		},
@@ -109,18 +107,16 @@ func TestIsService(t *testing.T) {
 // TestClaims verifies that Claims returns a map with both canonical and provider-specific keys.
 func TestClaims(t *testing.T) {
 	claims := &Claims{
-		CustomClaims: CustomClaims{
-			AppID:          "app-123",
-			AppName:        "my-app",
-			OrgID:          "org-456",
-			OrgName:        "my-org",
-			MachineID:      "machine-789",
-			MachineName:    "prod-vm-1",
-			MachineVersion: "v1.0",
-			Image:          "image-digest-123",
-			ImageDigest:    "sha256:abcdef",
-			Region:         "us-east-1",
-		},
+		AppID:          "app-123",
+		AppName:        "my-app",
+		OrgID:          "org-456",
+		OrgName:        "my-org",
+		MachineID:      "machine-789",
+		MachineName:    "prod-vm-1",
+		MachineVersion: "v1.0",
+		Image:          "image-digest-123",
+		ImageDigest:    "sha256:abcdef",
+		Region:         "us-east-1",
 	}
 
 	vc := &jwtvalidator.ValidatedClaims{
