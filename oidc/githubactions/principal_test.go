@@ -15,11 +15,9 @@ import (
 // TestExtract_WithGitHubActionsClaims verifies that Extract returns the subject from GitHub Actions claims.
 func TestExtract_WithGitHubActionsClaims(t *testing.T) {
 	claims := &Claims{
-		CustomClaims: CustomClaims{
-			Actor:      "octocat",
-			Repository: "octocat/Hello-World",
-			Workflow:   "build",
-		},
+		Actor:      "octocat",
+		Repository: "octocat/Hello-World",
+		Workflow:   "build",
 	}
 
 	vc := &jwtvalidator.ValidatedClaims{
@@ -82,7 +80,7 @@ func TestIsService(t *testing.T) {
 		{
 			name: "with github actions claims",
 			claims: &Claims{
-				CustomClaims: CustomClaims{Actor: "octocat"},
+				Actor: "octocat",
 			},
 			wantTrue: true,
 		},
@@ -109,27 +107,25 @@ func TestIsService(t *testing.T) {
 // TestClaims verifies that Claims returns a map with provider-specific keys.
 func TestClaims(t *testing.T) {
 	claims := &Claims{
-		CustomClaims: CustomClaims{
-			Actor:             "octocat",
-			ActorID:           "1",
-			Repository:        "octocat/Hello-World",
-			RepositoryID:      "12345",
-			RepositoryOwner:   "octocat",
-			RepositoryOwnerID: "1",
-			Environment:       "production",
-			EventName:         "push",
-			Ref:               "refs/heads/main",
-			RefType:           "branch",
-			SHA:               "abc123def456",
-			Workflow:          "build",
-			WorkflowRef:       "octocat/Hello-World/.github/workflows/build.yml@main",
-			WorkflowSHA:       "workflow-sha-123",
-			JobWorkflowRef:    "octocat/Hello-World/.github/workflows/build.yml@main",
-			RunID:             "12345",
-			RunNumber:         "1",
-			RunAttempt:        "1",
-			RunnerEnvironment: "github-hosted",
-		},
+		Actor:             "octocat",
+		ActorID:           "1",
+		Repository:        "octocat/Hello-World",
+		RepositoryID:      "12345",
+		RepositoryOwner:   "octocat",
+		RepositoryOwnerID: "1",
+		Environment:       "production",
+		EventName:         "push",
+		Ref:               "refs/heads/main",
+		RefType:           "branch",
+		SHA:               "abc123def456",
+		Workflow:          "build",
+		WorkflowRef:       "octocat/Hello-World/.github/workflows/build.yml@main",
+		WorkflowSHA:       "workflow-sha-123",
+		JobWorkflowRef:    "octocat/Hello-World/.github/workflows/build.yml@main",
+		RunID:             "12345",
+		RunNumber:         "1",
+		RunAttempt:        "1",
+		RunnerEnvironment: "github-hosted",
 	}
 
 	vc := &jwtvalidator.ValidatedClaims{

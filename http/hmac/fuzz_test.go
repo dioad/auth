@@ -25,9 +25,7 @@ func FuzzCanonicalData(f *testing.F) {
 
 func FuzzAuthRequest(f *testing.F) {
 	cfg := ServerConfig{
-		CommonConfig: CommonConfig{
-			SharedKey: "test-secret",
-		},
+		SharedKey: "test-secret",
 	}
 	handler := NewHandler(cfg)
 

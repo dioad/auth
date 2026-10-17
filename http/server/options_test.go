@@ -85,9 +85,9 @@ func TestWithServerAuth_OIDC_RegistersRoutesWithoutRedirectLoop(t *testing.T) {
 // exactly the vulnerable configuration examples/oidc-auth/main.go documents.
 func TestWithOAuth2Validator_RejectsRequestWithNoCredential(t *testing.T) {
 	cfg := []oidc.ValidatorConfig{{
-		EndpointConfig: oidc.EndpointConfig{URL: "http://127.0.0.1:1"},
-		Issuer:         "http://127.0.0.1:1",
-		Audiences:      []string{"test-audience"},
+		URL:       "http://127.0.0.1:1",
+		Issuer:    "http://127.0.0.1:1",
+		Audiences: []string{"test-audience"},
 	}}
 
 	base := startTestServer(t, WithOAuth2Validator(cfg))

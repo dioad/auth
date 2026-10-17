@@ -551,7 +551,7 @@ func TestNewValidatorFromConfigWithOptions_ExplicitIssuerTakesPrecedenceOverURL(
 	const fallbackURL = "https://fallback-url.example"
 
 	cfg := &oidc.ValidatorConfig{
-		EndpointConfig:     oidc.EndpointConfig{URL: fallbackURL},
+		URL:                fallbackURL,
 		Issuer:             explicitIssuer,
 		SignatureAlgorithm: "HS256",
 		Audiences:          []string{"test"},
@@ -593,7 +593,7 @@ func TestNewValidatorFromConfigWithOptions_FallsBackToURLWhenIssuerEmpty(t *test
 	const fallbackURL = "https://fallback-url.example"
 
 	cfg := &oidc.ValidatorConfig{
-		EndpointConfig:     oidc.EndpointConfig{URL: fallbackURL},
+		URL:                fallbackURL,
 		SignatureAlgorithm: "HS256",
 		Audiences:          []string{"test"},
 	}

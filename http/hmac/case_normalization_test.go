@@ -81,10 +81,8 @@ func TestHeaderCaseNormalization(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create server with specified header names
 			serverHandler := NewHandler(ServerConfig{
-				CommonConfig: CommonConfig{
-					SharedKey:     sharedKey,
-					SignedHeaders: tc.serverHeaders,
-				},
+				SharedKey:     sharedKey,
+				SignedHeaders: tc.serverHeaders,
 			})
 
 			testServer := httptest.NewServer(

@@ -333,8 +333,8 @@ func TestHandler_Callback_SucceedsWithMatchingStateAndValidCode(t *testing.T) {
 	defer idp.Close()
 
 	client, err := oidc.NewClientFromConfig(&oidc.ClientConfig{
-		EndpointConfig: oidc.EndpointConfig{URL: idp.Issuer},
-		ClientID:       "test-client",
+		URL:      idp.Issuer,
+		ClientID: "test-client",
 	})
 	require.NoError(t, err)
 

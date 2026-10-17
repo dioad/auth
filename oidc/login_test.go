@@ -34,8 +34,8 @@ func TestNewClientFromConfig_AppliesAdditionalOpts(t *testing.T) {
 	defer idp.Close()
 
 	config := &oidc.ClientConfig{
-		EndpointConfig: oidc.EndpointConfig{URL: idp.Issuer},
-		ClientID:       "test-client",
+		URL:      idp.Issuer,
+		ClientID: "test-client",
 	}
 
 	doer := &countingDoer{}
@@ -55,9 +55,7 @@ func TestOIDCLoginFlow(t *testing.T) {
 	defer idp.Close()
 
 	config := &oidc.ClientConfig{
-		EndpointConfig: oidc.EndpointConfig{
-			URL: idp.Issuer,
-		},
+		URL:      idp.Issuer,
 		ClientID: "test-client",
 	}
 

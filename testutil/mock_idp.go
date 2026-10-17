@@ -23,9 +23,10 @@ import (
 	// would only flip go.mod's require from direct to indirect — it would
 	// not shrink the actual dependency graph, and would add rewrite risk to
 	// this exported test helper for no real benefit.
+	"uuid"
+
 	"github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
-	"uuid"
 )
 
 // Claim and scope names shared across the discovery document, issued

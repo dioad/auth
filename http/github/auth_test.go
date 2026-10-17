@@ -18,10 +18,8 @@ func TestGitHubAuthenticator_AuthenticateToken(t *testing.T) {
 	}
 
 	authenticator := NewGitHubAuthenticator(ServerConfig{
-		CommonConfig: CommonConfig{
-			ClientID:     "bbf369ec17928529a7e8",
-			ClientSecret: "491c7ea4efeff78bb7944fb70381cb9c33aca7a3",
-		},
+		ClientID:     "bbf369ec17928529a7e8",
+		ClientSecret: "491c7ea4efeff78bb7944fb70381cb9c33aca7a3",
 	})
 
 	for name, tc := range tests {
