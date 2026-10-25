@@ -11,7 +11,7 @@ require (
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/cli/oauth v1.2.2
 	github.com/dioad/generics v0.0.9
-	github.com/dioad/net v0.70.1
+	github.com/dioad/net v0.71.2
 	github.com/dioad/util v0.7.0
 	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/go-viper/mapstructure/v2 v2.5.0
