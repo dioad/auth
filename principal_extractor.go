@@ -521,8 +521,30 @@ func NewPrincipalExtractor(sources ...PrincipalSource) PrincipalExtractor {
 	}
 }
 
+const (
+	// AllowAllPrincipalID is the ID of every principal produced by
+	// [NewAllowAllPrincipalExtractor]. It names no caller.
+	AllowAllPrincipalID = "unauthenticated"
+
+	// AllowAllPrincipalSource is the Source of every principal produced by
+	// [NewAllowAllPrincipalExtractor].
+	AllowAllPrincipalSource = "allow-all"
+)
+
+// IsAllowAll reports whether c is the anonymous principal produced by
+// [NewAllowAllPrincipalExtractor]. Such a principal says nothing about who made
+// the request, so callers must not record or trust its ID as an identity. A nil
+// c is not an allow-all principal.
+func (c *PrincipalContext) IsAllowAll() bool {
+	if c == nil {
+		return false
+	}
+	return c.Source == AllowAllPrincipalSource || c.ID == AllowAllPrincipalID
+}
+
 // NewAllowAllPrincipalExtractor creates a PrincipalExtractor that accepts all requests as unauthenticated.
 // Useful for testing and development environments where authorization is disabled.
+// Every principal it returns satisfies [PrincipalContext.IsAllowAll].
 func NewAllowAllPrincipalExtractor() PrincipalExtractor {
 	return NewPrincipalExtractor(&allowAllPrincipalSource{})
 }
@@ -530,11 +552,11 @@ func NewAllowAllPrincipalExtractor() PrincipalExtractor {
 type allowAllPrincipalSource struct{}
 
 func (s *allowAllPrincipalSource) Extract(_ context.Context) (string, error) {
-	return "unauthenticated", nil
+	return AllowAllPrincipalID, nil
 }
 
 func (s *allowAllPrincipalSource) Name() string {
-	return "allow-all"
+	return AllowAllPrincipalSource
 }
 
 func (s *allowAllPrincipalSource) Claims(_ context.Context) map[string]any {
