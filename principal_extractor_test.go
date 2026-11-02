@@ -436,3 +436,36 @@ func TestJWTPrincipalSource_RolesIncludeNativeClaimsRoles(t *testing.T) {
 	roles := source.Roles(ctx)
 	assert.Contains(t, roles, "registry.admin.readonly", "expected native realm_access role")
 }
+
+func TestPrincipalContext_IsAllowAll(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		principal *PrincipalContext
+		want      bool
+	}{
+		{name: "nil principal", principal: nil, want: false},
+		{name: "authenticated principal", principal: &PrincipalContext{ID: "svc-a", Source: "jwt"}, want: false},
+		{name: "allow-all source", principal: &PrincipalContext{ID: "anyone", Source: AllowAllPrincipalSource}, want: true},
+		{name: "allow-all ID from another source", principal: &PrincipalContext{ID: AllowAllPrincipalID, Source: "jwt"}, want: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, tt.principal.IsAllowAll())
+		})
+	}
+}
+
+func TestNewAllowAllPrincipalExtractor_ProducesAllowAllPrincipal(t *testing.T) {
+	t.Parallel()
+
+	pc, err := NewAllowAllPrincipalExtractor().ExtractPrincipal(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, AllowAllPrincipalID, pc.ID)
+	assert.Equal(t, AllowAllPrincipalSource, pc.Source)
+	assert.True(t, pc.IsAllowAll())
+}
