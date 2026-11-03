@@ -2,10 +2,11 @@ package github
 
 import (
 	"context"
+	"fmt"
 
 	"golang.org/x/oauth2"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v93/github"
 
 	"github.com/dioad/auth/authctx"
 	"github.com/dioad/generics"
@@ -16,7 +17,10 @@ import (
 func FetchUserInfo(accessToken string) (*authctx.GitHubUserInfo, error) {
 	t := &TokenSource{AccessToken: accessToken}
 	oauthClient := oauth2.NewClient(context.Background(), t)
-	client := github.NewClient(oauthClient)
+	client, err := github.NewClient(github.WithHTTPClient(oauthClient))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
 
 	u, _, err := client.Users.Get(context.Background(), "")
 	if err != nil {
