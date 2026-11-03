@@ -36,15 +36,37 @@ func SaveTokenToFile(token *oauth2.Token, filePath string) error {
 		return err
 	}
 
-	err = os.WriteFile(expandedPath, data, 0600)
-	if err != nil {
+	if err := writeFileAtomic(expandedPath, data); err != nil {
 		return fmt.Errorf("failed to write token file: %w", err)
 	}
 
 	return nil
 }
 
-// ResolveTokenFromFile loads an OAuth2 token from a file.
+// writeFileAtomic writes data to a temporary file beside path and renames it
+// into place, so a process polling path (an agent waiting for `auth` to sign
+// it in) never reads it empty or half-written.
+func writeFileAtomic(path string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+
+	// CreateTemp creates the file with mode 0600 already.
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
+}
+
+// ResolveTokenFromFile loads an OAuth2 token from a file. A file that holds
+// neither an access token nor a refresh token, such as an empty one, is an
+// error rather than an empty token.
 func ResolveTokenFromFile(filePath string) (*oauth2.Token, error) {
 	expandedPath, err := expandHome(filePath)
 	if err != nil {
@@ -69,6 +91,9 @@ func ResolveTokenFromFile(filePath string) (*oauth2.Token, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal token: %w", err)
+	}
+	if token.AccessToken == "" && token.RefreshToken == "" {
+		return nil, fmt.Errorf("token file %s holds no token", filePath)
 	}
 
 	return &token, nil
