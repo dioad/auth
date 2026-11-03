@@ -16,7 +16,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.7
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/google/go-github/v33 v33.0.0
+	github.com/google/go-github/v93 v93.0.0
 	github.com/gorilla/sessions v1.4.0
 	github.com/lestrrat-go/jwx/v3 v3.4.0
 	github.com/markbates/goth v1.82.0

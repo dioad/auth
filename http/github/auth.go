@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v93/github"
 
 	"github.com/dioad/auth/authctx"
 )
@@ -40,8 +40,19 @@ func NewGitHubAuthenticator(cfg ServerConfig) *Authenticator {
 
 	return &Authenticator{
 		Config: cfg,
-		Client: github.NewClient(basicAuthTransport.Client()),
+		Client: mustNewClient(basicAuthTransport.Client()),
 	}
+}
+
+// mustNewClient wraps github.NewClient for a non-nil HTTP client, the only
+// option it is given here; with that alone NewClient cannot fail, so an error
+// means the go-github contract changed.
+func mustNewClient(httpClient *http.Client) *github.Client {
+	client, err := github.NewClient(github.WithHTTPClient(httpClient))
+	if err != nil {
+		panic(fmt.Sprintf("github client: %v", err))
+	}
+	return client
 }
 
 // AuthenticateToken verifies the provided GitHub access token against the GitHub API.
