@@ -12,16 +12,31 @@ import (
 // policy outcome, and any other error for an infrastructure failure.
 type CheckFunc func(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) error
 
-// AuthorizerCheck returns a [CheckFunc] backed by a. A nil a is fail-closed:
-// every check returns [ErrForbidden], so a service constructed without an
-// authorizer never silently allows access.
+// Check reports whether principalCtx may exercise capability under a. It
+// returns nil when allowed, exactly [ErrForbidden] or [ErrUnauthorized] for a
+// policy denial, and any other error unchanged. A denial is reduced to the bare
+// sentinel, dropping whatever detail the authorizer wrapped around it, so a
+// caller can return it to a client without revealing policy internals. A nil a
+// is fail-closed: every check returns [ErrForbidden], so a service constructed
+// without an authorizer never silently allows access.
+func Check(ctx context.Context, a Authorizer, principalCtx *auth.PrincipalContext, capability Capability) error {
+	if a == nil {
+		return ErrForbidden
+	}
+	_, err := a.Can(ctx, principalCtx, capability)
+	switch {
+	case errors.Is(err, ErrForbidden):
+		return ErrForbidden
+	case errors.Is(err, ErrUnauthorized):
+		return ErrUnauthorized
+	}
+	return err
+}
+
+// AuthorizerCheck returns a [CheckFunc] that runs [Check] against a.
 func AuthorizerCheck(a Authorizer) CheckFunc {
 	return func(ctx context.Context, principalCtx *auth.PrincipalContext, capability Capability) error {
-		if a == nil {
-			return ErrForbidden
-		}
-		_, err := a.Can(ctx, principalCtx, capability)
-		return err
+		return Check(ctx, a, principalCtx, capability)
 	}
 }
 

@@ -172,3 +172,61 @@ func ExampleResolveScope() {
 	// alice scope: own
 	// mallory denied: forbidden
 }
+
+// wrappingAuthorizer denies with err, as a policy backend that wraps its
+// sentinel in detail would.
+type wrappingAuthorizer struct{ err error }
+
+func (w wrappingAuthorizer) Can(context.Context, *auth.PrincipalContext, authz.Capability) (*authz.Decision, error) {
+	return nil, w.err
+}
+
+func (w wrappingAuthorizer) Privileges(context.Context, *auth.PrincipalContext) (authz.Privilege, error) {
+	return nil, w.err
+}
+
+func (wrappingAuthorizer) Metadata() authz.PolicyMetadata { return authz.PolicyMetadata{} }
+
+// TestCheck pins that a denial comes back as the bare sentinel, with the
+// authorizer's wrapped detail dropped so it cannot leak to a client, while any
+// other error is returned unchanged for the caller to treat as a failure.
+func TestCheck(t *testing.T) {
+	t.Parallel()
+
+	read := authz.Permission("thing", "read")
+	errInfra := errors.New("policy store unavailable")
+	tests := []struct {
+		name       string
+		authorizer authz.Authorizer
+		wantErr    error
+	}{
+		{"allowed", authz.NewAllowAllAuthorizer(authz.PolicyMetadata{}), nil},
+		{"wrapped forbidden", wrappingAuthorizer{fmt.Errorf("role %q lacks %q: %w", "guest", read, authz.ErrForbidden)}, authz.ErrForbidden},
+		{"wrapped unauthorized", wrappingAuthorizer{fmt.Errorf("no principal on request: %w", authz.ErrUnauthorized)}, authz.ErrUnauthorized},
+		{"infrastructure error is unchanged", wrappingAuthorizer{errInfra}, errInfra},
+		{"nil authorizer is fail-closed", nil, authz.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := authz.Check(context.Background(), tt.authorizer, &auth.PrincipalContext{ID: "caller"}, read)
+
+			assert.Equal(t, tt.wantErr, err, "the error itself, not just one it wraps")
+			assert.Equal(t, tt.wantErr, authz.AuthorizerCheck(tt.authorizer)(context.Background(), &auth.PrincipalContext{ID: "caller"}, read),
+				"AuthorizerCheck behaves the same")
+		})
+	}
+}
+
+// ExampleCheck shows a denial reaching the caller as the bare sentinel, with
+// the authorizer's detail removed.
+func ExampleCheck() {
+	authorizer := wrappingAuthorizer{fmt.Errorf("role %q lacks usage:read_all: %w", "guest", authz.ErrForbidden)}
+
+	err := authz.Check(context.Background(), authorizer, &auth.PrincipalContext{ID: "guest"}, authz.Permission("usage", "read_all"))
+
+	fmt.Println(err)
+	// Output:
+	// forbidden
+}
