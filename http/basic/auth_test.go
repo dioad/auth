@@ -42,6 +42,10 @@ func TestLoadBasicAuthFromScanner(t *testing.T) {
 	}{
 		"single line": {input: SingleLine, mapLength: 1, checkUser: "userA", checkPassword: "passwordA"},
 		"multi line":  {input: MultiLine, mapLength: 2, checkUser: "userB", checkPassword: "passwordB"},
+		// `htpasswd -n` ends its output with a blank line.
+		"trailing blank line": {input: SingleLine + "\n\n", mapLength: 1, checkUser: "userA", checkPassword: "passwordA"},
+		"comment line":        {input: "# managed by connect\n" + SingleLine, mapLength: 1, checkUser: "userA", checkPassword: "passwordA"},
+		"malformed line":      {input: "no-colon-here\n" + SingleLine, mapLength: 1, checkUser: "userA", checkPassword: "passwordA"},
 	}
 
 	for name, tc := range tests {

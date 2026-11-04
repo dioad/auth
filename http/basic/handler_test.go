@@ -107,6 +107,42 @@ func TestLoadBasicAuthFromFileOrEmpty_OtherErrorsStillPropagate(t *testing.T) {
 	assert.Error(t, err, "a present-but-badly-permissioned file must still error, not be treated as empty")
 }
 
+func TestLoadBasicAuthFromFile_IgnoresBlankAndCommentLines(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "htpasswd")
+	pair, err := NewBasicAuthPairWithPlainPassword("alice", "secret")
+	require.NoError(t, err)
+	content := "# local admin\n\nalice:" + pair.HashedPassword + "\n\n"
+	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
+
+	authMap, err := LoadBasicAuthFromFile(path)
+	require.NoError(t, err)
+	assert.Len(t, authMap, 1)
+	valid, err := authMap.Authenticate("alice", "secret")
+	require.NoError(t, err)
+	assert.True(t, valid)
+}
+
+func TestLoadBasicAuthFromFile_RejectsMalformedLine(t *testing.T) {
+	t.Parallel()
+	tests := map[string]string{
+		"no separator": "alice\n",
+		"empty user":   ":hash\n",
+		"empty hash":   "alice:\n",
+	}
+	for name, content := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "htpasswd")
+			require.NoError(t, os.WriteFile(path, []byte("# header\n"+content), 0600))
+
+			_, err := LoadBasicAuthFromFile(path)
+			require.ErrorIs(t, err, ErrMalformedLine)
+			assert.ErrorContains(t, err, "line 2", "the error must name the offending line")
+		})
+	}
+}
+
 func TestLoadBasicAuthFromFileOrEmpty_ExistingFileLoadsNormally(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "htpasswd")
 	pair, err := NewBasicAuthPairWithPlainPassword("alice", "secret")

@@ -120,10 +120,13 @@ func LoadBasicAuthFromFile(filePath string) (AuthMap, error) {
 	if stat.Mode() != 0600 && stat.Mode() != 0400 {
 		return nil, fmt.Errorf("error: basic auth file permissions are too open %v for %s, should be 0600 or 0400", stat.Mode(), filePathClean)
 	}
-	authMap := LoadBasicAuthFromReader(f)
+	authMap, parseErr := parseBasicAuth(bufio.NewScanner(f))
 
 	if err := f.Close(); err != nil {
 		return authMap, fmt.Errorf("failed to close basic auth file %s: %w", filePathClean, err)
+	}
+	if parseErr != nil {
+		return nil, fmt.Errorf("failed to parse basic auth file %s: %w", filePathClean, parseErr)
 	}
 
 	return authMap, nil
@@ -142,19 +145,71 @@ func LoadBasicAuthFromFileOrEmpty(filePath string) (AuthMap, error) {
 	return authMap, err
 }
 
-// LoadBasicAuthFromReader reads htpasswd-style "user:hash" lines from reader into an AuthMap.
+// ErrMalformedLine is returned by LoadBasicAuthFromFile for a line that is
+// not blank, not a "#" comment, and not of the form "user:hash" with both
+// parts non-empty.
+var ErrMalformedLine = errors.New("malformed basic auth line")
+
+// LoadBasicAuthFromReader reads htpasswd-style "user:hash" lines from reader
+// into an AuthMap. Blank lines and "#" comments are ignored; malformed lines
+// are skipped. Use LoadBasicAuthFromFile to have them reported instead.
 func LoadBasicAuthFromReader(reader io.Reader) AuthMap {
 	scanner := bufio.NewScanner(reader)
 
 	return LoadBasicAuthFromScanner(scanner)
 }
 
-// LoadBasicAuthFromScanner reads htpasswd-style "user:hash" lines from scanner into an AuthMap.
+// LoadBasicAuthFromScanner reads htpasswd-style "user:hash" lines from
+// scanner into an AuthMap. Blank lines and "#" comments are ignored;
+// malformed lines are skipped.
 func LoadBasicAuthFromScanner(scanner *bufio.Scanner) AuthMap {
 	userMap := make(AuthMap)
 	for scanner.Scan() {
-		parts := strings.Split(scanner.Text(), ":")
-		userMap.AddUserWithHashedPassword(parts[0], parts[1])
+		if user, hash, ok := parseLine(scanner.Text()); ok {
+			userMap.AddUserWithHashedPassword(user, hash)
+		}
 	}
 	return userMap
+}
+
+// parseBasicAuth reads htpasswd-style lines like LoadBasicAuthFromScanner,
+// but fails on the first malformed line, naming its line number, and on a
+// read error.
+func parseBasicAuth(scanner *bufio.Scanner) (AuthMap, error) {
+	userMap := make(AuthMap)
+	lineNumber := 0
+	for scanner.Scan() {
+		lineNumber++
+		line := scanner.Text()
+		if isIgnorableLine(line) {
+			continue
+		}
+		user, hash, ok := parseLine(line)
+		if !ok {
+			return nil, fmt.Errorf("line %d: %w", lineNumber, ErrMalformedLine)
+		}
+		userMap.AddUserWithHashedPassword(user, hash)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return userMap, nil
+}
+
+// parseLine splits a "user:hash" line. It reports false for blank lines,
+// comments, and lines missing either part.
+func parseLine(line string) (string, string, bool) {
+	if isIgnorableLine(line) {
+		return "", "", false
+	}
+	user, hash, found := strings.Cut(strings.TrimSpace(line), ":")
+	if !found || user == "" || hash == "" {
+		return "", "", false
+	}
+	return user, hash, true
+}
+
+func isIgnorableLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return trimmed == "" || strings.HasPrefix(trimmed, "#")
 }
