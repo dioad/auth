@@ -260,3 +260,92 @@ func TestCustomClaimsValidatorOption(t *testing.T) {
 	require.True(t, ok, "custom claims factory should produce *flyio.Claims, got %T", vc.CustomClaims)
 	require.Equal(t, "dioad-dev-edgerouter", flyioClaims.AppName)
 }
+
+// emailClaims stands in for a caller's own claims type, such as the
+// *oidc.IntrospectionResponse connect's server asks for.
+type emailClaims struct {
+	Email string `json:"email"`
+}
+
+func (c *emailClaims) Validate(context.Context) error { return nil }
+
+func genericOIDCToken(t *testing.T) string {
+	t.Helper()
+	now := time.Now()
+	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, gojwt.MapClaims{
+		"sub":   "user-1",
+		"iss":   "https://idp.example",
+		"aud":   "test",
+		"iat":   now.Unix(),
+		"exp":   now.Add(1 * time.Hour).Unix(),
+		"email": "user@example.com",
+	})
+	s, err := token.SignedString([]byte(testHMACSecret))
+	require.NoError(t, err)
+	return s
+}
+
+// TestMultiValidatorAppliesTheCallersCustomClaims verifies that the options
+// passed to NewMultiValidatorFromConfig reach each validator: a generic OIDC
+// issuer decodes the token into the caller's claims type, and a provider
+// type keeps its own.
+func TestMultiValidatorAppliesTheCallersCustomClaims(t *testing.T) {
+	t.Parallel()
+
+	newConfig := func(providerType string) oidc.ValidatorConfig {
+		cfg := oidc.ValidatorConfig{
+			HMACSecret:        testHMACSecret,
+			AllowInsecureHMAC: true,
+			Audiences:         []string{"test"},
+
+			Type: providerType}
+		return cfg
+	}
+	callerClaims := jwtvalidator.WithCustomClaims(func() *emailClaims { return &emailClaims{} })
+
+	tests := []struct {
+		name         string
+		providerType string
+		token        func(*testing.T) string
+		assertClaims func(*testing.T, any)
+	}{
+		{
+			name:         "a generic issuer decodes into the caller's claims type",
+			providerType: "",
+			token:        genericOIDCToken,
+			assertClaims: func(t *testing.T, claims any) {
+				t.Helper()
+				got, ok := claims.(*emailClaims)
+				require.True(t, ok, "expected *emailClaims, got %T", claims)
+				require.Equal(t, "user@example.com", got.Email)
+			},
+		},
+		{
+			name:         "a provider type keeps its own claims type",
+			providerType: "flyio",
+			token:        flyioToken,
+			assertClaims: func(t *testing.T, claims any) {
+				t.Helper()
+				got, ok := claims.(*flyio.Claims)
+				require.True(t, ok, "expected *flyio.Claims, got %T", claims)
+				require.Equal(t, "dioad-dev-edgerouter", got.AppName)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			v, err := oidc.NewMultiValidatorFromConfig([]oidc.ValidatorConfig{newConfig(tt.providerType)}, callerClaims)
+			require.NoError(t, err)
+
+			out, err := v.ValidateToken(context.Background(), tt.token(t))
+			require.NoError(t, err)
+
+			vc, ok := out.(*jwtvalidator.ValidatedClaims)
+			require.True(t, ok, "expected *ValidatedClaims, got %T", out)
+			tt.assertClaims(t, vc.CustomClaims)
+		})
+	}
+}

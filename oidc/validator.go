@@ -34,6 +34,9 @@ type validatorOptions struct {
 	keyFunc             func(context.Context) (any, error)
 	jwksProvider        *jwks.CachingProvider
 	customClaimsFactory func() validator.CustomClaims
+	// baseOptions are applied before the options built from the config, so
+	// the config and a provider type's own claims type take precedence.
+	baseOptions []validator.Option
 }
 
 // WithValidatorKeyFunc sets a custom key function for validation.
@@ -54,6 +57,16 @@ func WithValidatorCustomClaimsFactory(factory func() validator.CustomClaims) Val
 		if factory != nil {
 			o.customClaimsFactory = factory
 		}
+	}
+}
+
+// WithValidatorBaseOptions adds go-jwt-middleware validator options that
+// apply unless the config or the provider type sets the same thing: they are
+// applied first. For example, validator.WithCustomClaims here sets the claims
+// type for a generic OIDC issuer while a "flyio" issuer keeps *flyio.Claims.
+func WithValidatorBaseOptions(opts ...validator.Option) ValidatorOpt {
+	return func(o *validatorOptions) {
+		o.baseOptions = append(o.baseOptions, opts...)
 	}
 }
 
@@ -186,10 +199,11 @@ func applyHMACOverrides(cfg *ValidatorConfig, issuer string, algorithms []valida
 // given the already-resolved issuer/algorithms/HMAC-flexible-issuer state and
 // key/custom-claims options.
 func buildValidatorOptions(cfg *ValidatorConfig, issuer string, algorithms []validator.SignatureAlgorithm, hmacFlexibleIssuer bool, options *validatorOptions) ([]validator.Option, error) {
-	validatorOpts := []validator.Option{
+	validatorOpts := append([]validator.Option{}, options.baseOptions...)
+	validatorOpts = append(validatorOpts,
 		validator.WithKeyFunc(options.keyFunc),
 		validator.WithAllowedClockSkew(jwt.ResolveAllowedClockSkew(cfg.AllowedClockSkew)),
-	}
+	)
 	if len(algorithms) == 1 {
 		validatorOpts = append(validatorOpts, validator.WithAlgorithm(algorithms[0]))
 	} else {
@@ -357,10 +371,13 @@ func NewValidatorDebugger(v jwt.TokenValidator) jwt.TokenValidator {
 }
 
 // NewMultiValidatorFromConfig creates a MultiValidator from multiple configs.
-func NewMultiValidatorFromConfig(configs []ValidatorConfig, _ ...validator.Option) (jwt.TokenValidator, error) {
+// opts apply to every validator as base options (see
+// WithValidatorBaseOptions), so a config or provider type that sets the same
+// thing overrides them.
+func NewMultiValidatorFromConfig(configs []ValidatorConfig, opts ...validator.Option) (jwt.TokenValidator, error) {
 	var validators []jwt.TokenValidator
 	for _, cfg := range configs {
-		v, err := NewValidatorFromConfig(&cfg)
+		v, err := NewValidatorFromConfigWithOptions(&cfg, WithValidatorBaseOptions(opts...))
 		if err != nil {
 			return nil, err
 		}
