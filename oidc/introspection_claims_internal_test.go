@@ -17,19 +17,18 @@ func TestIntrospectionFromClaimsMap_DirectUnmarshalSucceeds(t *testing.T) {
 	assert.Equal(t, "test-user", claims.Subject)
 }
 
-// TestIntrospectionFromClaimsMap_FallsBackWhenAudienceIsArray covers the
-// documented compatibility case: some tokens emit "aud" as a JSON array,
-// which fails to unmarshal directly into IntrospectionResponse.Audience
-// (a string field). The function must retry with "aud" stripped rather
-// than surfacing that mismatch as an error.
-func TestIntrospectionFromClaimsMap_FallsBackWhenAudienceIsArray(t *testing.T) {
+// TestIntrospectionFromClaimsMap_KeepsTheFirstAudienceWhenAudienceIsArray
+// covers the documented compatibility case: some tokens emit "aud" as a
+// JSON array, which IntrospectionResponse.Audience, a string field, holds as
+// the first audience rather than surfacing the mismatch as an error.
+func TestIntrospectionFromClaimsMap_KeepsTheFirstAudienceWhenAudienceIsArray(t *testing.T) {
 	claims, err := introspectionFromClaimsMap(map[string]any{
 		"aud": []string{"aud-1", "aud-2"},
 		"sub": "test-user",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "test-user", claims.Subject)
-	assert.Empty(t, claims.Audience, "the array-typed aud is dropped by the sanitized retry, not coerced")
+	assert.Equal(t, "aud-1", claims.Audience, "a list-typed aud decodes to its first audience")
 }
 
 // TestIntrospectionFromClaimsMap_ReturnsErrorWhenSanitizedStillFails covers

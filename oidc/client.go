@@ -3,6 +3,7 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -80,6 +81,37 @@ type IntrospectionResponse struct {
 	Active            bool     `json:"active"`
 	Website           string   `json:"website"`
 	Organisations     []string `json:"org"`
+}
+
+// UnmarshalJSON decodes an introspection response or a JWT's claims. "aud"
+// may be a string or, as in a JWT for several audiences, a list, of which
+// Audience keeps the first.
+func (c *IntrospectionResponse) UnmarshalJSON(data []byte) error {
+	type plain IntrospectionResponse
+	aux := struct {
+		*plain
+
+		Audience json.RawMessage `json:"aud"`
+	}{plain: (*plain)(c)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	c.Audience = ""
+	if len(aux.Audience) == 0 || string(aux.Audience) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(aux.Audience, &c.Audience); err == nil {
+		return nil
+	}
+	var audiences []string
+	if err := json.Unmarshal(aux.Audience, &audiences); err != nil {
+		return fmt.Errorf("aud is neither a string nor a list of strings: %w", err)
+	}
+	if len(audiences) > 0 {
+		c.Audience = audiences[0]
+	}
+	return nil
 }
 
 // Validate satisfies the validator interface for IntrospectionResponse.
