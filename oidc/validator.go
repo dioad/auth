@@ -147,6 +147,7 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 		// populate CustomClaims by re-parsing the token payload.
 		tv = &enrichingValidator{TokenValidator: tv}
 	}
+	tv = &jwtIntrospectionDefaults{TokenValidator: tv}
 
 	return jwt.WrapValidator(tv, cfg.ClaimPredicate, cfg.Debug), nil
 }
@@ -297,14 +298,40 @@ func (v *enrichingValidator) ValidateToken(ctx context.Context, tokenString stri
 	if err != nil {
 		return claims, nil //nolint:nilerr // best-effort enrichment, see above
 	}
-	if customClaims.TokenType == "" {
-		customClaims.TokenType = "Bearer"
-	}
-	if customClaims.Audience == "" && len(vc.RegisteredClaims.Audience) > 0 {
-		customClaims.Audience = vc.RegisteredClaims.Audience[0]
-	}
 
 	vc.CustomClaims = &customClaims
+	return claims, nil
+}
+
+// jwtIntrospectionDefaults wraps every validator built from a config. When a
+// token's custom claims are an *IntrospectionResponse, it fills in what an
+// introspection response carries and a JWT doesn't: the token type, which a
+// validated JWT is "Bearer" (oidcPrincipalSource.IsService treats any other
+// type as a service), and the audience, which a JWT may give as a list.
+type jwtIntrospectionDefaults struct {
+	jwt.TokenValidator
+}
+
+func (v *jwtIntrospectionDefaults) ValidateToken(ctx context.Context, tokenString string) (any, error) {
+	claims, err := v.TokenValidator.ValidateToken(ctx, tokenString)
+	if err != nil {
+		return claims, err
+	}
+
+	vc, ok := claims.(*validator.ValidatedClaims)
+	if !ok {
+		return claims, nil
+	}
+	introspection, ok := vc.CustomClaims.(*IntrospectionResponse)
+	if !ok || introspection == nil {
+		return claims, nil
+	}
+	if introspection.TokenType == "" {
+		introspection.TokenType = "Bearer"
+	}
+	if introspection.Audience == "" && len(vc.RegisteredClaims.Audience) > 0 {
+		introspection.Audience = vc.RegisteredClaims.Audience[0]
+	}
 	return claims, nil
 }
 
@@ -319,8 +346,8 @@ func introspectionFromClaimsMap(rawClaims map[string]any) (IntrospectionResponse
 		return customClaims, nil
 	}
 
-	// Some tokens emit "aud" as an array while IntrospectionResponse expects a
-	// string; tolerate that mismatch for compatibility when populating typed claims.
+	// A field of the wrong type fails the whole decode. Retry without "aud",
+	// the claim most likely to vary, so the rest of the claims still decode.
 	sanitized := maps.Clone(rawClaims)
 	delete(sanitized, "aud")
 	payload, err = json.Marshal(sanitized)
