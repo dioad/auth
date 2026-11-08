@@ -402,6 +402,33 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...
 	return tokenResponse.toToken(c.clock.Now()), nil
 }
 
+// EndSession ends the user's session at the provider from the server, by
+// posting refreshToken with the client's credentials to the end_session
+// endpoint. Keycloak accepts this from a confidential client and ends the
+// user's single sign-on session, so the next sign-in asks for credentials
+// again instead of completing silently. It is Keycloak's back-channel form,
+// not OpenID Connect RP-Initiated Logout, which is driven by the browser.
+func (c *Client) EndSession(ctx context.Context, refreshToken string) error {
+	if refreshToken == "" {
+		return errors.New("refresh token is required to end a session")
+	}
+	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
+	if err != nil {
+		return err
+	}
+	endSessionURL := discoveredConfiguration.EndSessionEndpoint
+	if endSessionURL == "" {
+		return errors.New("end session endpoint not available")
+	}
+
+	data := url.Values{}
+	data.Set("refresh_token", refreshToken)
+	data.Set("client_id", c.clientID)
+	data.Set("client_secret", c.clientSecret)
+
+	return doPostNoContent(ctx, c.httpDoer, endSessionURL, data)
+}
+
 // AuthorizationCodeRedirectFlow generates the authorization URL for the Authorization Code Flow.
 func (c *Client) AuthorizationCodeRedirectFlow(ctx context.Context, state string, scopes []string, redirectURI string, opts ...RequestOpt) (string, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)
