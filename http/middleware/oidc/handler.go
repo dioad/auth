@@ -64,7 +64,10 @@ func (c CookieConfig) Set(w http.ResponseWriter, value string) {
 // Delete expires c's cookie on w.
 func (c CookieConfig) Delete(w http.ResponseWriter) {
 	cookie := c.Cookie("") // #nosec G124 -- see justification in Cookie above
-	cookie.MaxAge = 0
+	// A negative MaxAge sends Max-Age=0, which expires the cookie. Zero means
+	// "no Max-Age" in net/http, which only blanks the value and leaves the
+	// cookie in the browser.
+	cookie.MaxAge = -1
 	http.SetCookie(w, cookie)
 }
 

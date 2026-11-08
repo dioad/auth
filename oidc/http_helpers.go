@@ -60,3 +60,28 @@ func doPost[T any](ctx context.Context, doer HTTPDoer, url string, data url.Valu
 
 	return doRequestAndUnmarshallJSON[T](ctx, doer, req)
 }
+
+// doPostNoContent posts data as a form and accepts any 2xx response,
+// discarding its body, for endpoints that answer 204 No Content.
+func doPostNoContent(ctx context.Context, doer HTTPDoer, url string, data url.Values) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(data.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if doer == nil {
+		doer = defaultHTTPClient()
+	}
+	resp, err := doer.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	_, _ = io.Copy(io.Discard, resp.Body)
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("request failed with status: %v", resp.Status)
+	}
+	return nil
+}

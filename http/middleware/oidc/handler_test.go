@@ -176,9 +176,12 @@ func TestHandler_Logout_ClearsCookiesAndRedirects(t *testing.T) {
 	require.Equal(t, http.StatusFound, rr.Code)
 	require.Equal(t, "/", rr.Header().Get("Location"))
 
+	// Parsed back from the response, a cookie sent with Max-Age=0 has a
+	// negative MaxAge. MaxAge == 0 means no Max-Age was sent, which only
+	// blanks the cookie and leaves it in the browser.
 	cleared := map[string]bool{}
 	for _, c := range rr.Result().Cookies() {
-		if c.MaxAge < 0 || c.MaxAge == 0 {
+		if c.MaxAge < 0 {
 			cleared[c.Name] = true
 		}
 	}
