@@ -361,6 +361,46 @@ func TestHandler_Callback_SucceedsWithMatchingStateAndValidCode(t *testing.T) {
 	}
 }
 
+// TestHandler_AuthStart_PassesOnOnlyPromptCreate pins that a sign-up link
+// (?prompt=create) reaches the provider as prompt=create, and that any other
+// prompt a link carries is dropped rather than changing how the provider
+// authenticates the user.
+func TestHandler_AuthStart_PassesOnOnlyPromptCreate(t *testing.T) {
+	idp, err := testutil.NewMockIDP()
+	require.NoError(t, err)
+	defer idp.Close()
+
+	client, err := oidc.NewClientFromConfig(&oidc.ClientConfig{
+		URL:      idp.Issuer,
+		ClientID: "test-client",
+	})
+	require.NoError(t, err)
+	h := NewHandler(client, OIDCConfig{RedirectURI: "https://tunnel.example/callback"})
+
+	tests := []struct {
+		name       string
+		query      string
+		wantPrompt string
+	}{
+		{name: "sign-in", query: ""},
+		{name: "sign-up", query: "?prompt=create", wantPrompt: "create"},
+		{name: "other prompt is dropped", query: "?prompt=none"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			h.AuthStart().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, h.LoginPath()+tt.query, nil))
+
+			require.Equal(t, http.StatusFound, rr.Code)
+			location, err := url.Parse(rr.Header().Get("Location"))
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPrompt, location.Query().Get("prompt"))
+			assert.NotEmpty(t, location.Query().Get("state"), "the flow must still carry its state")
+		})
+	}
+}
+
 func TestHandler_SaveTokenToCookies_SetsIDTokenCookieWhenPresent(t *testing.T) {
 	h := newTestHandler()
 	token := (&oauth2.Token{
