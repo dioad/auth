@@ -362,6 +362,17 @@ func WithScope(scope string) RequestOpt {
 	}
 }
 
+// WithPrompt sets the "prompt" parameter on an authorization request, when
+// prompt is non-empty. "create" asks the provider to show its registration
+// form instead of sign-in (OpenID Connect Prompt Create 1.0).
+func WithPrompt(prompt string) RequestOpt {
+	return func(v url.Values) {
+		if prompt != "" {
+			v.Set("prompt", prompt)
+		}
+	}
+}
+
 // RefreshToken exchanges refreshToken for a new access token via the refresh_token grant.
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string, opts ...RequestOpt) (*oauth2.Token, error) {
 	discoveredConfiguration, err := c.endpoint.DiscoveredConfiguration(ctx)

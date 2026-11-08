@@ -252,7 +252,15 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 	})
 }
 
-// AuthStart initiates the OIDC authentication flow.
+// promptCreate is the only prompt AuthStart passes on: it opens the
+// provider's registration form, so a "sign up" link can start the same flow
+// as sign-in. Other prompt values change how the provider authenticates the
+// user, which a link should not choose.
+const promptCreate = "create"
+
+// AuthStart initiates the OIDC authentication flow. A request with
+// ?prompt=create asks the provider for its registration form instead of
+// sign-in; any other prompt value is ignored.
 func (h *Handler) AuthStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		state, err := generateState()
@@ -261,7 +269,11 @@ func (h *Handler) AuthStart() http.HandlerFunc {
 			http.Error(w, "Failed to start authentication", http.StatusInternalServerError)
 			return
 		}
-		authURL, err := h.Client.AuthorizationCodeRedirectFlow(r.Context(), state, h.Config.Scopes, h.Config.RedirectURI)
+		var opts []oidc.RequestOpt
+		if r.URL.Query().Get("prompt") == promptCreate {
+			opts = append(opts, oidc.WithPrompt(promptCreate))
+		}
+		authURL, err := h.Client.AuthorizationCodeRedirectFlow(r.Context(), state, h.Config.Scopes, h.Config.RedirectURI, opts...)
 		if err != nil {
 			zerolog.Ctx(r.Context()).Error().Err(err).Msg("Failed to create authorization URL")
 			http.Error(w, "Failed to create authorization URL", http.StatusInternalServerError)
