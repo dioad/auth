@@ -50,8 +50,6 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3hK/4HUq48LQ6Wwqo=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
-github.com/dioad/config v0.1.0 h1:xPgvHhE/iKGGno3nLMTFFoWQfxIPxPaveJNDyhdAfj0=
-github.com/dioad/config v0.1.0/go.mod h1:+jhrrmiriV+47gmI+cGS2paADCuWICxTHGjcmLbcBOA=
 github.com/dioad/config v0.2.0 h1:72AD2XBW1Jr0/sdVzgOgAJjmYmaW+mi3FnC9oQgGB+E=
 github.com/dioad/config v0.2.0/go.mod h1:+jhrrmiriV+47gmI+cGS2paADCuWICxTHGjcmLbcBOA=
 github.com/dioad/filter v0.6.1 h1:iEX/ztIXrI+udLt94N55TAIOd7JjCzIiIbYKG9B96sY=
