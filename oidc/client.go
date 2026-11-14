@@ -231,7 +231,14 @@ type Client struct {
 // callers can extend or override behavior (for example WithDeviceCodeUI) without
 // re-deriving the endpoint/credential setup NewClientFromConfig already does.
 func NewClientFromConfig(config *ClientConfig, opts ...ClientOpt) (*Client, error) {
-	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig)
+	return newClientFromConfig(config, nil, opts...)
+}
+
+// newClientFromConfig is NewClientFromConfig with the HTTP client used for
+// both provider discovery and token requests. A nil doer means the default
+// client.
+func newClientFromConfig(config *ClientConfig, doer HTTPDoer, opts ...ClientOpt) (*Client, error) {
+	endpoint, err := NewEndpointFromConfig(&config.EndpointConfig, WithHTTPDoer(doer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new oidc endpoint: %w", err)
 	}
@@ -239,7 +246,7 @@ func NewClientFromConfig(config *ClientConfig, opts ...ClientOpt) (*Client, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve oidc client secret: %w", err)
 	}
-	allOpts := append([]ClientOpt{WithClientIDAndSecret(config.ClientID, clientSecret)}, opts...)
+	allOpts := append([]ClientOpt{WithClientIDAndSecret(config.ClientID, clientSecret), WithHTTPClient(doer)}, opts...)
 	return NewClient(endpoint, allOpts...), nil
 }
 

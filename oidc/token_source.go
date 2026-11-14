@@ -56,6 +56,12 @@ func NewTokenSourceFromConfig(cfg ClientConfig) (oauth2.TokenSource, error) {
 //
 //nolint:revive // ctx is trailing for backward compatibility; this is an exported function and reordering would be a breaking change
 func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[string]TokenSourceFactory, store TokenStore, clock Clock, ctx context.Context) (oauth2.TokenSource, error) {
+	return newTokenSourceFromConfig(ctx, cfg, factories, store, clock, nil)
+}
+
+// newTokenSourceFromConfig is NewTokenSourceFromConfigWithFactories with the
+// HTTP client used to reach the provider. A nil doer means the default client.
+func newTokenSourceFromConfig(ctx context.Context, cfg ClientConfig, factories map[string]TokenSourceFactory, store TokenStore, clock Clock, doer HTTPDoer) (oauth2.TokenSource, error) {
 	if factories == nil {
 		factories = DefaultTokenSourceFactories()
 	}
@@ -66,13 +72,15 @@ func NewTokenSourceFromConfigWithFactories(cfg ClientConfig, factories map[strin
 		if store == nil {
 			store = NewFileTokenStore(cfg.TokenFile)
 		}
-		return newFileTokenSource(ctx, cfg, store, clock), nil
+		source := newFileTokenSource(ctx, cfg, store, clock)
+		source.doer = doer
+		return source, nil
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	if cfg.ClientID != "" && (cfg.ClientSecret.UnmaskedString() != "" || cfg.ClientSecretFile != "") {
-		client, err := NewClientFromConfig(&cfg)
+		client, err := newClientFromConfig(&cfg, doer)
 		if err != nil {
 			return nil, err
 		}
@@ -89,6 +97,8 @@ type fileTokenSource struct {
 	clock  Clock
 	ctx    context.Context
 	config ClientConfig
+	// doer reaches the provider when refreshing; nil means the default client.
+	doer HTTPDoer
 }
 
 func newFileTokenSource(ctx context.Context, cfg ClientConfig, store TokenStore, clock Clock) *fileTokenSource {
@@ -114,7 +124,7 @@ func (s *fileTokenSource) Token() (*oauth2.Token, error) {
 
 	if token.Expiry.Before(s.clock.Now()) && token.RefreshToken != "" {
 		// Attempt refresh
-		client, err := NewClientFromConfig(&s.config)
+		client, err := newClientFromConfig(&s.config, s.doer)
 		if err != nil {
 			return nil, err
 		}
