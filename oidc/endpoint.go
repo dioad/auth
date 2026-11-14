@@ -211,29 +211,35 @@ func WithHTTPDoer(doer HTTPDoer) EndpointOption {
 
 // NewEndpointFromConfig creates the Endpoint implementation matching
 // config.Type (github, githubactions, keycloak, flyio, aws), or a generic
-// Endpoint if Type is unset but URL is provided.
-func NewEndpointFromConfig(config *EndpointConfig) (Endpoint, error) {
+// Endpoint if Type is unset but URL is provided. opts apply to the endpoint
+// types that take options: every type except github and githubactions.
+func NewEndpointFromConfig(config *EndpointConfig, opts ...EndpointOption) (Endpoint, error) {
 	switch config.Type {
 	case ProviderTypeGitHub:
 		return NewGitHubEndpoint(config.URL)
 	case ProviderTypeGitHubActions:
 		return NewGitHubActionsEndpoint(config.URL)
 	case ProviderTypeKeycloak:
-		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm, WithCustomClaims(&IntrospectionResponse{}))
+		return NewKeycloakRealmEndpoint(config.URL, config.KeycloakRealm, withOptions(WithCustomClaims(&IntrospectionResponse{}), opts)...)
 		// TODO: make this work
 	case ProviderTypeFlyIO:
-		return NewEndpoint(config.URL, WithCustomClaims(&flyio.Claims{}))
+		return NewEndpoint(config.URL, withOptions(WithCustomClaims(&flyio.Claims{}), opts)...)
 	case ProviderTypeAWS:
-		return NewEndpoint(config.URL, WithCustomClaims(&aws.Claims{}))
+		return NewEndpoint(config.URL, withOptions(WithCustomClaims(&aws.Claims{}), opts)...)
 	default:
 		if config.URL != "" {
-			return NewEndpoint(config.URL, WithCustomClaims(&IntrospectionResponse{}))
+			return NewEndpoint(config.URL, withOptions(WithCustomClaims(&IntrospectionResponse{}), opts)...)
 		}
 		if config.Type == "" {
 			return nil, errors.New("config type cannot be empty")
 		}
 		return nil, fmt.Errorf("config type %s not supported", config.Type)
 	}
+}
+
+// withOptions returns first followed by rest.
+func withOptions(first EndpointOption, rest []EndpointOption) []EndpointOption {
+	return append([]EndpointOption{first}, rest...)
 }
 
 // KeycloakEndpoint represents a Keycloak OpenID Connect server endpoint.
