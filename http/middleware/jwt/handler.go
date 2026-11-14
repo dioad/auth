@@ -23,9 +23,15 @@ type Handler struct {
 	requireToken bool
 }
 
-// NewHandler creates a JWT authentication handler. All log output uses the
-// request-scoped zerolog context logger so entries automatically carry
-// request_id, principal, and other fields injected by upstream middleware.
+// NewHandler creates a JWT authentication handler. The bearer token is read
+// from the Authorization header. A non-empty cookieName also accepts a token
+// from the cookie of that name; an empty cookieName means header only. Only
+// name a cookie for a browser-facing route: on a machine-to-machine API that
+// browsers can reach, a cookie credential is a CSRF risk.
+//
+// All log output uses the request-scoped zerolog context logger so entries
+// automatically carry request_id, principal, and other fields injected by
+// upstream middleware.
 func NewHandler(validator jwt.TokenValidator, cookieName string, opts ...jwtmiddleware.Option) *Handler {
 	return &Handler{
 		validator:  validator,
@@ -51,10 +57,13 @@ func (h *Handler) Wrap(next http.Handler) http.Handler {
 		jsr.Unauthorized(json.LogErr(err))
 	}
 
-	extractor := jwtmiddleware.MultiTokenExtractor(
-		jwtmiddleware.AuthHeaderTokenExtractor,
-		jwtmiddleware.CookieTokenExtractor(h.cookieName),
-	)
+	extractor := jwtmiddleware.AuthHeaderTokenExtractor
+	if h.cookieName != "" {
+		extractor = jwtmiddleware.MultiTokenExtractor(
+			jwtmiddleware.AuthHeaderTokenExtractor,
+			jwtmiddleware.CookieTokenExtractor(h.cookieName),
+		)
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		extracted, err := extractor(r)
