@@ -74,7 +74,7 @@ func resolveAuthHandler(cfg *ServerConfig) (Middleware, error) {
 		if err != nil {
 			return nil, err
 		}
-		return jwt.NewHandler(validator, "auth_token").WithRequireToken(true), nil
+		return jwt.NewHandler(validator, "").WithRequireToken(true), nil
 	}
 	if !generics.IsZeroValue(cfg.OIDCAuthConfig) {
 		return resolveOIDCHandler(&cfg.OIDCAuthConfig)
@@ -95,7 +95,7 @@ func resolveAuthHandlerByType(cfg *ServerConfig) (Middleware, error) {
 		if err != nil {
 			return nil, err
 		}
-		return jwt.NewHandler(validator, "auth_token").WithRequireToken(true), nil
+		return jwt.NewHandler(validator, "").WithRequireToken(true), nil
 	case "oidc":
 		return resolveOIDCHandler(&cfg.OIDCAuthConfig)
 	default:

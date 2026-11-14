@@ -4,9 +4,11 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 
 	authhttp "github.com/dioad/auth/http"
@@ -80,9 +82,8 @@ func TestWithServerAuth_OIDC_RegistersRoutesWithoutRedirectLoop(t *testing.T) {
 // TestWithOAuth2Validator_RejectsRequestWithNoCredential is the regression
 // test for the fail-open sibling of the bug fixed for the "type: jwt"
 // dispatch path: OAuth2ValidatorHandler built a jwt.Handler without opting
-// into WithRequireToken(true), so a request presenting no bearer token or
-// cookie at all was forwarded to next unauthenticated instead of rejected —
-// exactly the vulnerable configuration examples/oidc-auth/main.go documents.
+// into WithRequireToken(true), so a request presenting no bearer token at
+// all was forwarded to next unauthenticated instead of rejected.
 func TestWithOAuth2Validator_RejectsRequestWithNoCredential(t *testing.T) {
 	cfg := []oidc.ValidatorConfig{{
 		URL:       "http://127.0.0.1:1",
@@ -122,4 +123,88 @@ func TestWithServerAuth_NonOIDC_RegistersNoLoginRoutes(t *testing.T) {
 	// uniformly gated like everything else, so an unsigned request is
 	// rejected by the hmac gate itself (401) rather than routed anywhere.
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode, "no login route should be registered for a non-oidc auth type")
+}
+
+const testHMACSecret = "test-secret"
+
+func hmacValidatorConfig() []oidc.ValidatorConfig {
+	return []oidc.ValidatorConfig{{
+		HMACSecret:        testHMACSecret,
+		AllowInsecureHMAC: true,
+		Audiences:         []string{"test-audience"},
+	}}
+}
+
+func signHMACToken(t *testing.T) string {
+	t.Helper()
+
+	now := time.Now()
+	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, gojwt.MapClaims{
+		"sub": "test-user",
+		"iss": "test-issuer",
+		"aud": "test-audience",
+		"iat": now.Unix(),
+		"exp": now.Add(time.Hour).Unix(),
+	})
+	signed, err := token.SignedString([]byte(testHMACSecret))
+	require.NoError(t, err)
+	return signed
+}
+
+// TestOAuth2ValidatorHandler_TokenSource covers where the middleware accepts
+// a bearer token from. A valid token in a cookie must be refused unless the
+// caller opted in to that cookie by name: an API that browsers can reach must
+// not accept a credential the browser attaches by itself.
+func TestOAuth2ValidatorHandler_TokenSource(t *testing.T) {
+	tests := []struct {
+		name       string
+		opts       []ValidatorHandlerOption
+		header     bool
+		cookieName string
+		wantStatus int
+	}{
+		{name: "header is accepted by default", header: true, wantStatus: http.StatusOK},
+		{name: "auth_token cookie is refused by default", cookieName: "auth_token", wantStatus: http.StatusUnauthorized},
+		{
+			name:       "opted-in cookie is accepted",
+			opts:       []ValidatorHandlerOption{WithCookieTokenName("session")},
+			cookieName: "session",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "cookie other than the opted-in one is refused",
+			opts:       []ValidatorHandlerOption{WithCookieTokenName("session")},
+			cookieName: "auth_token",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "header is still accepted with a cookie opted in",
+			opts:       []ValidatorHandlerOption{WithCookieTokenName("session"), WithValidatorDebug()},
+			header:     true,
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw, err := OAuth2ValidatorHandler(hmacValidatorConfig(), tt.opts...)
+			require.NoError(t, err)
+
+			token := signHMACToken(t)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/secure", nil)
+			if tt.header {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			if tt.cookieName != "" {
+				req.AddCookie(&http.Cookie{Name: tt.cookieName, Value: token})
+			}
+			rr := httptest.NewRecorder()
+
+			mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})).ServeHTTP(rr, req)
+
+			require.Equal(t, tt.wantStatus, rr.Code)
+		})
+	}
 }

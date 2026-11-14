@@ -131,3 +131,38 @@ func TestHandler_RequireTokenUnset_PreservesPassThroughForNoCredential(t *testin
 	require.True(t, called, "next handler must still run when RequireToken is unset, for backward compatibility")
 	require.Equal(t, http.StatusOK, rr.Code)
 }
+
+// TestHandler_CookieToken covers where Wrap looks for a token: an empty
+// cookie name means the Authorization header only, so a machine API does not
+// accept a credential the browser attaches by itself.
+func TestHandler_CookieToken(t *testing.T) {
+	tests := []struct {
+		name       string
+		cookieName string
+		wantStatus int
+	}{
+		{name: "no cookie name ignores the cookie", cookieName: "", wantStatus: http.StatusUnauthorized},
+		{name: "another cookie name ignores the cookie", cookieName: "other", wantStatus: http.StatusUnauthorized},
+		{name: "named cookie is accepted", cookieName: "auth_token", wantStatus: http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewHandler(&stubTokenValidator{
+				claims: &jwtvalidator.ValidatedClaims{
+					RegisteredClaims: jwtvalidator.RegisteredClaims{Subject: "alice"},
+				},
+			}, tt.cookieName).WithRequireToken(true)
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.AddCookie(&http.Cookie{Name: "auth_token", Value: makeSignedToken(t, gojwt.MapClaims{"sub": "alice"})})
+			rr := httptest.NewRecorder()
+
+			h.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})).ServeHTTP(rr, req)
+
+			require.Equal(t, tt.wantStatus, rr.Code)
+		})
+	}
+}
