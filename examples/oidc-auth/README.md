@@ -1,32 +1,39 @@
-# OIDC/JWT Authentication
+# OIDC token validation
 
-This example demonstrates how to configure an HTTP server with OpenID Connect (OIDC) and JWT authentication.
+An HTTP server that accepts GitHub Actions OIDC tokens. The validator is
+global middleware: every request needs a valid bearer token in the
+`Authorization` header. Cookies are not read.
 
-## Running the Example
+For an API with principal extraction and a role check, see
+[api-auth](../api-auth). For a browser app with a login, see
+[browser-session](../browser-session).
+
+## Running the example
 
 ```bash
-go run github.com/dioad/net/examples/oidc-auth
+go run ./examples/oidc-auth
 ```
 
-Or build and run:
+| Variable | Meaning | Default |
+|---|---|---|
+| `LISTEN_ADDR` | address to listen on | `127.0.0.1:8080` |
+| `OIDC_AUDIENCE` | accepted token audience | `https://github.com/my-org` |
+
+Then call it with a token that GitHub Actions issued for that audience. A
+request with no token is refused with 401:
+
 ```bash
-cd examples/oidc-auth
-go build
-./oidc-auth
+curl -i http://127.0.0.1:8080/secure
+curl -H 'Authorization: Bearer <token>' http://127.0.0.1:8080/secure
 ```
 
-Then test with a valid OIDC token:
-```bash
-curl -H 'Authorization: Bearer <your-token>' http://localhost:8080/secure
-```
+See [githubactions-oidc](../githubactions-oidc) for getting a token inside a
+workflow.
 
-## What It Demonstrates
+## What it demonstrates
 
-- Creating an OIDC validator configuration
-- Setting up GitHub Actions OIDC authentication
-- Using OAuth2 validator as global middleware
-- Token validation for protected endpoints
+- Creating an OIDC validator configuration for GitHub Actions
+- Using the OAuth2 validator as global middleware
+- Shutting down on SIGTERM
 
-## Code
-
-See [main.go](main.go) for the complete executable example.
+See [main.go](main.go) for the code.

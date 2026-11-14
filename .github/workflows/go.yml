@@ -188,6 +188,10 @@ jobs:
           done
           echo "All examples built successfully"
 
+      - name: Run Examples
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: scripts/run-examples.sh
+
       - name: Upload S3 Release Asset
         id: upload-s3-release-asset
         if: github.event_name == 'push'

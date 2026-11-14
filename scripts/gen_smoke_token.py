@@ -7,6 +7,7 @@ The issuer defaults to "local-smoke" but can be overridden with --issuer.
 Usage (positional roles):
     ./scripts/gen_smoke_token.py
     ./scripts/gen_smoke_token.py --role connect-admin --role connect-user
+    ./scripts/gen_smoke_token.py --group api-admins
     TOKEN=$(./scripts/gen_smoke_token.py --role connect-admin)
     curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8120/tunnel
 
@@ -34,7 +35,8 @@ def b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
-def build_token(secret: str, roles: list[str], subject: str, issuer: str, audience: str, ttl: int) -> str:
+def build_token(secret: str, roles: list[str], subject: str, issuer: str, audience: str, ttl: int,
+                groups: list[str] | None = None) -> str:
     now = int(time.time())
     header = {"alg": "HS256", "typ": "JWT"}
     payload = {
@@ -45,6 +47,10 @@ def build_token(secret: str, roles: list[str], subject: str, issuer: str, audien
         "exp": now + ttl,
         "roles": roles,
     }
+    if groups:
+        # Servers that decode OIDC claims read roles from "groups" and
+        # "realm_access", not from "roles".
+        payload["groups"] = groups
 
     h = b64url(json.dumps(header, separators=(",", ":")).encode())
     p = b64url(json.dumps(payload, separators=(",", ":")).encode())
@@ -95,6 +101,13 @@ def main() -> None:
              "Falls back to SMOKE_JWT_ROLES env var (comma-separated) when not provided.",
     )
     parser.add_argument(
+        "--group",
+        dest="groups",
+        action="append",
+        metavar="GROUP",
+        help="Group to include in the token's \"groups\" claim; may be specified multiple times.",
+    )
+    parser.add_argument(
         "--subject",
         default=os.environ.get("SMOKE_JWT_SUBJECT", "smoke-test-user"),
         help="Token subject (env: SMOKE_JWT_SUBJECT)",
@@ -142,6 +155,7 @@ def main() -> None:
         issuer=args.issuer,
         audience=args.audience,
         ttl=args.ttl,
+        groups=args.groups,
     )
     print(token)
 

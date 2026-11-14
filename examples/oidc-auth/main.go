@@ -1,16 +1,19 @@
 // Command main demonstrates wrapping an HTTP server with OIDC token
-// validation middleware.
+// validation middleware, accepting GitHub Actions OIDC tokens.
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+
+	"github.com/rs/zerolog"
 
 	authserver "github.com/dioad/auth/http/server"
 	"github.com/dioad/auth/oidc"
@@ -18,55 +21,70 @@ import (
 	diohttp "github.com/dioad/net/http"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
-	// Create OIDC validator configuration
+	logger := zerolog.New(os.Stderr).With().Timestamp().Str("component", "oidc-auth").Logger()
+
+	if err := run(logger); err != nil {
+		logger.Error().Err(err).Msg("oidc-auth failed")
+		os.Exit(1)
+	}
+}
+
+func run(logger zerolog.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	validatorConfig := oidc.ValidatorConfig{
-		Type:      "githubactions",
+		Type:      oidc.ProviderTypeGitHubActions,
 		URL:       "https://token.actions.githubusercontent.com",
-		Audiences: []string{"https://github.com/my-org"},
+		Audiences: []string{envOr("OIDC_AUDIENCE", "https://github.com/my-org")},
 		Issuer:    "https://token.actions.githubusercontent.com",
 	}
 
-	// Create a simple handler
-	myHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if _, err := fmt.Fprintf(w, "Hello, authenticated user!\n"); err != nil {
-			log.Printf("error writing response: %v\n", err)
-		}
+	listenAddr := envOr("LISTEN_ADDR", "127.0.0.1:8080")
+
+	// The validator is global middleware: it checks the bearer token in the
+	// Authorization header of every request, and rejects a request without
+	// one. It does not read cookies.
+	srv := diohttp.NewServer(
+		diohttp.Config{ListenAddress: listenAddr},
+		diohttp.WithLogger(logger),
+		authserver.WithOAuth2Validator([]oidc.ValidatorConfig{validatorConfig}),
+	)
+	srv.AddHandlerFunc("GET /secure", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintln(w, "Hello, authenticated caller!")
 	})
 
-	// Create server with OIDC validator as global middleware
-	config := diohttp.Config{ListenAddress: ":8080"}
-	server := diohttp.NewServer(config, authserver.WithOAuth2Validator([]oidc.ValidatorConfig{validatorConfig}))
-
-	server.AddHandler("/secure", myHandler)
-
-	// Create listener
 	var lc net.ListenConfig
-	ln, err := lc.Listen(context.Background(), "tcp", ":8080") // #nosec G102 -- example server intentionally listens on all interfaces
+	ln, err := lc.Listen(ctx, "tcp", listenAddr)
 	if err != nil {
-		log.Fatalf("Error creating listener: %v\n", err)
+		return fmt.Errorf("listening on %s: %w", listenAddr, err)
 	}
-	defer func() {
-		if err := ln.Close(); err != nil {
-			log.Printf("error closing listener: %v\n", err)
+
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(ln) }()
+	logger.Info().Str("address", ln.Addr().String()).Msg("listening for GitHub Actions OIDC tokens")
+
+	select {
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return err
 		}
-	}()
+		return nil
+	case <-ctx.Done():
+	}
 
-	fmt.Println("Starting HTTP server with OIDC authentication on :8080")
-	fmt.Println("Note: This server requires a valid GitHub Actions OIDC token")
-	fmt.Println("Try: curl -H 'Authorization: Bearer <token>' http://localhost:8080/secure")
+	logger.Info().Msg("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
+}
 
-	// Start server in goroutine
-	go func() {
-		if err := server.Serve(ln); err != nil {
-			log.Printf("Server error: %v\n", err)
-		}
-	}()
-
-	// Wait for interrupt signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("\nShutting down server...")
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
