@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.6
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/cli/oauth v1.3.0
+	github.com/dioad/config v0.1.0
 	github.com/dioad/generics v0.0.9
 	github.com/dioad/net v0.71.2
 	github.com/dioad/util v0.7.0
@@ -48,7 +49,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
-	github.com/dioad/config v0.1.0 // indirect
 	github.com/dioad/filter v0.6.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/go-acme/lego/v5 v5.6.0 // indirect
