@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/dioad/config/configcheck"
 )
 
 // ErrClientSecretConflict is returned when both client-secret and
@@ -41,4 +43,15 @@ func (c *ClientConfig) ResolveClientSecret() (string, error) {
 		return "", fmt.Errorf("client-secret-file %q is empty", c.ClientSecretFile)
 	}
 	return secret, nil
+}
+
+// Check reports the problems Validate finds in the client secret settings to
+// findings, which should be positioned at the OIDC client block, so a service
+// reports them with the rest of its config's problems at their full path. The
+// conflict is reported at client-secret-file. Like Validate, it does not read
+// the file.
+func (c *ClientConfig) Check(findings *configcheck.Collector) {
+	if err := c.Validate(); err != nil {
+		findings.Field("client-secret-file").Add(err)
+	}
 }
