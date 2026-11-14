@@ -46,6 +46,10 @@ go.work.sum
 !LICENSE
 !.golangci.yml
 
+!/scripts/run-examples.sh
+!/examples/browser-session/static/
+!/examples/browser-session/static/index.html
+
 # !Makefile
 
 # ...even if they are in subdirectories

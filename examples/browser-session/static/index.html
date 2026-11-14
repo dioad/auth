@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser session example</title>
+</head>
+<body>
+  <h1>Browser session example</h1>
+  <p id="status">Loading...</p>
+  <form method="post" action="/auth/logout"><button type="submit">Sign out</button></form>
+  <script>
+    // The session cookie is HttpOnly, so this script never sees a token. It
+    // calls the API and the browser attaches the cookie.
+    fetch("/api/me")
+      .then((response) => response.ok ? response.text() : Promise.reject(new Error(response.status)))
+      .then((text) => { document.getElementById("status").textContent = text; })
+      .catch((err) => { document.getElementById("status").textContent = "API error: " + err.message; });
+  </script>
+</body>
+</html>
