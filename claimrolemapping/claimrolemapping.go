@@ -49,8 +49,17 @@ type ExtractorConfig struct {
 	// can tell "not set at this level" (nil) apart from an explicit false -
 	// a plain bool can't distinguish the two, which would let a true default
 	// silently override a service's explicit false.
-	AllowUnauthenticated *bool                    `mapstructure:"allow-unauthenticated"`
-	ClaimRoleMappings    []ClaimRoleMappingConfig `mapstructure:"claim-role-mappings"`
+	AllowUnauthenticated *bool `mapstructure:"allow-unauthenticated"`
+	// AcceptUnauthenticatedRisk is the second opt-in AllowUnauthenticated needs
+	// before Check accepts it. One flag copied into a production config by
+	// mistake is then not enough to open the API.
+	AcceptUnauthenticatedRisk bool                     `mapstructure:"accept-unauthenticated-risk"`
+	ClaimRoleMappings         []ClaimRoleMappingConfig `mapstructure:"claim-role-mappings"`
+}
+
+// Unauthenticated reports whether allow-unauthenticated is set.
+func (c ExtractorConfig) Unauthenticated() bool {
+	return c.AllowUnauthenticated != nil && *c.AllowUnauthenticated
 }
 
 // BuildExtractorConfig constructs a per-source DefaultExtractorConfig from
