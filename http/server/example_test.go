@@ -1,12 +1,15 @@
 package server_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/dioad/lifecycle"
 
 	"github.com/dioad/auth/http/server"
 	"github.com/dioad/auth/oidc"
@@ -66,4 +69,37 @@ func ExampleOAuth2ValidatorHandler() {
 	// no token: 401
 	// token in a cookie: 401
 	// bad token: 401
+}
+
+// ExampleAddValidatorCheck reports the identity provider behind a service's
+// token validators as a readiness check. The check is degraded, not failing, so
+// an identity provider outage shows in the report without taking the service out
+// of rotation.
+//
+// The example serves a minimal discovery document and key set so that it runs
+// without a real provider.
+func ExampleAddValidatorCheck() {
+	var issuer *httptest.Server
+	issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/.well-known/openid-configuration":
+			_, _ = fmt.Fprintf(w, `{"issuer":%q,"jwks_uri":%q}`, issuer.URL, issuer.URL+"/jwks")
+		case "/jwks":
+			_, _ = fmt.Fprint(w, `{"keys":[{"kty":"RSA","kid":"k1"}]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer issuer.Close()
+
+	readiness := lifecycle.NewReadiness()
+	server.AddValidatorCheck(readiness, []oidc.ValidatorConfig{{Issuer: issuer.URL}})
+	readiness.MarkStarted()
+
+	report, err := readiness.Ready(context.Background())
+	fmt.Println(err)
+	fmt.Println(report)
+	// Output:
+	// <nil>
+	// map[jwt-validators:ok]
 }

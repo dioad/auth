@@ -12,6 +12,7 @@ require (
 	github.com/cli/oauth v1.3.0
 	github.com/dioad/config v0.2.0
 	github.com/dioad/generics v0.0.9
+	github.com/dioad/lifecycle v0.2.0
 	github.com/dioad/net v0.72.0
 	github.com/dioad/util v0.7.0
 	github.com/go-jose/go-jose/v4 v4.1.9
