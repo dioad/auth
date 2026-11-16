@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -86,6 +87,9 @@ func NewValidatorFromConfig(cfg *ValidatorConfig) (jwt.TokenValidator, error) {
 
 // NewValidatorFromConfigWithOptions creates a TokenValidator from a ValidatorConfig using custom options.
 func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOpt) (jwt.TokenValidator, error) {
+	jwt.WarnDeprecatedKeys(cmp.Or(cfg.Issuer, cfg.URL), cfg.DeprecatedKeys())
+	cfg = new(cfg.withDeprecatedKeys())
+
 	// Use a local issuer variable to avoid mutating the caller's config
 	issuer := cfg.Issuer
 	if issuer == "" && cfg.URL != "" {

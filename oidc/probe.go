@@ -39,7 +39,7 @@ func KeyFetchingIssuers(validators []ValidatorConfig) []string {
 	var issuers []string
 	seen := make(map[string]bool)
 	for _, v := range validators {
-		if v.HMACSecret != "" {
+		if v.withDeprecatedKeys().HMACSecret != "" {
 			continue
 		}
 		issuer := v.Issuer
