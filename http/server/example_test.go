@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
 
 	"github.com/dioad/lifecycle"
 
@@ -102,4 +104,43 @@ func ExampleAddValidatorCheck() {
 	// Output:
 	// <nil>
 	// map[jwt-validators:ok]
+}
+
+// ExampleRateLimiter limits each caller of an API to its own request rate.
+// The limiter goes after the authentication chain, so that it keys a request
+// by the principal the chain found. Here there is no authentication, so the
+// key is the address of the connection, whatever forwarding headers say.
+func ExampleRateLimiter() {
+	limit, err := server.RateLimiter(
+		server.RateLimitConfig{RPS: 1, Burst: 2},
+		zerolog.Nop(),
+		prometheus.NewRegistry(),
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	api := limit(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintln(w, "hello")
+	}))
+
+	call := func(remoteAddr, forwardedFor string) int {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.RemoteAddr = remoteAddr
+		req.Header.Set("X-Forwarded-For", forwardedFor)
+		rr := httptest.NewRecorder()
+		api.ServeHTTP(rr, req)
+		return rr.Code
+	}
+
+	fmt.Println(call("192.0.2.1:4711", "198.51.100.1"))
+	fmt.Println(call("192.0.2.1:4711", "198.51.100.2"))
+	fmt.Println(call("192.0.2.1:4711", "198.51.100.3"))
+	fmt.Println(call("192.0.2.2:4711", "198.51.100.1"))
+	// Output:
+	// 200
+	// 200
+	// 429
+	// 200
 }

@@ -49,8 +49,8 @@ func WithPrincipalACL(acl authz.PrincipalACLConfig) APIOption {
 // authorises with WithPrincipalACL and has no roles to extract.
 //
 // Put anything that must run before authentication, such as a header check or
-// CORS, ahead of the result, and anything that needs the principal, such as a
-// rate limiter keyed by principal, after it. Options that are
+// CORS, ahead of the result, and anything that needs the principal, such as
+// RateLimiter, after it. Options that are
 // ValidatorHandlerOptions are passed to OAuth2ValidatorHandler.
 func APIMiddlewares(validators []oidc.ValidatorConfig, extractor auth.PrincipalExtractor, opts ...APIOption) ([]nethttp.Middleware, error) {
 	var options apiOptions

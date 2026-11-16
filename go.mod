@@ -23,6 +23,7 @@ require (
 	github.com/lestrrat-go/jwx/v3 v3.4.0
 	github.com/markbates/goth v1.82.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/prometheus/client_golang v1.25.0
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
 	github.com/yeqown/go-qrcode/v2 v2.3.0
@@ -75,7 +76,6 @@ require (
 	github.com/nsf/termbox-go v1.1.2 // indirect
 	github.com/pandatix/go-abnf v0.5.5 // indirect
 	github.com/pires/go-proxyproto v0.16.0 // indirect
-	github.com/prometheus/client_golang v1.25.0 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
 	github.com/prometheus/common v0.74.0 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
