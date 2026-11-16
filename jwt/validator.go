@@ -53,6 +53,8 @@ func NewValidatorFromConfigWithOptions(cfg *ValidatorConfig, opts ...ValidatorOp
 	if cfg == nil {
 		return nil, errors.New("validator config is nil")
 	}
+	WarnDeprecatedKeys(cfg.Issuer, cfg.DeprecatedKeys())
+	cfg = new(cfg.withDeprecatedKeys())
 	if cfg.Issuer == "" {
 		return nil, errors.New("issuer must be provided")
 	}
