@@ -5,15 +5,15 @@ go 1.27.0
 require (
 	github.com/auth0/go-jwt-middleware/v3 v3.4.0
 	github.com/aws/aws-sdk-go-v2 v1.48.0
-	github.com/aws/aws-sdk-go-v2/config v1.33.18
+	github.com/aws/aws-sdk-go-v2/config v1.33.19
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/cli/oauth v1.3.0
-	github.com/dioad/config v0.2.0
+	github.com/dioad/config v0.3.1
 	github.com/dioad/generics v0.0.9
-	github.com/dioad/lifecycle v0.2.0
-	github.com/dioad/net v0.72.0
+	github.com/dioad/lifecycle v0.4.0
+	github.com/dioad/net v0.77.2
 	github.com/dioad/util v0.7.0
 	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/credentials v1.21.0 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.1 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12 // indirect
