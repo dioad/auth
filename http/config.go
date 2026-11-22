@@ -26,8 +26,8 @@ type ClientConfig struct {
 
 // GenericAuthConfig represents a generic authentication configuration.
 type GenericAuthConfig struct {
-	Name   string         `mapstructure:"name"`
-	Config map[string]any `mapstructure:"config"`
+	Name   string         `mapstructure:"name" desc:"name of the auth handler"`
+	Config map[string]any `mapstructure:"config" desc:"handler-specific configuration"`
 }
 
 // ServerConfig represents the authentication configuration for an HTTP server.
@@ -35,7 +35,7 @@ type ServerConfig struct {
 	// Type selects the auth handler explicitly: "github", "basic", "hmac", "jwt", "oidc".
 	// When set it takes precedence over zero-value detection. An unrecognised Type
 	// returns an error from NewHandler.
-	Type string `mapstructure:"type"`
+	Type string `mapstructure:"type" desc:"auth handler to use: github, basic, hmac, jwt or oidc; takes precedence over detection from the configured blocks"`
 
 	BasicAuthConfig  basic.ServerConfig  `mapstructure:"basic"`
 	GitHubAuthConfig github.ServerConfig `mapstructure:"github"`
@@ -43,5 +43,5 @@ type ServerConfig struct {
 	JWTAuthConfig    jwt.ValidatorConfig `mapstructure:"jwt"`
 	OIDCAuthConfig   OIDCServerConfig    `mapstructure:"oidc"`
 
-	Providers []string `mapstructure:"providers"`
+	Providers []string `mapstructure:"providers" desc:"names of the OAuth providers to enable"`
 }

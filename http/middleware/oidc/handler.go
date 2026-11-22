@@ -32,11 +32,11 @@ var (
 
 // CookieConfig configures a single session cookie's name, scope, and lifetime.
 type CookieConfig struct {
-	Name   string        `json:"name"             mapstructure:"name"`
-	Domain string        `json:"domain,omitzero"  mapstructure:"domain,omitzero"`
-	Secure bool          `json:"secure,omitzero"  mapstructure:"secure,omitzero"`
-	Path   string        `json:"path,omitzero"    mapstructure:"path,omitzero"`
-	MaxAge time.Duration `json:"max_age,omitzero" mapstructure:"max-age,omitzero"`
+	Name   string        `json:"name"             mapstructure:"name" desc:"cookie name"`
+	Domain string        `json:"domain,omitzero"  mapstructure:"domain,omitzero" desc:"cookie domain attribute"`
+	Secure bool          `json:"secure,omitzero"  mapstructure:"secure,omitzero" desc:"set the cookie Secure attribute"`
+	Path   string        `json:"path,omitzero"    mapstructure:"path,omitzero" desc:"cookie path attribute"`
+	MaxAge time.Duration `json:"max_age,omitzero" mapstructure:"max-age,omitzero" desc:"cookie lifetime"`
 }
 
 // Cookie builds an *http.Cookie carrying value, using c's configured name, domain, path, and max-age.
@@ -76,8 +76,8 @@ func (c CookieConfig) Delete(w http.ResponseWriter) {
 //
 //nolint:revive // stutters, but is used externally (e.g. dioad/connect-control) as oidc.OIDCConfig; renaming is a breaking change
 type OIDCConfig struct {
-	Scopes      []string `json:"scopes,omitzero"       mapstructure:"scopes,omitzero"`
-	RedirectURI string   `json:"redirect_uri,omitzero" mapstructure:"redirect-uri,omitzero"`
+	Scopes      []string `json:"scopes,omitzero"       mapstructure:"scopes,omitzero" desc:"OAuth 2.0 scopes to request"`
+	RedirectURI string   `json:"redirect_uri,omitzero" mapstructure:"redirect-uri,omitzero" desc:"absolute callback URL registered with the OIDC provider"`
 
 	TokenCookie       CookieConfig `json:"token_cookie,omitzero"    mapstructure:"token-cookie,omitzero"`
 	StateCookie       CookieConfig `json:"state_cookie,omitzero"    mapstructure:"state-cookie,omitzero"`
@@ -86,17 +86,17 @@ type OIDCConfig struct {
 	RedirectCookie    CookieConfig `json:"redirect_cookie,omitzero" mapstructure:"redirect-cookie,omitzero"`
 	IDTokenCookie     CookieConfig `json:"id_token_cookie,omitzero" mapstructure:"id-token-cookie,omitzero"`
 
-	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero"`
-	Now           func() time.Time `json:"-"                       mapstructure:"-"`
-	LoginPath     string           `json:"login_path,omitzero"     mapstructure:"login-path,omitzero"`
-	LogoutPath    string           `json:"logout_path,omitzero"    mapstructure:"logout-path,omitzero"`
+	RefreshWindow time.Duration    `json:"refresh_window,omitzero" mapstructure:"refresh-window,omitzero" desc:"how long before token expiry the session is refreshed"`
+	Now           func() time.Time `json:"-"                       mapstructure:"-" flag:"-"`
+	LoginPath     string           `json:"login_path,omitzero"     mapstructure:"login-path,omitzero" desc:"local path that starts a login"`
+	LogoutPath    string           `json:"logout_path,omitzero"    mapstructure:"logout-path,omitzero" desc:"local path that ends the session"`
 
 	// AllowInsecureCookies disables the default Secure attribute on session
 	// cookies, allowing them to be sent over plain HTTP. Session cookies
 	// carry live OAuth access and refresh tokens, so this must only be set
 	// for local HTTP development — never in production. Mirrors
 	// oidc.ValidatorConfig.AllowInsecureHMAC's explicit-opt-in shape.
-	AllowInsecureCookies bool `json:"allow_insecure_cookies,omitzero" mapstructure:"allow-insecure-cookies,omitzero"`
+	AllowInsecureCookies bool `json:"allow_insecure_cookies,omitzero" mapstructure:"allow-insecure-cookies,omitzero" desc:"allow session cookies over plain HTTP, for local development only; cookies carry live access and refresh tokens"`
 }
 
 // Handler provides browser-based OIDC login middleware: the

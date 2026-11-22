@@ -41,17 +41,17 @@ func (e *ThrottledError) Is(target error) bool {
 // password guessing. Throttling is enabled unless Disabled is set.
 type ThrottleConfig struct {
 	// Disabled turns failed-login throttling off. By default throttling is on.
-	Disabled bool `mapstructure:"disabled"`
+	Disabled bool `mapstructure:"disabled" desc:"turn off failed-login throttling"`
 	// MaxFailures is the number of rejected logins allowed within Window
 	// before the client address is locked out. Defaults to 10.
-	MaxFailures int `mapstructure:"max-failures"`
+	MaxFailures int `mapstructure:"max-failures" desc:"rejected logins allowed within the window before the client address is locked out"`
 	// Window is how long a failed login counts towards MaxFailures. Defaults
 	// to 5 minutes.
-	Window time.Duration `mapstructure:"window"`
+	Window time.Duration `mapstructure:"window" desc:"how long a failed login counts towards the maximum failures"`
 	// Lockout is how long a client address is rejected with 429 once
 	// MaxFailures is reached, even if it then supplies the right password.
 	// Defaults to 5 minutes.
-	Lockout time.Duration `mapstructure:"lockout"`
+	Lockout time.Duration `mapstructure:"lockout" desc:"how long a locked-out client address is rejected, even with the right password"`
 }
 
 type throttleEntry struct {

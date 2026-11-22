@@ -8,22 +8,22 @@ import (
 
 // CommonConfig contains shared configuration for GitHub authentication.
 type CommonConfig struct {
-	AllowInsecureHTTP bool   `mapstructure:"allow-insecure-http"`
-	ClientID          string `mapstructure:"client-id"`
-	ClientSecret      string `mapstructure:"client-secret"`
+	AllowInsecureHTTP bool   `mapstructure:"allow-insecure-http" desc:"allow GitHub authentication over plain HTTP, for local development only"`
+	ClientID          string `mapstructure:"client-id" desc:"GitHub OAuth application client identifier"`
+	ClientSecret      string `mapstructure:"client-secret" desc:"GitHub OAuth application client secret"`
 
 	// ConfigFile containing ClientID and ClientSecret
-	ConfigFile string `mapstructure:"config-file"`
+	ConfigFile string `mapstructure:"config-file" desc:"file containing the client id and client secret"`
 }
 
 // ClientConfig contains configuration for a GitHub authentication client.
 type ClientConfig struct {
 	CommonConfig `mapstructure:",squash"`
 
-	AccessToken                      string `mapstructure:"access-token"`
-	AccessTokenFile                  string `mapstructure:"access-token-file"`
-	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment"`
-	EnvironmentVariableName          string `mapstructure:"environment-variable-name"`
+	AccessToken                      string `mapstructure:"access-token" desc:"GitHub access token"`
+	AccessTokenFile                  string `mapstructure:"access-token-file" desc:"file containing a GitHub access token"`
+	EnableAccessTokenFromEnvironment bool   `mapstructure:"enable-access-token-from-environment" desc:"read the access token from an environment variable"`
+	EnvironmentVariableName          string `mapstructure:"environment-variable-name" desc:"name of the environment variable holding the access token"`
 }
 
 // ServerConfig contains configuration for a GitHub authentication server.

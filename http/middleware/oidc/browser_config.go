@@ -33,23 +33,23 @@ var defaultBrowserScopes = []string{"openid", "profile", "email"}
 // of browser login middleware.
 type BrowserConfig struct {
 	// Issuer is the OIDC issuer/discovery base URL.
-	Issuer string `json:"issuer" mapstructure:"issuer"`
+	Issuer string `json:"issuer" mapstructure:"issuer" desc:"OIDC issuer URL used for discovery"`
 	// ClientID is the OAuth2/OIDC client identifier registered with the provider.
-	ClientID string `json:"client_id" mapstructure:"client-id"`
+	ClientID string `json:"client_id" mapstructure:"client-id" desc:"OAuth 2.0 client identifier registered with the provider"`
 	// ClientSecret is the confidential client secret used in code exchange.
-	ClientSecret string `json:"client_secret" mapstructure:"client-secret"`
+	ClientSecret string `json:"client_secret" mapstructure:"client-secret" desc:"confidential client secret used in the code exchange"`
 	// Scopes controls requested OAuth2 scopes; defaults to openid/profile/email when omitted.
-	Scopes []string `json:"scopes,omitzero" mapstructure:"scopes,omitzero"`
+	Scopes []string `json:"scopes,omitzero" mapstructure:"scopes,omitzero" desc:"OAuth 2.0 scopes to request; openid, profile and email when omitted"`
 	// RedirectURI is the absolute callback URL registered with the OIDC provider.
-	RedirectURI string `json:"redirect_uri" mapstructure:"redirect-uri"`
+	RedirectURI string `json:"redirect_uri" mapstructure:"redirect-uri" desc:"absolute callback URL registered with the OIDC provider"`
 
 	// LoginPath is the local route that initiates login; defaults to /auth/login.
-	LoginPath string `json:"login_path,omitzero" mapstructure:"login-path,omitzero"`
+	LoginPath string `json:"login_path,omitzero" mapstructure:"login-path,omitzero" desc:"local path that starts a login"`
 
 	// CookieDomain sets the optional cookie domain attribute for session cookies.
-	CookieDomain string `json:"cookie_domain,omitzero" mapstructure:"cookie-domain,omitzero"`
+	CookieDomain string `json:"cookie_domain,omitzero" mapstructure:"cookie-domain,omitzero" desc:"domain attribute for session cookies"`
 	// CookieSecure controls the cookie Secure attribute and must be true for authenticated flows.
-	CookieSecure bool `json:"cookie_secure,omitzero" mapstructure:"cookie-secure,omitzero"`
+	CookieSecure bool `json:"cookie_secure,omitzero" mapstructure:"cookie-secure,omitzero" desc:"set the Secure attribute on session cookies; must be true for authenticated flows"`
 }
 
 // Validate checks that BrowserConfig is suitable for authenticated browser OIDC
