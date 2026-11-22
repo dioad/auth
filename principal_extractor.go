@@ -46,6 +46,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
@@ -188,6 +189,20 @@ func (s *jwtPrincipalSource) Claims(ctx context.Context) map[string]any {
 			continue
 		}
 		result[key] = value
+	}
+
+	// Expose the same canonical attributes as the OIDC source so consumers
+	// need not know which source classified the principal.
+	copyGenericToCanonical(result, result, "preferred_username", AttrPreferredUsername)
+	copyGenericToCanonical(result, result, "email", AttrEmail)
+	copyGenericToCanonical(result, result, "email_verified", AttrEmailVerified)
+	copyGenericToCanonical(result, result, "username", AttrUsername)
+	copyGenericToCanonical(result, result, "upn", AttrUserPrincipalName)
+	if v, ok := result[AttrEmailVerified].(string); ok {
+		// Some providers send email_verified as the string "true" or "false".
+		if verified, err := strconv.ParseBool(v); err == nil {
+			result[AttrEmailVerified] = verified
+		}
 	}
 
 	if len(result) == 0 {
