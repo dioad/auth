@@ -26,12 +26,12 @@ type Config struct {
 	// CookieEncryptionKey encrypts the session cookies. It is 64 hexadecimal
 	// characters (an AES-256 key), for example from "openssl rand -hex 32".
 	// Changing it ends every session.
-	CookieEncryptionKey string `mapstructure:"cookie-encryption-key"`
+	CookieEncryptionKey string `mapstructure:"cookie-encryption-key" desc:"key that encrypts the session cookies, 64 hexadecimal characters such as from openssl rand -hex 32; changing it ends every session"`
 
 	// PostLoginPath is where the browser is sent after login. Defaults to "/".
-	PostLoginPath string `mapstructure:"post-login-path"`
+	PostLoginPath string `mapstructure:"post-login-path" desc:"path the browser is sent to after login"`
 	// PostLogoutPath is where the browser is sent after logout. Defaults to "/".
-	PostLogoutPath string `mapstructure:"post-logout-path"`
+	PostLogoutPath string `mapstructure:"post-logout-path" desc:"path the browser is sent to after logout"`
 }
 
 // App is the set of handlers that make up a browser session app. Mount each

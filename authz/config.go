@@ -4,26 +4,26 @@ package authz
 // Used in YAML/mapstructure-based configuration.
 type RoleCapabilityConfig struct {
 	// Role is the internal role name.
-	Role string `mapstructure:"role"`
+	Role string `mapstructure:"role" desc:"internal role name"`
 
 	// Capabilities is the list of capability strings granted to this role.
 	// Each must use ':' as the separator, e.g. "tunnel:write", "feature:custom-domain".
-	Capabilities []string `mapstructure:"capabilities"`
+	Capabilities []string `mapstructure:"capabilities" desc:"capabilities granted to the role, written as resource:action such as tunnel:write"`
 }
 
 // AuthorizerConfig is the top-level config for constructing an [Authorizer]
 // from a YAML/mapstructure config source.
 type AuthorizerConfig struct {
 	// RoleCapabilities is the list of role→capability assignments.
-	RoleCapabilities []RoleCapabilityConfig `mapstructure:"role-capabilities"`
+	RoleCapabilities []RoleCapabilityConfig `mapstructure:"role-capabilities" desc:"role to capability assignments"`
 
 	// RoleAliases maps external token role names to internal role names.
 	// Only roles listed here (as keys) are accepted; others are dropped.
-	RoleAliases map[string]string `mapstructure:"role-aliases"`
+	RoleAliases map[string]string `mapstructure:"role-aliases" desc:"map from external token role names to internal role names; roles not listed are dropped"`
 
 	// AllowAll disables all policy checks; every capability is granted.
 	// Must only be set in dev/test environments.
-	AllowAll bool `mapstructure:"allow-all"`
+	AllowAll bool `mapstructure:"allow-all" desc:"grant every capability and skip all policy checks, for development and testing only"`
 }
 
 // NewAuthorizer builds an [Authorizer] from c: an [AllowAllAuthorizer] when

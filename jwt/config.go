@@ -17,31 +17,31 @@ type ValidatorConfig struct {
 
 	// Issuer is the expected token "iss" claim. Signing keys are discovered
 	// from its JWKS endpoint. Required.
-	Issuer string `json:"issuer" mapstructure:"issuer"`
+	Issuer string `json:"issuer" mapstructure:"issuer" desc:"expected token iss claim; signing keys are discovered from its JWKS endpoint"`
 	// Audiences lists the accepted values of the token "aud" claim. A token is
 	// accepted if it carries at least one of them.
-	Audiences []string `json:"audiences" mapstructure:"audiences"`
+	Audiences []string `json:"audiences" mapstructure:"audiences" desc:"accepted values of the token aud claim; a token is accepted if it carries at least one"`
 	// SignatureAlgorithm is a single accepted signing algorithm, for example
 	// "RS256". Ignored when SignatureAlgorithms is set.
-	SignatureAlgorithm string `json:"signature_algorithm" mapstructure:"signature-algorithm"`
+	SignatureAlgorithm string `json:"signature_algorithm" mapstructure:"signature-algorithm" desc:"single accepted signing algorithm, for example RS256; ignored when signature algorithms is set"`
 	// SignatureAlgorithms lists the accepted signing algorithms, for example
 	// ["RS256", "ES256"]. Takes precedence over SignatureAlgorithm.
-	SignatureAlgorithms []string `json:"signature_algorithms" mapstructure:"signature-algorithms"`
+	SignatureAlgorithms []string `json:"signature_algorithms" mapstructure:"signature-algorithms" desc:"accepted signing algorithms, for example RS256 and ES256; takes precedence over the single signature algorithm"`
 	// CacheTTL is how long, in seconds, discovered signing keys are cached.
 	// Defaults to 300 when unset or not positive.
-	CacheTTL int `json:"cache_ttl_seconds" mapstructure:"cache-ttl-seconds"`
+	CacheTTL int `json:"cache_ttl_seconds" mapstructure:"cache-ttl-seconds" desc:"how long, in seconds, discovered signing keys are cached"`
 	// AllowedClockSkew is the tolerance, in seconds, applied to the token
 	// "exp", "nbf" and "iat" claims. Defaults to 60 when unset or not positive.
-	AllowedClockSkew int `json:"allowed_clock_skew_seconds" mapstructure:"allowed-clock-skew-seconds"`
+	AllowedClockSkew int `json:"allowed_clock_skew_seconds" mapstructure:"allowed-clock-skew-seconds" desc:"tolerance, in seconds, applied to the token exp, nbf and iat claims"`
 	// Debug enables debug logging of each token validation attempt and its
 	// outcome. Intended for troubleshooting.
-	Debug bool `json:"debug" mapstructure:"debug"`
+	Debug bool `json:"debug" mapstructure:"debug" desc:"log each token validation attempt and its outcome, for troubleshooting"`
 	// ClaimPredicate restricts which tokens are accepted by their claims. Each
 	// key is a claim name and its value is the required claim value; an array
 	// claim matches when it contains the value. All entries must match. Use
 	// the reserved keys "and" and "or", each holding a list of such maps, for
 	// nested combinations.
-	ClaimPredicate map[string]any `json:"claim_predicates" mapstructure:"claim-predicates"`
+	ClaimPredicate map[string]any `json:"claim_predicates" mapstructure:"claim-predicates" desc:"required claim values keyed by claim name; an array claim matches when it contains the value and all entries must match"`
 }
 
 // deprecatedValidatorKeys reads the snake_case keys ValidatorConfig used
@@ -51,15 +51,15 @@ type ValidatorConfig struct {
 // The keys will be removed in a later release.
 type deprecatedValidatorKeys struct {
 	// Deprecated: set SignatureAlgorithm, read from signature-algorithm.
-	DeprecatedSignatureAlgorithm string `json:"-" mapstructure:"signature_algorithm"`
+	DeprecatedSignatureAlgorithm string `json:"-" mapstructure:"signature_algorithm" flag:",hidden"`
 	// Deprecated: set SignatureAlgorithms, read from signature-algorithms.
-	DeprecatedSignatureAlgorithms []string `json:"-" mapstructure:"signature_algorithms"`
+	DeprecatedSignatureAlgorithms []string `json:"-" mapstructure:"signature_algorithms" flag:",hidden"`
 	// Deprecated: set CacheTTL, read from cache-ttl-seconds.
-	DeprecatedCacheTTL int `json:"-" mapstructure:"cache_ttl_seconds"`
+	DeprecatedCacheTTL int `json:"-" mapstructure:"cache_ttl_seconds" flag:",hidden"`
 	// Deprecated: set AllowedClockSkew, read from allowed-clock-skew-seconds.
-	DeprecatedAllowedClockSkew int `json:"-" mapstructure:"allowed_clock_skew_seconds"`
+	DeprecatedAllowedClockSkew int `json:"-" mapstructure:"allowed_clock_skew_seconds" flag:",hidden"`
 	// Deprecated: set ClaimPredicate, read from claim-predicates.
-	DeprecatedClaimPredicate map[string]any `json:"-" mapstructure:"claim_predicates"`
+	DeprecatedClaimPredicate map[string]any `json:"-" mapstructure:"claim_predicates" flag:",hidden"`
 }
 
 // DeprecatedKeys returns the deprecated snake_case keys c was loaded with,

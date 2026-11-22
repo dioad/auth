@@ -28,15 +28,15 @@ var knownSources = []string{SourceFlyio, SourceGithubActions, SourceAWS, SourceO
 type ClaimRoleMappingConfig struct {
 	// Source restricts this mapping to a named PrincipalSource (e.g. "flyio",
 	// "aws"). Empty means match any source.
-	Source string `mapstructure:"source"`
+	Source string `mapstructure:"source" desc:"restrict the mapping to a named principal source such as flyio or aws; empty matches any source"`
 	// Claims maps claim keys to required values. A value of "*" matches any
 	// non-empty string.
-	Claims map[string]string `mapstructure:"claims"`
+	Claims map[string]string `mapstructure:"claims" desc:"required claim values keyed by claim name; an asterisk matches any non-empty value"`
 	// Role is the internal role granted when all claim predicates match.
-	Role string `mapstructure:"role"`
+	Role string `mapstructure:"role" desc:"internal role granted when all claims match"`
 	// Debug enables per-request structured debug logging for this rule.
 	// Do not enable in production — evaluated claim values appear in the log output.
-	Debug bool `mapstructure:"debug"`
+	Debug bool `mapstructure:"debug" desc:"log each evaluation of this rule; claim values appear in the log, so do not enable in production"`
 }
 
 // ExtractorConfig is the common auth configuration for services that need
@@ -49,12 +49,12 @@ type ExtractorConfig struct {
 	// can tell "not set at this level" (nil) apart from an explicit false -
 	// a plain bool can't distinguish the two, which would let a true default
 	// silently override a service's explicit false.
-	AllowUnauthenticated *bool `mapstructure:"allow-unauthenticated"`
+	AllowUnauthenticated *bool `mapstructure:"allow-unauthenticated" desc:"allow requests without authentication; also requires accept-unauthenticated-risk"`
 	// AcceptUnauthenticatedRisk is the second opt-in AllowUnauthenticated needs
 	// before Check accepts it. One flag copied into a production config by
 	// mistake is then not enough to open the API.
-	AcceptUnauthenticatedRisk bool                     `mapstructure:"accept-unauthenticated-risk"`
-	ClaimRoleMappings         []ClaimRoleMappingConfig `mapstructure:"claim-role-mappings"`
+	AcceptUnauthenticatedRisk bool                     `mapstructure:"accept-unauthenticated-risk" desc:"second opt-in required for allow-unauthenticated, so one stray flag cannot open the API"`
+	ClaimRoleMappings         []ClaimRoleMappingConfig `mapstructure:"claim-role-mappings" desc:"mappings from token claims to internal roles"`
 }
 
 // Unauthenticated reports whether allow-unauthenticated is set.
